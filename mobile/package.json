@@ -1,0 +1,22 @@
+{
+  "name": "nhl-gm-mobile-ui",
+  "version": "0.1.0",
+  "private": true,
+  "main": "App.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "expo": "latest",
+    "react": "latest",
+    "react-native": "latest",
+    "react-native-safe-area-context": "latest"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18"
+  }
+}
