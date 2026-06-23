@@ -1,6 +1,6 @@
 # NHL GM Game
 
-A Python-based NHL general manager simulation game built around persistent franchise state, CBA-style cap logic, scouting uncertainty, tactical match simulation, trade evaluation, and executive risk management.
+A Python-based NHL general manager simulation game built around persistent franchise state, CBA-style cap logic, scouting uncertainty, tactical match simulation, trade evaluation, executive risk management, and a mobile-first franchise UI prototype.
 
 ## Current Core
 
@@ -11,6 +11,33 @@ src/nhl_gm_core.py
 ```
 
 It currently runs as a terminal-based simulation app with SQLite persistence.
+
+## Mobile UI Prototype
+
+A first-pass Expo / React Native mobile interface now lives in:
+
+```bash
+mobile/App.js
+```
+
+The mobile UI includes:
+
+- Dashboard
+- Roster
+- Game Simulation
+- Trade Center
+- Front Office
+- Advisor Risk panel
+
+Run it locally with:
+
+```bash
+cd mobile
+npm install
+npm start
+```
+
+The mobile UI currently uses mock game state that mirrors the Python engine. The next engineering step is to expose the Python simulation through an API layer and replace mock state with live persisted data.
 
 ## Implemented Systems
 
@@ -24,7 +51,7 @@ It currently runs as a terminal-based simulation app with SQLite persistence.
 - **Advisor Risk Scoring Engine** for cap exposure, overpaid assets, and league trust risk.
 - **Executive terminal shell** with box-drawing interface panels and command-driven simulation controls.
 
-## Run Locally
+## Run the Python Engine Locally
 
 ```bash
 python src/nhl_gm_core.py
