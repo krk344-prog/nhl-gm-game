@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   SafeAreaView,
@@ -26,7 +26,7 @@ const COLORS = {
   red: '#ff4d57',
 };
 
-const teamState = {
+const fallbackTeamState = {
   city: 'New York',
   name: 'Rangers',
   gm: 'You',
@@ -43,9 +43,13 @@ const teamState = {
   offense: 88,
   defense: 86,
   goalies: 84,
+  wins: 0,
+  losses: 0,
+  overtimeLosses: 0,
+  points: 0,
 };
 
-const roster = [
+const fallbackRoster = [
   { id: 34, name: 'C. Hughes', pos: 'C', age: 24, ovr: 84, fog: 14, aav: 8.75, role: 'Elite Playmaker' },
   { id: 16, name: 'A. Barkov', pos: 'C', age: 28, ovr: 92, fog: 12, aav: 9.25, role: 'Two-Way Forward' },
   { id: 10, name: 'A. Panarin', pos: 'LW', age: 33, ovr: 89, fog: 16, aav: 7.0, role: 'Volume Sniper' },
@@ -59,6 +63,65 @@ const roster = [
   { id: 72, name: 'F. Chytil', pos: 'C', age: 25, ovr: 78, fog: 18, aav: 2.3, role: 'Middle Six' },
   { id: 21, name: 'B. Goodrow', pos: 'RW', age: 31, ovr: 77, fog: 16, aav: 3.64, role: 'Penalty Killer' },
 ];
+
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1';
+
+function mapDashboard(payload) {
+  return {
+    ...fallbackTeamState,
+    city: payload.team.city,
+    name: payload.team.name,
+    day: payload.calendar.current_day,
+    maxDays: payload.calendar.max_days,
+    cash: payload.finances.cash_balance,
+    capHit: payload.finances.cap_hit,
+    capCeiling: payload.finances.cap_ceiling,
+    accruedCap: payload.finances.accrued_deadline_buying_power,
+    jobSecurity: Math.round(payload.team.gm_trust_score),
+    overall: payload.ratings.overall,
+    offense: payload.ratings.offense,
+    defense: payload.ratings.defense,
+    goalies: payload.ratings.goalies,
+    wins: payload.standing?.wins || 0,
+    losses: payload.standing?.losses || 0,
+    overtimeLosses: payload.standing?.overtime_losses || 0,
+    points: payload.standing?.points || 0,
+    nextGame: payload.next_game
+      ? `${payload.next_game.opponent} (${payload.next_game.venue === 'home' ? 'H' : 'A'})`
+      : 'Season complete',
+    nextDate: payload.next_game ? `Day ${payload.next_game.day}` : '-',
+  };
+}
+
+async function fetchGameState() {
+  const responses = await Promise.all([
+    fetch(`${API_BASE_URL}/teams/1/dashboard`),
+    fetch(`${API_BASE_URL}/teams/1/roster`),
+  ]);
+  if (responses.some((response) => !response.ok)) {
+    throw new Error('The NHL GM API returned an error');
+  }
+  const [dashboardPayload, rosterPayload] = await Promise.all(
+    responses.map((response) => response.json()),
+  );
+  return {
+    teamState: mapDashboard(dashboardPayload),
+    roster: mapRoster(rosterPayload),
+  };
+}
+
+function mapRoster(payload) {
+  return payload.players.map((player) => ({
+    id: player.id,
+    name: player.name,
+    pos: player.position,
+    age: player.age,
+    ovr: player.overall,
+    fog: Math.round(player.scouting_uncertainty),
+    aav: player.aav / 1000000,
+    role: player.archetype,
+  }));
+}
 
 const gameLog = [
   { period: '1ST', time: '04:00', team: 'NYR', title: 'GOAL (NYR)', detail: 'A. Barkov (2) Assist: C. Hughes, M. Zibanejad', score: '1-0' },
@@ -135,11 +198,18 @@ function TeamBadge({ abbrev, color = COLORS.blue }) {
   );
 }
 
-function DashboardScreen() {
+function SyncStatus({ status }) {
+  const live = status === 'live';
+  const label = status === 'loading' ? 'SYNCING GAME STATE' : live ? 'LIVE DATABASE' : 'OFFLINE DEMO DATA';
+  return <Text style={[styles.syncStatus, { color: live ? COLORS.green : COLORS.yellow }]}>{label}</Text>;
+}
+
+function DashboardScreen({ teamState, syncStatus, onAdvanceDay, advancing, actionMessage }) {
   const capSpace = (teamState.capCeiling - teamState.capHit) / 1000000;
   return (
     <ScrollView contentContainerStyle={styles.scrollBody}>
       <Header title="NHL GM" subtitle="GAME" />
+      <SyncStatus status={syncStatus} />
 
       <Card style={styles.heroCard}>
         <View style={styles.teamHeroRow}>
@@ -149,6 +219,7 @@ function DashboardScreen() {
             <Text style={styles.teamName}>{teamState.name}</Text>
             <Text style={styles.muted}>GM: {teamState.gm}</Text>
             <Text style={styles.muted}>Job Security: {teamState.jobSecurity}/100</Text>
+            <Text style={styles.muted}>Record: {teamState.wins}-{teamState.losses}-{teamState.overtimeLosses} · {teamState.points} PTS</Text>
             <ProgressBar value={teamState.jobSecurity} color={COLORS.green} />
           </View>
         </View>
@@ -157,7 +228,7 @@ function DashboardScreen() {
       <View style={styles.twoCol}>
         <Card style={styles.splitCard}>
           <Text style={styles.label}>DAY {String(teamState.day).padStart(3, '0')} / {teamState.maxDays}</Text>
-          <Text style={styles.valueSmall}>October 5, 2024</Text>
+          <Text style={styles.valueSmall}>Regular Season</Text>
         </Card>
         <Card style={styles.splitCard}>
           <Text style={styles.label}>NEXT GAME</Text>
@@ -167,8 +238,8 @@ function DashboardScreen() {
       </View>
 
       <View style={styles.twoCol}>
-        <MetricCard label="CAP SPACE" value={money(capSpace)} sub="$88.25M / $92.00M" color={COLORS.text} />
-        <MetricCard label="ACCRUED CAP SPACE" value="$4.21M" sub="Deadline Buying Power" color={COLORS.text} />
+        <MetricCard label="CAP SPACE" value={money(capSpace)} sub={`${money(teamState.capHit / 1000000)} / ${money(teamState.capCeiling / 1000000)}`} color={COLORS.text} />
+        <MetricCard label="ACCRUED CAP SPACE" value={money(teamState.accruedCap / 1000000)} sub="Deadline Buying Power" color={COLORS.text} />
       </View>
 
       <View style={styles.fourCol}>
@@ -179,7 +250,8 @@ function DashboardScreen() {
       </View>
 
       <Text style={styles.sectionTitle}>QUICK ACTIONS</Text>
-      <ActionRow icon="📅" title="Advance Day" detail="Simulate 24 Hours" />
+      <ActionRow icon="📅" title={advancing ? 'Advancing...' : 'Advance Day'} detail="Settle cap charges and simulate the league slate" onPress={onAdvanceDay} disabled={advancing || syncStatus !== 'live'} />
+      {actionMessage ? <Text style={styles.actionMessage}>{actionMessage}</Text> : null}
       <ActionRow icon="▶" title="Sim Today's Game" detail="vs BOS" />
       <ActionRow icon="🔁" title="Trade Center" detail="Propose or Review Trades" />
       <ActionRow icon="👓" title="Scout Players" detail="Reduce Fog of War" />
@@ -197,9 +269,9 @@ function SmallRating({ label, value, icon }) {
   );
 }
 
-function ActionRow({ icon, title, detail }) {
+function ActionRow({ icon, title, detail, onPress, disabled = false }) {
   return (
-    <TouchableOpacity activeOpacity={0.85} style={styles.actionRow}>
+    <TouchableOpacity activeOpacity={0.85} style={[styles.actionRow, disabled && styles.actionRowDisabled]} onPress={onPress} disabled={disabled}>
       <Text style={styles.actionIcon}>{icon}</Text>
       <View style={styles.actionTextWrap}>
         <Text style={styles.actionTitle}>{title}</Text>
@@ -210,11 +282,12 @@ function ActionRow({ icon, title, detail }) {
   );
 }
 
-function RosterScreen() {
+function RosterScreen({ roster, teamState, syncStatus }) {
   const [section, setSection] = useState('NHL ROSTER');
   return (
     <View style={styles.flex}>
       <ScreenTitle title="ROSTER" action="⌕" />
+      <SyncStatus status={syncStatus} />
       <View style={styles.segmented}>
         {['NHL ROSTER', 'AHL AFFILIATE', 'CONTRACTS'].map((item) => (
           <TouchableOpacity key={item} onPress={() => setSection(item)} style={[styles.segmentButton, section === item && styles.segmentActive]}>
@@ -225,12 +298,12 @@ function RosterScreen() {
 
       <Card style={styles.rosterHeaderCard}>
         <View>
-          <Text style={styles.sectionTitle}>NHL ROSTER (23/23)</Text>
+          <Text style={styles.sectionTitle}>NHL ROSTER ({roster.length}/23)</Text>
           <Text style={styles.muted}>Fog-of-war uncertainty shown as ± scouting range</Text>
         </View>
         <View style={styles.rightAlign}>
           <Text style={styles.label}>CAP HIT</Text>
-          <Text style={styles.valueSmall}>$88.25M</Text>
+          <Text style={styles.valueSmall}>{money(teamState.capHit / 1000000)}</Text>
         </View>
       </Card>
 
@@ -494,13 +567,52 @@ function BottomNav({ active, onChange }) {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [teamState, setTeamState] = useState(fallbackTeamState);
+  const [roster, setRoster] = useState(fallbackRoster);
+  const [syncStatus, setSyncStatus] = useState('loading');
+  const [advancing, setAdvancing] = useState(false);
+  const [actionMessage, setActionMessage] = useState('');
+
+  const refreshGameState = useCallback(async () => {
+    const state = await fetchGameState();
+    setTeamState(state.teamState);
+    setRoster(state.roster);
+    setSyncStatus('live');
+  }, []);
+
+  useEffect(() => {
+    refreshGameState().catch(() => setSyncStatus('offline'));
+  }, [refreshGameState]);
+
+  const handleAdvanceDay = useCallback(async () => {
+    if (advancing) return;
+    setAdvancing(true);
+    setActionMessage('');
+    try {
+      const response = await fetch(`${API_BASE_URL}/advance-day`, { method: 'POST' });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Unable to advance the calendar');
+      const game = payload.games[0];
+      setActionMessage(
+        game
+          ? `Day ${payload.calendar.current_day}: ${game.away_team} ${game.away_score} · ${game.home_team} ${game.home_score}${game.overtime ? ' (OT)' : ''}`
+          : `Day ${payload.calendar.current_day}: no games scheduled`,
+      );
+      await refreshGameState();
+    } catch (error) {
+      setActionMessage(error.message || 'Unable to advance the calendar');
+    } finally {
+      setAdvancing(false);
+    }
+  }, [advancing, refreshGameState]);
+
   const content = useMemo(() => {
-    if (activeTab === 'roster') return <RosterScreen />;
+    if (activeTab === 'roster') return <RosterScreen roster={roster} teamState={teamState} syncStatus={syncStatus} />;
     if (activeTab === 'games') return <GamesScreen />;
     if (activeTab === 'trade') return <TradeScreen />;
     if (activeTab === 'office') return <OfficeScreen />;
-    return <DashboardScreen />;
-  }, [activeTab]);
+    return <DashboardScreen teamState={teamState} syncStatus={syncStatus} onAdvanceDay={handleAdvanceDay} advancing={advancing} actionMessage={actionMessage} />;
+  }, [actionMessage, activeTab, advancing, handleAdvanceDay, roster, syncStatus, teamState]);
 
   return (
     <SafeAreaView style={styles.appShell}>
@@ -516,6 +628,7 @@ const styles = StyleSheet.create({
   phoneFrame: { flex: 1, backgroundColor: COLORS.bg, paddingHorizontal: 10 },
   flex: { flex: 1 },
   scrollBody: { paddingBottom: 24 },
+  syncStatus: { fontSize: 10, fontWeight: '900', letterSpacing: 1.2, marginBottom: 8, textAlign: 'right' },
   header: { height: 66, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerButton: { color: COLORS.text, fontSize: 28, fontWeight: '700', width: 38, textAlign: 'center' },
   headerTitleWrap: { alignItems: 'center' },
@@ -545,6 +658,8 @@ const styles = StyleSheet.create({
   ratingIcon: { fontSize: 22, marginTop: 6 },
   sectionTitle: { color: COLORS.text, fontSize: 15, fontWeight: '900', letterSpacing: 1, marginBottom: 8 },
   actionRow: { backgroundColor: COLORS.card, borderColor: COLORS.line, borderWidth: 1, borderRadius: 10, padding: 12, marginBottom: 7, flexDirection: 'row', alignItems: 'center' },
+  actionRowDisabled: { opacity: 0.55 },
+  actionMessage: { color: COLORS.green, fontSize: 12, lineHeight: 18, marginBottom: 10, paddingHorizontal: 4 },
   actionIcon: { fontSize: 28, width: 42, textAlign: 'center' },
   actionTextWrap: { flex: 1, marginLeft: 8 },
   actionTitle: { color: COLORS.text, fontSize: 16, fontWeight: '700' },

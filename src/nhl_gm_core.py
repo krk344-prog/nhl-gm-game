@@ -4,12 +4,22 @@ import math
 import sqlite3
 import random
 
+
+def get_database_path():
+    """Return the configured SQLite path for CLI, API, and test callers."""
+    return os.environ.get("NHL_GM_DB_PATH", "nhl_gm_core.db")
+
+
+def connect_database(**kwargs):
+    """Open a connection to the active game database."""
+    return sqlite3.connect(get_database_path(), **kwargs)
+
 # ==============================================================================
 # 1. ARCHITECTURE BASELINE: PERSISTENT DATABASE SYSTEM INITIALIZER
 # ==============================================================================
 def init_database():
     """Establishes transaction-isolated SQLite anchor and populates complete rosters."""
-    conn = sqlite3.connect("nhl_gm_core.db", isolation_level="EXCLUSIVE")
+    conn = connect_database(isolation_level="EXCLUSIVE")
     cursor = conn.cursor()
     
     # Core Chronological Matrix & Asset Tracking Accrual Hub
@@ -84,7 +94,7 @@ def init_database():
                 shoot = random.randint(85, 98) if arch == "Volume Sniper" else random.randint(60, 85)
                 pass_val = random.randint(86, 99) if arch == "Elite Playmaker" else random.randint(60, 85)
                 cursor.execute("INSERT INTO players (team_id, name, age, position, archetype, shooting, passing, positioning, reflexes, speed, checking, aav, contract_years) VALUES (?, ?, ?, 'F', ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                               (team_idx, p_name, random.randint(19, 35), arch, shoot, pass_val, random.randint(65, 90), random.randint(30, 50), random.randint(75, 95), random.randint(60, 90), random.randint(4500000, 11000000), random.randint(1, 7)))
+                               (team_idx, p_name, random.randint(19, 35), arch, shoot, pass_val, random.randint(65, 90), random.randint(30, 50), random.randint(75, 95), random.randint(60, 90), random.randint(775000, 4000000), random.randint(1, 7)))
             
             # Defensemen Seeding (8 Defensemen per team)
             for d in range(8):
@@ -93,14 +103,14 @@ def init_database():
                 pos_val = random.randint(85, 98) if arch == "Defensive D-Man" else random.randint(65, 84)
                 chk_val = random.randint(82, 99) if arch == "Defensive D-Man" else random.randint(60, 80)
                 cursor.execute("INSERT INTO players (team_id, name, age, position, archetype, shooting, passing, positioning, reflexes, speed, checking, aav, contract_years) VALUES (?, ?, ?, 'D', ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                               (team_idx, p_name, random.randint(20, 36), arch, random.randint(50, 75), random.randint(75, 92), pos_val, random.randint(30, 50), random.randint(70, 92), chk_val, random.randint(3500000, 8500000), random.randint(1, 6)))
+                               (team_idx, p_name, random.randint(20, 36), arch, random.randint(50, 75), random.randint(75, 92), pos_val, random.randint(30, 50), random.randint(70, 92), chk_val, random.randint(775000, 3500000), random.randint(1, 6)))
             
             # Goaltenders Seeding (2 Goaltenders per team)
             for g in range(2):
                 p_name = f"{random.choice(first_names)} {random.choice(last_names)}"
                 arch = random.choice(["Butterfly Goalie", "Hybrid Goalie"])
                 cursor.execute("INSERT INTO players (team_id, name, age, position, archetype, shooting, passing, positioning, reflexes, speed, checking, aav, contract_years) VALUES (?, ?, ?, 'G', ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                               (team_idx, p_name, random.randint(22, 34), arch, random.randint(30, 45), random.randint(50, 75), random.randint(85, 98), random.randint(86, 99), random.randint(65, 88), random.randint(30, 40), random.randint(2000000, 7500000), random.randint(1, 5)))
+                               (team_idx, p_name, random.randint(22, 34), arch, random.randint(30, 45), random.randint(50, 75), random.randint(85, 98), random.randint(86, 99), random.randint(65, 88), random.randint(30, 40), random.randint(775000, 3000000), random.randint(1, 5)))
                 
         # Seed AHL Minor Affiliate Reserves Group (Farmhorns)
         for a in range(10):
@@ -118,7 +128,7 @@ class ComplianceGate:
     """Enforces absolute legal fences around multi-tiered franchise roster sheets."""
     @staticmethod
     def verify_roster_legality(team_id):
-        conn = sqlite3.connect("nhl_gm_core.db")
+        conn = connect_database()
         cursor = conn.cursor()
         
         cursor.execute("SELECT COUNT(*), SUM(aav) FROM players WHERE team_id = ?", (team_id,))
@@ -156,7 +166,7 @@ class DynamicFinancialPool:
     """Calculates chronological daily roster tracking fee matrices."""
     @staticmethod
     def process_daily_cap_accrual():
-        conn = sqlite3.connect("nhl_gm_core.db")
+        conn = connect_database()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
@@ -197,7 +207,7 @@ class TacticalMatchSimulator:
         self.away_id = away_team_id
         
     def gather_roster_dictionary(self, team_id):
-        conn = sqlite3.connect("nhl_gm_core.db")
+        conn = connect_database()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute("SELECT id, name, position, archetype, shooting, passing, positioning, reflexes, speed, checking, fatigue, back_to_back_started FROM players WHERE team_id = ?", (team_id,))
@@ -214,13 +224,16 @@ class TacticalMatchSimulator:
             roster[p['position']].append(p)
         return roster
 
-    def execute_match_simulation(self):
+    def execute_match_simulation(self, structured=False, persist_fatigue=True):
         h_roster = self.gather_roster_dictionary(self.home_id)
         a_roster = self.gather_roster_dictionary(self.away_id)
         
         # Verify line configurations are loaded correctly before entry
         if not h_roster['G'] or not a_roster['G'] or len(h_roster['F']) < 3 or len(a_roster['F']) < 3:
-            return "Execution Halted: Operational roster depth criteria error."
+            message = "Execution Halted: Operational roster depth criteria error."
+            if structured:
+                return {"status": "error", "error": message}
+            return message
 
         h_goals, a_goals = 0, 0
         h_corsi, a_corsi = 0, 0
@@ -296,19 +309,47 @@ class TacticalMatchSimulator:
                             a_goals += 1
                             match_log.append(f"  ⚡ [{ticks:02d}:00] GOAL (AWAY) - {shooter['name']} via {passer['name']} {rr_flag}")
                             
+        # NHL games cannot end tied. Resolve overtime using the shot-share edge.
+        overtime = h_goals == a_goals
+        if overtime:
+            total_corsi = max(1, h_corsi + a_corsi)
+            if random.random() < (h_corsi / total_corsi):
+                h_goals += 1
+                overtime_winner = "HOME"
+            else:
+                a_goals += 1
+                overtime_winner = "AWAY"
+            match_log.append(f"  ⚡ OVERTIME WINNER ({overtime_winner})")
+
         # Apply physical performance fatigue and back-to-back night tracking states
-        conn = sqlite3.connect("nhl_gm_core.db")
-        cursor = conn.cursor()
-        cursor.execute("UPDATE players SET fatigue = fatigue + 25.0, back_to_back_started = 1 WHERE id = ?", (h_roster['G'][0]['id'],))
-        cursor.execute("UPDATE players SET fatigue = fatigue + 25.0, back_to_back_started = 1 WHERE id = ?", (a_roster['G'][0]['id'],))
-        conn.commit()
-        conn.close()
+        if persist_fatigue:
+            conn = connect_database()
+            cursor = conn.cursor()
+            cursor.execute("UPDATE players SET fatigue = fatigue + 25.0, back_to_back_started = 1 WHERE id = ?", (h_roster['G'][0]['id'],))
+            cursor.execute("UPDATE players SET fatigue = fatigue + 25.0, back_to_back_started = 1 WHERE id = ?", (a_roster['G'][0]['id'],))
+            conn.commit()
+            conn.close()
         
         match_log.append("═" * 56)
         match_log.append(f"  FINAL SCORE RESOLVED: HOME {h_goals} - AWAY {a_goals}")
         match_log.append(f"  CORSI EQUIVALENTS METRIC: HOME SHOTS: {h_corsi} | AWAY SHOTS: {a_corsi}")
         match_log.append("═" * 56)
-        return "\n".join(match_log)
+        log_text = "\n".join(match_log)
+        if structured:
+            return {
+                "status": "completed",
+                "home_team_id": self.home_id,
+                "away_team_id": self.away_id,
+                "home_score": h_goals,
+                "away_score": a_goals,
+                "home_corsi": h_corsi,
+                "away_corsi": a_corsi,
+                "home_goalie_id": h_roster['G'][0]['id'],
+                "away_goalie_id": a_roster['G'][0]['id'],
+                "overtime": overtime,
+                "log": log_text,
+            }
+        return log_text
 
 # ==============================================================================
 # 4. EXECUTIVE ANALYTICAL SYSTEMS: CASV TRADE DESK & ARSE RISK CORE
@@ -345,7 +386,7 @@ class ContractAdjustedSurplusValueDesk:
 
     @staticmethod
     def process_trade_proposal(user_player_id, target_team_id, target_player_id):
-        conn = sqlite3.connect("nhl_gm_core.db")
+        conn = connect_database()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
@@ -380,7 +421,7 @@ class ContractAdjustedSurplusValueDesk:
         # Check transaction gate validation criteria outcomes
         if u_casv >= adjusted_threshold_barrier:
             # Check systemic transaction compliance gate limits
-            conn = sqlite3.connect("nhl_gm_core.db")
+            conn = connect_database()
             cursor = conn.cursor()
             
             # Execute transactional row migrations
@@ -407,7 +448,7 @@ class AdvisorRiskScoringEngine:
     """Computes administrative multi-variable corporate system risk coordinates."""
     @staticmethod
     def generate_executive_analysis_report():
-        conn = sqlite3.connect("nhl_gm_core.db")
+        conn = connect_database()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
@@ -473,7 +514,7 @@ class ExecutiveTerminalApp:
         os.system('cls' if os.name == 'nt' else 'clear')
 
     def render_dashboard_header(self):
-        conn = sqlite3.connect("nhl_gm_core.db")
+        conn = connect_database()
         cursor = conn.cursor()
         cursor.execute("SELECT current_day, salary_cap_ceiling, accrued_margin FROM league_calendar WHERE id = 1")
         day, ceiling, margin = cursor.fetchone()
@@ -498,7 +539,7 @@ class ExecutiveTerminalApp:
         self.render_dashboard_header()
         print("\n  ## ACTIVE ROSTER AUDIT REGISTRY PANEL (FOG-OF-WAR SIMULATION ENABLED) ##\n")
         
-        conn = sqlite3.connect("nhl_gm_core.db")
+        conn = connect_database()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute("""
@@ -525,7 +566,7 @@ class ExecutiveTerminalApp:
         print("\n  ## DISPATCHING SCOUTING ASSETS INTO FIELDS ##\n")
         print(" Scanning player attribute vectors and generating direct observation frames...")
         
-        conn = sqlite3.connect("nhl_gm_core.db")
+        conn = connect_database()
         cursor = conn.cursor()
         # Increment observation logs to collapse tracking error standard deviation margins
         cursor.execute("UPDATE players SET scout_observations = scout_observations + 1")
@@ -587,7 +628,7 @@ class ExecutiveTerminalApp:
         self.render_dashboard_header()
         print("\n  ## INCREMENTING TEMPORAL LEAGUE CALENDAR INDEX CORRIDOR (+24H) ##\n")
         
-        conn = sqlite3.connect("nhl_gm_core.db")
+        conn = connect_database()
         cursor = conn.cursor()
         cursor.execute("UPDATE league_calendar SET current_day = current_day + 1 WHERE id = 1")
         # Apply physical system recovery decay curves

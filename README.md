@@ -32,12 +32,37 @@ The mobile UI includes:
 Run it locally with:
 
 ```bash
+python src/nhl_gm_api.py
+
+# In a second terminal:
 cd mobile
 npm install
 npm start
 ```
 
-The mobile UI currently uses mock game state that mirrors the Python engine. The next engineering step is to expose the Python simulation through an API layer and replace mock state with live persisted data.
+The dashboard and roster load live persisted state from the Python API. If the API is unavailable, those screens remain usable with clearly labeled demo data. Set `EXPO_PUBLIC_API_URL` when the mobile client cannot reach the default `http://127.0.0.1:8000/api/v1` address.
+
+## JSON API
+
+The dependency-free API initializes the same SQLite game state as the terminal app:
+
+```bash
+python src/nhl_gm_api.py --host 0.0.0.0 --port 8000
+```
+
+Available read endpoints:
+
+- `GET /api/v1/health`
+- `GET /api/v1/teams`
+- `GET /api/v1/teams/{team_id}/dashboard`
+- `GET /api/v1/teams/{team_id}/roster`
+- `GET /api/v1/standings`
+- `GET /api/v1/schedule?day={day}&team_id={team_id}`
+- `POST /api/v1/advance-day`
+
+Advancing a day settles cap charges, recovers player fatigue, simulates every scheduled game, and updates persistent standings. The seeded two-team prototype produces a balanced 82-game home-and-away schedule across the 186-day calendar.
+
+Use `--db path/to/game.db` or `NHL_GM_DB_PATH` to select a different save file.
 
 ## Implemented Systems
 
@@ -47,6 +72,7 @@ The mobile UI currently uses mock game state that mirrors the Python engine. The
 - **Roster legality checks** for 23-player roster limits and the $92,000,000 salary cap ceiling.
 - **Scouting fog-of-war** with exponential uncertainty decay based on observation count.
 - **60-minute tactical match simulator** using possession, Corsi-style shot attempts, line chemistry, xG modifiers, royal-road passing, and goalie fatigue.
+- **Persistent league loop** with schedule generation, structured game results, standings, overtime points, streaks, and daily slate automation.
 - **Contract-Adjusted Surplus Value trade desk** for evaluating player trades against team mandates and relationship friction.
 - **Advisor Risk Scoring Engine** for cap exposure, overpaid assets, and league trust risk.
 - **Executive terminal shell** with box-drawing interface panels and command-driven simulation controls.
@@ -61,6 +87,12 @@ The app creates a local SQLite database named:
 
 ```bash
 nhl_gm_core.db
+```
+
+Run the automated API tests with:
+
+```bash
+python -m unittest discover -s tests -v
 ```
 
 ## Roadmap Direction

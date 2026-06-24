@@ -12,19 +12,30 @@ The prototype currently includes five main mobile screens:
 - **Trade Center** — player offer cards, CASV analysis, relationship friction, and submit button.
 - **Front Office** — advisor risk panel, coaching, scouting, injuries, waivers, business operations, fan volatility, and GM relationships.
 
-The UI currently uses mock state that mirrors the Python simulation engine. The next step is to connect this front end to the persistent SQLite simulation logic through an API layer.
+The dashboard and roster now read persistent game state from the Python API. The dashboard's **Advance Day** action settles daily finances, simulates the scheduled league slate, updates standings, and refreshes the mobile state. Other screens still use prototype data while their mutation endpoints are developed. If the API is unavailable, the connected screens display clearly labeled offline demo data.
 
 ## Run locally
 
 From the repository root:
 
 ```bash
+python src/nhl_gm_api.py
+
+# In a second terminal:
 cd mobile
 npm install
 npm start
 ```
 
 Then open it with Expo Go on your phone, or run it in an Android/iOS simulator.
+
+The default API URL is `http://127.0.0.1:8000/api/v1`. For Expo Go on a physical device, point the app at the development computer's LAN address before starting Expo:
+
+```bash
+EXPO_PUBLIC_API_URL=http://192.168.1.10:8000/api/v1 npm start
+```
+
+In PowerShell, use `$env:EXPO_PUBLIC_API_URL='http://192.168.1.10:8000/api/v1'` before `npm start`.
 
 ## Current architecture
 
@@ -36,7 +47,7 @@ mobile/
 └── README.md       # Mobile setup notes
 ```
 
-## Backend connection plan
+## Backend connection
 
 The existing simulation engine lives at:
 
@@ -44,9 +55,4 @@ The existing simulation engine lives at:
 ../src/nhl_gm_core.py
 ```
 
-Recommended next step:
-
-1. Split the Python engine into service modules.
-2. Add a small FastAPI backend around the SQLite state.
-3. Expose endpoints such as `/dashboard`, `/roster`, `/simulate-game`, `/trade-evaluation`, and `/advance-day`.
-4. Replace the mock state in `mobile/App.js` with API calls.
+The dependency-free HTTP service lives at `../src/nhl_gm_api.py`, while schedule and standings orchestration lives at `../src/league_orchestrator.py`. The next backend increment is to add mutations for direct game simulation, trade evaluation, and scouting.
