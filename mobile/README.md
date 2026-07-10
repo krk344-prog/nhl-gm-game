@@ -1,42 +1,46 @@
 # NHL GM Mobile UI
 
-This folder contains the first mobile game UI prototype for the NHL GM game, built with Expo and React Native.
+This folder contains the Alpha 0.2 mobile client for the NHL GM game, built with Expo and React Native.
 
 ## What is included
 
-The prototype currently includes five main mobile screens:
+The alpha client includes five main mobile screens:
 
 - **Dashboard** — team overview, cap space, job security, next game, and quick actions.
 - **Roster** — NHL roster table with age, position, overall, AAV, and fog-of-war uncertainty.
-- **Game Simulation** — final score, shot/corsi comparison, game log, and result summary.
-- **Trade Center** — player offer cards, CASV analysis, relationship friction, and submit button.
-- **Front Office** — advisor risk panel, coaching, scouting, injuries, waivers, business operations, fan volatility, and GM relationships.
+- **Game Center** — latest result, next opponent, recent games, and live league standings.
+- **Trade Center** — trade partner selection, live roster selection, server-side CASV analysis, transactional proposals, and trade history.
+- **Front Office** — automatic-save metadata, guarded New Game/reset controls, and clearly labeled future systems.
 
-The UI currently uses mock state that mirrors the Python simulation engine. The next step is to connect this front end to the persistent SQLite simulation logic through an API layer.
+The dashboard, roster, Game Center, Trade Center, and save controls now read persistent state from the Python API. Systems not included in Alpha 0.2 are disabled and labeled as coming soon.
 
 ## Run locally
 
-From the repository root:
+From the repository root, use the one-command launcher:
 
 ```bash
-cd mobile
-npm install
-npm start
+python scripts/start_dev.py
 ```
 
 Then open it with Expo Go on your phone, or run it in an Android/iOS simulator.
+
+The launcher sets the API URL to the development computer's detected LAN address. To override it:
+
+```bash
+python scripts/start_dev.py --lan-ip 192.168.1.10
+```
 
 ## Current architecture
 
 ```text
 mobile/
-├── App.js          # Main React Native UI prototype
+├── App.js          # Main React Native alpha client
 ├── app.json        # Expo app config
 ├── package.json    # Expo dependencies and scripts
 └── README.md       # Mobile setup notes
 ```
 
-## Backend connection plan
+## Backend connection
 
 The existing simulation engine lives at:
 
@@ -44,9 +48,4 @@ The existing simulation engine lives at:
 ../src/nhl_gm_core.py
 ```
 
-Recommended next step:
-
-1. Split the Python engine into service modules.
-2. Add a small FastAPI backend around the SQLite state.
-3. Expose endpoints such as `/dashboard`, `/roster`, `/simulate-game`, `/trade-evaluation`, and `/advance-day`.
-4. Replace the mock state in `mobile/App.js` with API calls.
+The dependency-free HTTP service lives at `../src/nhl_gm_api.py`, save controls live at `../src/game_service.py`, schedule and standings orchestration lives at `../src/league_orchestrator.py`, and structured trade evaluation/execution lives at `../src/trade_service.py`.

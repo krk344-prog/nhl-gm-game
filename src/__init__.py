@@ -1,0 +1,1 @@
+"""NHL GM simulation package."""

@@ -1,0 +1,42 @@
+name: Alpha bug report
+description: Report an NHL GM Alpha 0.2 gameplay or mobile issue
+title: "[Alpha Bug] "
+labels: [bug, alpha]
+body:
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - Blocker
+        - Major
+        - Minor
+        - Visual
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      placeholder: List the exact actions in order.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual result
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android version
+  - type: input
+    id: save
+    attributes:
+      label: Game day and controlled franchise
+  - type: textarea
+    id: debug
+    attributes:
+      label: Debug report or additional context
+      description: Remove anything you do not want posted publicly.

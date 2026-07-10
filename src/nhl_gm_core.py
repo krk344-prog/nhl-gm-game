@@ -4,12 +4,38 @@ import math
 import sqlite3
 import random
 
+
+DEFAULT_GAME_SEED = 7
+SCHEMA_VERSION = 2
+NHL_FRANCHISES = (
+    ("Buffalo", "Blizzards", "Win-Now Titan", 72.0),
+    ("New York", "Titans", "Win-Now Titan", 75.0),
+    ("Detroit", "Auditors", "Moneyball Auditor", 45.0),
+    ("Boston", "Harbors", "Win-Now Titan", 58.0),
+    ("Toronto", "Towers", "Moneyball Auditor", 52.0),
+    ("Montreal", "Voyageurs", "Win-Now Titan", 64.0),
+    ("Chicago", "Forge", "Moneyball Auditor", 49.0),
+    ("Seattle", "Orcas", "Moneyball Auditor", 68.0),
+)
+
+
+def get_database_path():
+    """Return the configured SQLite path for CLI, API, and test callers."""
+    return os.environ.get("NHL_GM_DB_PATH", "nhl_gm_core.db")
+
+
+def connect_database(**kwargs):
+    """Open a connection to the active game database."""
+    return sqlite3.connect(get_database_path(), **kwargs)
+
 # ==============================================================================
 # 1. ARCHITECTURE BASELINE: PERSISTENT DATABASE SYSTEM INITIALIZER
 # ==============================================================================
-def init_database():
+def init_database(seed=None):
     """Establishes transaction-isolated SQLite anchor and populates complete rosters."""
-    conn = sqlite3.connect("nhl_gm_core.db", isolation_level="EXCLUSIVE")
+    seed = int(os.environ.get("NHL_GM_SEED", DEFAULT_GAME_SEED) if seed is None else seed)
+    rng = random.Random(seed)
+    conn = connect_database(isolation_level="EXCLUSIVE")
     cursor = conn.cursor()
     
     # Core Chronological Matrix & Asset Tracking Accrual Hub
@@ -60,53 +86,138 @@ def init_database():
             FOREIGN KEY(team_id) REFERENCES teams(id)
         )
     """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS trade_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            day INTEGER NOT NULL,
+            user_team_id INTEGER NOT NULL,
+            target_team_id INTEGER NOT NULL,
+            offered_player_id INTEGER NOT NULL,
+            target_player_id INTEGER NOT NULL,
+            offered_value REAL NOT NULL,
+            target_value REAL NOT NULL,
+            required_value REAL NOT NULL,
+            relationship_score REAL NOT NULL,
+            status TEXT NOT NULL CHECK(status IN ('approved', 'rejected', 'blocked')),
+            reason TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_team_id) REFERENCES teams(id),
+            FOREIGN KEY(target_team_id) REFERENCES teams(id),
+            FOREIGN KEY(offered_player_id) REFERENCES players(id),
+            FOREIGN KEY(target_player_id) REFERENCES players(id)
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS game_settings (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            user_team_id INTEGER NOT NULL,
+            save_name TEXT NOT NULL DEFAULT 'Alpha Franchise',
+            seed INTEGER NOT NULL,
+            schema_version INTEGER NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_team_id) REFERENCES teams(id)
+        )
+    """)
     
     # Check if database require fresh asset generation seeding
     cursor.execute("SELECT COUNT(*) FROM league_calendar")
     if cursor.fetchone()[0] == 0:
         cursor.execute("INSERT INTO league_calendar (current_day, accrued_margin) VALUES (1, 0.0)")
         
-        # Seed 1-to-1 Corporate Organizational Franchises
-        cursor.execute("INSERT INTO teams (name, city, tier, franchise_mandate, relationship_score) VALUES ('Titans', 'New York', 'NHL', 'Win-Now Titan', 75.0)")
-        cursor.execute("INSERT INTO teams (name, city, tier, franchise_mandate, relationship_score) VALUES ('Auditors', 'Detroit', 'NHL', 'Moneyball Auditor', 45.0)")
-        cursor.execute("INSERT INTO teams (name, city, tier, franchise_mandate, relationship_score) VALUES ('Farmhorns', 'Grand Rapids', 'AHL', 'Moneyball Auditor', 100.0)")
+        cursor.executemany(
+            """
+            INSERT INTO teams (
+                city, name, tier, franchise_mandate, relationship_score
+            ) VALUES (?, ?, 'NHL', ?, ?)
+            """,
+            NHL_FRANCHISES,
+        )
+        cursor.execute(
+            """
+            INSERT INTO teams (
+                city, name, tier, franchise_mandate, relationship_score
+            ) VALUES ('Rochester', 'Northstars', 'AHL', 'Moneyball Auditor', 100.0)
+            """
+        )
         
         # Generation Arrays for System Seeding
-        first_names = ["Connor", "Auston", "Nikita", "Nathan", "Leon", "Cale", "Igor", "Andrei", "Artemi", "Sidney", "David", "Mitchell", "Rasmus", "Aleksander", "Matthew", "Quinn"]
-        last_names = ["McHockey", "Matthews", "Kucherov", "MacKinnon", "Draisaitl", "Makar", "Shesterkin", "Vasilevskiy", "Panarin", "Crosby", "Pastrnak", "Marner", "Dahlin", "Barkov", "Tkachuk", "Hughes"]
+        first_names = ["Connor", "Auston", "Nikita", "Nathan", "Leon", "Cale", "Igor", "Andrei", "Artemi", "Sidney", "David", "Mitchell", "Rasmus", "Aleksander", "Matthew", "Quinn", "Elias", "Jack", "Tage", "Owen", "Dylan", "Logan", "Noah", "Lucas"]
+        last_names = ["Mercer", "Matthews", "Kuznetsov", "MacKenzie", "Draisaitl", "Makar", "Sorokin", "Vasilev", "Petrov", "Crosby", "Pasternak", "Marner", "Dahl", "Barkov", "Tkachuk", "Hughes", "Thompson", "Power", "Cozens", "Raymond", "Beniers", "Dobson", "Byfield", "Fantilli"]
+        names = [f"{first} {last}" for first in first_names for last in last_names]
+        rng.shuffle(names)
+        name_index = 0
+
+        def next_name():
+            nonlocal name_index
+            name = names[name_index]
+            name_index += 1
+            return name
         
         # Generate Complete 23-Man Rosters for Main NHL Competitors to keep compliance legal
-        for team_idx in [1, 2]:
+        nhl_team_ids = [
+            row[0]
+            for row in cursor.execute(
+                "SELECT id FROM teams WHERE tier = 'NHL' ORDER BY id"
+            ).fetchall()
+        ]
+        for team_idx in nhl_team_ids:
             # Forwards Seeding (13 Forwards per team)
             for f in range(13):
-                p_name = f"{random.choice(first_names)} {random.choice(last_names)}"
-                arch = random.choice(["Elite Playmaker", "Volume Sniper", "Two-Way Forward"])
-                shoot = random.randint(85, 98) if arch == "Volume Sniper" else random.randint(60, 85)
-                pass_val = random.randint(86, 99) if arch == "Elite Playmaker" else random.randint(60, 85)
+                p_name = next_name()
+                arch = rng.choice(["Elite Playmaker", "Volume Sniper", "Two-Way Forward"])
+                shoot = rng.randint(85, 98) if arch == "Volume Sniper" else rng.randint(60, 85)
+                pass_val = rng.randint(86, 99) if arch == "Elite Playmaker" else rng.randint(60, 85)
                 cursor.execute("INSERT INTO players (team_id, name, age, position, archetype, shooting, passing, positioning, reflexes, speed, checking, aav, contract_years) VALUES (?, ?, ?, 'F', ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                               (team_idx, p_name, random.randint(19, 35), arch, shoot, pass_val, random.randint(65, 90), random.randint(30, 50), random.randint(75, 95), random.randint(60, 90), random.randint(4500000, 11000000), random.randint(1, 7)))
+                               (team_idx, p_name, rng.randint(19, 35), arch, shoot, pass_val, rng.randint(65, 90), rng.randint(30, 50), rng.randint(75, 95), rng.randint(60, 90), rng.randint(775000, 5500000), rng.randint(1, 7)))
             
             # Defensemen Seeding (8 Defensemen per team)
             for d in range(8):
-                p_name = f"{random.choice(first_names)} {random.choice(last_names)}"
-                arch = random.choice(["Offensive D-Man", "Defensive D-Man"])
-                pos_val = random.randint(85, 98) if arch == "Defensive D-Man" else random.randint(65, 84)
-                chk_val = random.randint(82, 99) if arch == "Defensive D-Man" else random.randint(60, 80)
+                p_name = next_name()
+                arch = rng.choice(["Offensive D-Man", "Defensive D-Man"])
+                pos_val = rng.randint(85, 98) if arch == "Defensive D-Man" else rng.randint(65, 84)
+                chk_val = rng.randint(82, 99) if arch == "Defensive D-Man" else rng.randint(60, 80)
                 cursor.execute("INSERT INTO players (team_id, name, age, position, archetype, shooting, passing, positioning, reflexes, speed, checking, aav, contract_years) VALUES (?, ?, ?, 'D', ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                               (team_idx, p_name, random.randint(20, 36), arch, random.randint(50, 75), random.randint(75, 92), pos_val, random.randint(30, 50), random.randint(70, 92), chk_val, random.randint(3500000, 8500000), random.randint(1, 6)))
+                               (team_idx, p_name, rng.randint(20, 36), arch, rng.randint(50, 75), rng.randint(75, 92), pos_val, rng.randint(30, 50), rng.randint(70, 92), chk_val, rng.randint(775000, 4500000), rng.randint(1, 6)))
             
             # Goaltenders Seeding (2 Goaltenders per team)
             for g in range(2):
-                p_name = f"{random.choice(first_names)} {random.choice(last_names)}"
-                arch = random.choice(["Butterfly Goalie", "Hybrid Goalie"])
+                p_name = next_name()
+                arch = rng.choice(["Butterfly Goalie", "Hybrid Goalie"])
                 cursor.execute("INSERT INTO players (team_id, name, age, position, archetype, shooting, passing, positioning, reflexes, speed, checking, aav, contract_years) VALUES (?, ?, ?, 'G', ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                               (team_idx, p_name, random.randint(22, 34), arch, random.randint(30, 45), random.randint(50, 75), random.randint(85, 98), random.randint(86, 99), random.randint(65, 88), random.randint(30, 40), random.randint(2000000, 7500000), random.randint(1, 5)))
+                               (team_idx, p_name, rng.randint(22, 34), arch, rng.randint(30, 45), rng.randint(50, 75), rng.randint(85, 98), rng.randint(86, 99), rng.randint(65, 88), rng.randint(30, 40), rng.randint(775000, 5000000), rng.randint(1, 5)))
                 
-        # Seed AHL Minor Affiliate Reserves Group (Farmhorns)
+        ahl_team_id = cursor.execute(
+            "SELECT id FROM teams WHERE tier = 'AHL' ORDER BY id LIMIT 1"
+        ).fetchone()[0]
         for a in range(10):
-            p_name = f"{random.choice(first_names)} {random.choice(last_names)}"
-            cursor.execute("INSERT INTO players (team_id, name, age, position, archetype, shooting, passing, positioning, reflexes, speed, checking, aav, contract_years) VALUES (3, ?, ?, 'F', 'Minor Prospect', 55, 55, 55, 30, 68, 60, 775000, 2)",
-                           (p_name, random.randint(18, 24)))
+            p_name = next_name()
+            cursor.execute("INSERT INTO players (team_id, name, age, position, archetype, shooting, passing, positioning, reflexes, speed, checking, aav, contract_years) VALUES (?, ?, ?, 'F', 'Minor Prospect', 55, 55, 55, 30, 68, 60, 775000, 2)",
+                           (ahl_team_id, p_name, rng.randint(18, 24)))
+
+        cursor.execute(
+            """
+            INSERT INTO game_settings (
+                id, user_team_id, save_name, seed, schema_version
+            ) VALUES (1, ?, 'Alpha Franchise', ?, ?)
+            """,
+            (nhl_team_ids[0], seed, SCHEMA_VERSION),
+        )
+    elif cursor.execute("SELECT COUNT(*) FROM game_settings").fetchone()[0] == 0:
+        first_team = cursor.execute(
+            "SELECT id FROM teams WHERE tier = 'NHL' ORDER BY id LIMIT 1"
+        ).fetchone()
+        if first_team:
+            cursor.execute(
+                """
+                INSERT INTO game_settings (
+                    id, user_team_id, save_name, seed, schema_version
+                ) VALUES (1, ?, 'Legacy Franchise', ?, 1)
+                """,
+                (first_team[0], seed),
+            )
             
     conn.commit()
     conn.close()
@@ -118,7 +229,7 @@ class ComplianceGate:
     """Enforces absolute legal fences around multi-tiered franchise roster sheets."""
     @staticmethod
     def verify_roster_legality(team_id):
-        conn = sqlite3.connect("nhl_gm_core.db")
+        conn = connect_database()
         cursor = conn.cursor()
         
         cursor.execute("SELECT COUNT(*), SUM(aav) FROM players WHERE team_id = ?", (team_id,))
@@ -156,7 +267,7 @@ class DynamicFinancialPool:
     """Calculates chronological daily roster tracking fee matrices."""
     @staticmethod
     def process_daily_cap_accrual():
-        conn = sqlite3.connect("nhl_gm_core.db")
+        conn = connect_database()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
@@ -197,7 +308,7 @@ class TacticalMatchSimulator:
         self.away_id = away_team_id
         
     def gather_roster_dictionary(self, team_id):
-        conn = sqlite3.connect("nhl_gm_core.db")
+        conn = connect_database()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute("SELECT id, name, position, archetype, shooting, passing, positioning, reflexes, speed, checking, fatigue, back_to_back_started FROM players WHERE team_id = ?", (team_id,))
@@ -214,13 +325,16 @@ class TacticalMatchSimulator:
             roster[p['position']].append(p)
         return roster
 
-    def execute_match_simulation(self):
+    def execute_match_simulation(self, structured=False, persist_fatigue=True):
         h_roster = self.gather_roster_dictionary(self.home_id)
         a_roster = self.gather_roster_dictionary(self.away_id)
         
         # Verify line configurations are loaded correctly before entry
         if not h_roster['G'] or not a_roster['G'] or len(h_roster['F']) < 3 or len(a_roster['F']) < 3:
-            return "Execution Halted: Operational roster depth criteria error."
+            message = "Execution Halted: Operational roster depth criteria error."
+            if structured:
+                return {"status": "error", "error": message}
+            return message
 
         h_goals, a_goals = 0, 0
         h_corsi, a_corsi = 0, 0
@@ -296,19 +410,47 @@ class TacticalMatchSimulator:
                             a_goals += 1
                             match_log.append(f"  ⚡ [{ticks:02d}:00] GOAL (AWAY) - {shooter['name']} via {passer['name']} {rr_flag}")
                             
+        # NHL games cannot end tied. Resolve overtime using the shot-share edge.
+        overtime = h_goals == a_goals
+        if overtime:
+            total_corsi = max(1, h_corsi + a_corsi)
+            if random.random() < (h_corsi / total_corsi):
+                h_goals += 1
+                overtime_winner = "HOME"
+            else:
+                a_goals += 1
+                overtime_winner = "AWAY"
+            match_log.append(f"  ⚡ OVERTIME WINNER ({overtime_winner})")
+
         # Apply physical performance fatigue and back-to-back night tracking states
-        conn = sqlite3.connect("nhl_gm_core.db")
-        cursor = conn.cursor()
-        cursor.execute("UPDATE players SET fatigue = fatigue + 25.0, back_to_back_started = 1 WHERE id = ?", (h_roster['G'][0]['id'],))
-        cursor.execute("UPDATE players SET fatigue = fatigue + 25.0, back_to_back_started = 1 WHERE id = ?", (a_roster['G'][0]['id'],))
-        conn.commit()
-        conn.close()
+        if persist_fatigue:
+            conn = connect_database()
+            cursor = conn.cursor()
+            cursor.execute("UPDATE players SET fatigue = fatigue + 25.0, back_to_back_started = 1 WHERE id = ?", (h_roster['G'][0]['id'],))
+            cursor.execute("UPDATE players SET fatigue = fatigue + 25.0, back_to_back_started = 1 WHERE id = ?", (a_roster['G'][0]['id'],))
+            conn.commit()
+            conn.close()
         
         match_log.append("═" * 56)
         match_log.append(f"  FINAL SCORE RESOLVED: HOME {h_goals} - AWAY {a_goals}")
         match_log.append(f"  CORSI EQUIVALENTS METRIC: HOME SHOTS: {h_corsi} | AWAY SHOTS: {a_corsi}")
         match_log.append("═" * 56)
-        return "\n".join(match_log)
+        log_text = "\n".join(match_log)
+        if structured:
+            return {
+                "status": "completed",
+                "home_team_id": self.home_id,
+                "away_team_id": self.away_id,
+                "home_score": h_goals,
+                "away_score": a_goals,
+                "home_corsi": h_corsi,
+                "away_corsi": a_corsi,
+                "home_goalie_id": h_roster['G'][0]['id'],
+                "away_goalie_id": a_roster['G'][0]['id'],
+                "overtime": overtime,
+                "log": log_text,
+            }
+        return log_text
 
 # ==============================================================================
 # 4. EXECUTIVE ANALYTICAL SYSTEMS: CASV TRADE DESK & ARSE RISK CORE
@@ -345,69 +487,49 @@ class ContractAdjustedSurplusValueDesk:
 
     @staticmethod
     def process_trade_proposal(user_player_id, target_team_id, target_player_id):
-        conn = sqlite3.connect("nhl_gm_core.db")
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        
-        # Pull player metrics data records
-        cursor.execute("SELECT * FROM players WHERE id = ?", (user_player_id,))
-        u_p = dict(cursor.fetchone())
-        cursor.execute("SELECT * FROM players WHERE id = ?", (target_player_id,))
-        t_p = dict(cursor.fetchone())
-        
-        # Pull rival general manager tracking parameters
-        cursor.execute("SELECT * FROM teams WHERE id = ?", (target_team_id,))
-        rival_team = dict(cursor.fetchone())
-        conn.close()
-        
-        # Calculate matching validation metrics
-        u_casv = ContractAdjustedSurplusValueDesk.evaluate_casv_index(u_p, rival_team['franchise_mandate'])
-        t_casv = ContractAdjustedSurplusValueDesk.evaluate_casv_index(t_p, rival_team['franchise_mandate'])
-        
-        # Apply the Relational Friction Modifier (R_ij) luxury premium tax
-        r_ij = rival_team['relationship_score']
-        required_premium_scalar = 1.0 + ((100.0 - r_ij) / 200.0)
-        adjusted_threshold_barrier = t_casv * required_premium_scalar
-        
-        log = []
-        log.append(f"Incoming Trade Desk Pitch Analysis Grid:")
-        log.append(f"  User Asset: {u_p['name']} | Calculated Valuation Value: {u_casv:.2f}")
-        log.append(f"  Rival Asset: {t_p['name']} | Target Base Value Index: {t_casv:.2f}")
-        log.append(f"  Rival Alignment Mandate Mode: {rival_team['franchise_mandate']}")
-        log.append(f"  Relational Tax Premium Multiplier (R_ij Score {r_ij:.1f}): x{required_premium_scalar:.2f}")
-        log.append(f"  Adjusted Barrier Goal Threshold Required: {adjusted_threshold_barrier:.2f}")
-        
-        # Check transaction gate validation criteria outcomes
-        if u_casv >= adjusted_threshold_barrier:
-            # Check systemic transaction compliance gate limits
-            conn = sqlite3.connect("nhl_gm_core.db")
-            cursor = conn.cursor()
-            
-            # Execute transactional row migrations
-            cursor.execute("UPDATE players SET team_id = ? WHERE id = ?", (target_team_id, user_player_id))
-            cursor.execute("UPDATE players SET team_id = 1 WHERE id = ?", (target_player_id))
-            
-            # Check legality states across modified sheets
-            h_legal, _ = ComplianceGate.verify_roster_legality(1)
-            a_legal, _ = ComplianceGate.verify_roster_legality(target_team_id)
-            
-            if h_legal and a_legal:
-                conn.commit()
-                log.append("\n[TRANSACTION APPROVED] Front-office analytics accepted. Trade processed.")
-            else:
-                conn.rollback()
-                log.append("\n[TRADE TRANSACTION BLOCKED] Blocked due to upcoming mid-season salary cap non-compliance.")
-            conn.close()
+        # Preserve the terminal interface while routing every trade through the
+        # same validated, atomic service used by the JSON API and mobile client.
+        try:
+            from .trade_service import execute_trade
+        except ImportError:
+            from trade_service import execute_trade
+
+        result = execute_trade(1, user_player_id, target_team_id, target_player_id)
+        log = [
+            "Incoming Trade Desk Pitch Analysis Grid:",
+            (
+                f"  User Asset: {result['offered']['name']} | "
+                f"Calculated Valuation Value: {result['offered']['casv']:.2f}"
+            ),
+            (
+                f"  Rival Asset: {result['target']['name']} | "
+                f"Target Base Value Index: {result['target']['casv']:.2f}"
+            ),
+            (
+                "  Rival Alignment Mandate Mode: "
+                f"{result['target_team']['franchise_mandate']}"
+            ),
+            (
+                "  Relational Tax Premium Multiplier "
+                f"(R_ij Score {result['relationship_score']:.1f}): "
+                f"x{result['premium_multiplier']:.3f}"
+            ),
+            f"  Adjusted Barrier Goal Threshold Required: {result['required_value']:.2f}",
+        ]
+        if result["executed"]:
+            log.append(
+                "\n[TRANSACTION APPROVED] Front-office analytics accepted. "
+                "Trade processed."
+            )
         else:
-            log.append("\n[TRADE PROPOSAL REJECTED] Rival engine analysis reports low CASV margin return value.")
-            
+            log.append(f"\n[TRADE {result['status'].upper()}] {result['error']}")
         return "\n".join(log)
 
 class AdvisorRiskScoringEngine:
     """Computes administrative multi-variable corporate system risk coordinates."""
     @staticmethod
     def generate_executive_analysis_report():
-        conn = sqlite3.connect("nhl_gm_core.db")
+        conn = connect_database()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
@@ -473,7 +595,7 @@ class ExecutiveTerminalApp:
         os.system('cls' if os.name == 'nt' else 'clear')
 
     def render_dashboard_header(self):
-        conn = sqlite3.connect("nhl_gm_core.db")
+        conn = connect_database()
         cursor = conn.cursor()
         cursor.execute("SELECT current_day, salary_cap_ceiling, accrued_margin FROM league_calendar WHERE id = 1")
         day, ceiling, margin = cursor.fetchone()
@@ -498,7 +620,7 @@ class ExecutiveTerminalApp:
         self.render_dashboard_header()
         print("\n  ## ACTIVE ROSTER AUDIT REGISTRY PANEL (FOG-OF-WAR SIMULATION ENABLED) ##\n")
         
-        conn = sqlite3.connect("nhl_gm_core.db")
+        conn = connect_database()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute("""
@@ -525,7 +647,7 @@ class ExecutiveTerminalApp:
         print("\n  ## DISPATCHING SCOUTING ASSETS INTO FIELDS ##\n")
         print(" Scanning player attribute vectors and generating direct observation frames...")
         
-        conn = sqlite3.connect("nhl_gm_core.db")
+        conn = connect_database()
         cursor = conn.cursor()
         # Increment observation logs to collapse tracking error standard deviation margins
         cursor.execute("UPDATE players SET scout_observations = scout_observations + 1")
@@ -587,7 +709,7 @@ class ExecutiveTerminalApp:
         self.render_dashboard_header()
         print("\n  ## INCREMENTING TEMPORAL LEAGUE CALENDAR INDEX CORRIDOR (+24H) ##\n")
         
-        conn = sqlite3.connect("nhl_gm_core.db")
+        conn = connect_database()
         cursor = conn.cursor()
         cursor.execute("UPDATE league_calendar SET current_day = current_day + 1 WHERE id = 1")
         # Apply physical system recovery decay curves
