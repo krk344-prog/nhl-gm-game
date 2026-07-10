@@ -5,6 +5,20 @@ import sqlite3
 import random
 
 
+DEFAULT_GAME_SEED = 7
+SCHEMA_VERSION = 2
+NHL_FRANCHISES = (
+    ("Buffalo", "Blizzards", "Win-Now Titan", 72.0),
+    ("New York", "Titans", "Win-Now Titan", 75.0),
+    ("Detroit", "Auditors", "Moneyball Auditor", 45.0),
+    ("Boston", "Harbors", "Win-Now Titan", 58.0),
+    ("Toronto", "Towers", "Moneyball Auditor", 52.0),
+    ("Montreal", "Voyageurs", "Win-Now Titan", 64.0),
+    ("Chicago", "Forge", "Moneyball Auditor", 49.0),
+    ("Seattle", "Orcas", "Moneyball Auditor", 68.0),
+)
+
+
 def get_database_path():
     """Return the configured SQLite path for CLI, API, and test callers."""
     return os.environ.get("NHL_GM_DB_PATH", "nhl_gm_core.db")
@@ -17,8 +31,10 @@ def connect_database(**kwargs):
 # ==============================================================================
 # 1. ARCHITECTURE BASELINE: PERSISTENT DATABASE SYSTEM INITIALIZER
 # ==============================================================================
-def init_database():
+def init_database(seed=None):
     """Establishes transaction-isolated SQLite anchor and populates complete rosters."""
+    seed = int(os.environ.get("NHL_GM_SEED", DEFAULT_GAME_SEED) if seed is None else seed)
+    rng = random.Random(seed)
     conn = connect_database(isolation_level="EXCLUSIVE")
     cursor = conn.cursor()
     
@@ -92,53 +108,116 @@ def init_database():
             FOREIGN KEY(target_player_id) REFERENCES players(id)
         )
     """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS game_settings (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            user_team_id INTEGER NOT NULL,
+            save_name TEXT NOT NULL DEFAULT 'Alpha Franchise',
+            seed INTEGER NOT NULL,
+            schema_version INTEGER NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_team_id) REFERENCES teams(id)
+        )
+    """)
     
     # Check if database require fresh asset generation seeding
     cursor.execute("SELECT COUNT(*) FROM league_calendar")
     if cursor.fetchone()[0] == 0:
         cursor.execute("INSERT INTO league_calendar (current_day, accrued_margin) VALUES (1, 0.0)")
         
-        # Seed 1-to-1 Corporate Organizational Franchises
-        cursor.execute("INSERT INTO teams (name, city, tier, franchise_mandate, relationship_score) VALUES ('Titans', 'New York', 'NHL', 'Win-Now Titan', 75.0)")
-        cursor.execute("INSERT INTO teams (name, city, tier, franchise_mandate, relationship_score) VALUES ('Auditors', 'Detroit', 'NHL', 'Moneyball Auditor', 45.0)")
-        cursor.execute("INSERT INTO teams (name, city, tier, franchise_mandate, relationship_score) VALUES ('Farmhorns', 'Grand Rapids', 'AHL', 'Moneyball Auditor', 100.0)")
+        cursor.executemany(
+            """
+            INSERT INTO teams (
+                city, name, tier, franchise_mandate, relationship_score
+            ) VALUES (?, ?, 'NHL', ?, ?)
+            """,
+            NHL_FRANCHISES,
+        )
+        cursor.execute(
+            """
+            INSERT INTO teams (
+                city, name, tier, franchise_mandate, relationship_score
+            ) VALUES ('Rochester', 'Northstars', 'AHL', 'Moneyball Auditor', 100.0)
+            """
+        )
         
         # Generation Arrays for System Seeding
-        first_names = ["Connor", "Auston", "Nikita", "Nathan", "Leon", "Cale", "Igor", "Andrei", "Artemi", "Sidney", "David", "Mitchell", "Rasmus", "Aleksander", "Matthew", "Quinn"]
-        last_names = ["McHockey", "Matthews", "Kucherov", "MacKinnon", "Draisaitl", "Makar", "Shesterkin", "Vasilevskiy", "Panarin", "Crosby", "Pastrnak", "Marner", "Dahlin", "Barkov", "Tkachuk", "Hughes"]
+        first_names = ["Connor", "Auston", "Nikita", "Nathan", "Leon", "Cale", "Igor", "Andrei", "Artemi", "Sidney", "David", "Mitchell", "Rasmus", "Aleksander", "Matthew", "Quinn", "Elias", "Jack", "Tage", "Owen", "Dylan", "Logan", "Noah", "Lucas"]
+        last_names = ["Mercer", "Matthews", "Kuznetsov", "MacKenzie", "Draisaitl", "Makar", "Sorokin", "Vasilev", "Petrov", "Crosby", "Pasternak", "Marner", "Dahl", "Barkov", "Tkachuk", "Hughes", "Thompson", "Power", "Cozens", "Raymond", "Beniers", "Dobson", "Byfield", "Fantilli"]
+        names = [f"{first} {last}" for first in first_names for last in last_names]
+        rng.shuffle(names)
+        name_index = 0
+
+        def next_name():
+            nonlocal name_index
+            name = names[name_index]
+            name_index += 1
+            return name
         
         # Generate Complete 23-Man Rosters for Main NHL Competitors to keep compliance legal
-        for team_idx in [1, 2]:
+        nhl_team_ids = [
+            row[0]
+            for row in cursor.execute(
+                "SELECT id FROM teams WHERE tier = 'NHL' ORDER BY id"
+            ).fetchall()
+        ]
+        for team_idx in nhl_team_ids:
             # Forwards Seeding (13 Forwards per team)
             for f in range(13):
-                p_name = f"{random.choice(first_names)} {random.choice(last_names)}"
-                arch = random.choice(["Elite Playmaker", "Volume Sniper", "Two-Way Forward"])
-                shoot = random.randint(85, 98) if arch == "Volume Sniper" else random.randint(60, 85)
-                pass_val = random.randint(86, 99) if arch == "Elite Playmaker" else random.randint(60, 85)
+                p_name = next_name()
+                arch = rng.choice(["Elite Playmaker", "Volume Sniper", "Two-Way Forward"])
+                shoot = rng.randint(85, 98) if arch == "Volume Sniper" else rng.randint(60, 85)
+                pass_val = rng.randint(86, 99) if arch == "Elite Playmaker" else rng.randint(60, 85)
                 cursor.execute("INSERT INTO players (team_id, name, age, position, archetype, shooting, passing, positioning, reflexes, speed, checking, aav, contract_years) VALUES (?, ?, ?, 'F', ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                               (team_idx, p_name, random.randint(19, 35), arch, shoot, pass_val, random.randint(65, 90), random.randint(30, 50), random.randint(75, 95), random.randint(60, 90), random.randint(775000, 4000000), random.randint(1, 7)))
+                               (team_idx, p_name, rng.randint(19, 35), arch, shoot, pass_val, rng.randint(65, 90), rng.randint(30, 50), rng.randint(75, 95), rng.randint(60, 90), rng.randint(775000, 5500000), rng.randint(1, 7)))
             
             # Defensemen Seeding (8 Defensemen per team)
             for d in range(8):
-                p_name = f"{random.choice(first_names)} {random.choice(last_names)}"
-                arch = random.choice(["Offensive D-Man", "Defensive D-Man"])
-                pos_val = random.randint(85, 98) if arch == "Defensive D-Man" else random.randint(65, 84)
-                chk_val = random.randint(82, 99) if arch == "Defensive D-Man" else random.randint(60, 80)
+                p_name = next_name()
+                arch = rng.choice(["Offensive D-Man", "Defensive D-Man"])
+                pos_val = rng.randint(85, 98) if arch == "Defensive D-Man" else rng.randint(65, 84)
+                chk_val = rng.randint(82, 99) if arch == "Defensive D-Man" else rng.randint(60, 80)
                 cursor.execute("INSERT INTO players (team_id, name, age, position, archetype, shooting, passing, positioning, reflexes, speed, checking, aav, contract_years) VALUES (?, ?, ?, 'D', ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                               (team_idx, p_name, random.randint(20, 36), arch, random.randint(50, 75), random.randint(75, 92), pos_val, random.randint(30, 50), random.randint(70, 92), chk_val, random.randint(775000, 3500000), random.randint(1, 6)))
+                               (team_idx, p_name, rng.randint(20, 36), arch, rng.randint(50, 75), rng.randint(75, 92), pos_val, rng.randint(30, 50), rng.randint(70, 92), chk_val, rng.randint(775000, 4500000), rng.randint(1, 6)))
             
             # Goaltenders Seeding (2 Goaltenders per team)
             for g in range(2):
-                p_name = f"{random.choice(first_names)} {random.choice(last_names)}"
-                arch = random.choice(["Butterfly Goalie", "Hybrid Goalie"])
+                p_name = next_name()
+                arch = rng.choice(["Butterfly Goalie", "Hybrid Goalie"])
                 cursor.execute("INSERT INTO players (team_id, name, age, position, archetype, shooting, passing, positioning, reflexes, speed, checking, aav, contract_years) VALUES (?, ?, ?, 'G', ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                               (team_idx, p_name, random.randint(22, 34), arch, random.randint(30, 45), random.randint(50, 75), random.randint(85, 98), random.randint(86, 99), random.randint(65, 88), random.randint(30, 40), random.randint(775000, 3000000), random.randint(1, 5)))
+                               (team_idx, p_name, rng.randint(22, 34), arch, rng.randint(30, 45), rng.randint(50, 75), rng.randint(85, 98), rng.randint(86, 99), rng.randint(65, 88), rng.randint(30, 40), rng.randint(775000, 5000000), rng.randint(1, 5)))
                 
-        # Seed AHL Minor Affiliate Reserves Group (Farmhorns)
+        ahl_team_id = cursor.execute(
+            "SELECT id FROM teams WHERE tier = 'AHL' ORDER BY id LIMIT 1"
+        ).fetchone()[0]
         for a in range(10):
-            p_name = f"{random.choice(first_names)} {random.choice(last_names)}"
-            cursor.execute("INSERT INTO players (team_id, name, age, position, archetype, shooting, passing, positioning, reflexes, speed, checking, aav, contract_years) VALUES (3, ?, ?, 'F', 'Minor Prospect', 55, 55, 55, 30, 68, 60, 775000, 2)",
-                           (p_name, random.randint(18, 24)))
+            p_name = next_name()
+            cursor.execute("INSERT INTO players (team_id, name, age, position, archetype, shooting, passing, positioning, reflexes, speed, checking, aav, contract_years) VALUES (?, ?, ?, 'F', 'Minor Prospect', 55, 55, 55, 30, 68, 60, 775000, 2)",
+                           (ahl_team_id, p_name, rng.randint(18, 24)))
+
+        cursor.execute(
+            """
+            INSERT INTO game_settings (
+                id, user_team_id, save_name, seed, schema_version
+            ) VALUES (1, ?, 'Alpha Franchise', ?, ?)
+            """,
+            (nhl_team_ids[0], seed, SCHEMA_VERSION),
+        )
+    elif cursor.execute("SELECT COUNT(*) FROM game_settings").fetchone()[0] == 0:
+        first_team = cursor.execute(
+            "SELECT id FROM teams WHERE tier = 'NHL' ORDER BY id LIMIT 1"
+        ).fetchone()
+        if first_team:
+            cursor.execute(
+                """
+                INSERT INTO game_settings (
+                    id, user_team_id, save_name, seed, schema_version
+                ) VALUES (1, ?, 'Legacy Franchise', ?, 1)
+                """,
+                (first_team[0], seed),
+            )
             
     conn.commit()
     conn.close()

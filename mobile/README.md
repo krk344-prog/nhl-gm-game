@@ -1,47 +1,40 @@
 # NHL GM Mobile UI
 
-This folder contains the first mobile game UI prototype for the NHL GM game, built with Expo and React Native.
+This folder contains the Alpha 0.2 mobile client for the NHL GM game, built with Expo and React Native.
 
 ## What is included
 
-The prototype currently includes five main mobile screens:
+The alpha client includes five main mobile screens:
 
 - **Dashboard** — team overview, cap space, job security, next game, and quick actions.
 - **Roster** — NHL roster table with age, position, overall, AAV, and fog-of-war uncertainty.
-- **Game Simulation** — final score, shot/corsi comparison, game log, and result summary.
-- **Trade Center** — live roster selection, server-side CASV analysis, relationship friction, transactional proposals, and decision feedback.
-- **Front Office** — advisor risk panel, coaching, scouting, injuries, waivers, business operations, fan volatility, and GM relationships.
+- **Game Center** — latest result, next opponent, recent games, and live league standings.
+- **Trade Center** — trade partner selection, live roster selection, server-side CASV analysis, transactional proposals, and trade history.
+- **Front Office** — automatic-save metadata, guarded New Game/reset controls, and clearly labeled future systems.
 
-The dashboard, roster, and Trade Center now read persistent game state from the Python API. The dashboard's **Advance Day** action settles daily finances, simulates the scheduled league slate, updates standings, and refreshes the mobile state. The Trade Center cycles through both live rosters, recalculates CASV for each player pairing, and submits accepted swaps through an atomic backend transaction. Game Simulation and Front Office still use prototype data while their endpoints are developed. If the API is unavailable, connected read-only screens display clearly labeled offline demo data.
+The dashboard, roster, Game Center, Trade Center, and save controls now read persistent state from the Python API. Systems not included in Alpha 0.2 are disabled and labeled as coming soon.
 
 ## Run locally
 
-From the repository root:
+From the repository root, use the one-command launcher:
 
 ```bash
-python src/nhl_gm_api.py
-
-# In a second terminal:
-cd mobile
-npm install
-npm start
+python scripts/start_dev.py
 ```
 
 Then open it with Expo Go on your phone, or run it in an Android/iOS simulator.
 
-The default API URL is `http://127.0.0.1:8000/api/v1`. For Expo Go on a physical device, point the app at the development computer's LAN address before starting Expo:
+The launcher sets the API URL to the development computer's detected LAN address. To override it:
 
 ```bash
-EXPO_PUBLIC_API_URL=http://192.168.1.10:8000/api/v1 npm start
+python scripts/start_dev.py --lan-ip 192.168.1.10
 ```
-
-In PowerShell, use `$env:EXPO_PUBLIC_API_URL='http://192.168.1.10:8000/api/v1'` before `npm start`.
 
 ## Current architecture
 
 ```text
 mobile/
-├── App.js          # Main React Native UI prototype
+├── App.js          # Main React Native alpha client
 ├── app.json        # Expo app config
 ├── package.json    # Expo dependencies and scripts
 └── README.md       # Mobile setup notes
@@ -55,4 +48,4 @@ The existing simulation engine lives at:
 ../src/nhl_gm_core.py
 ```
 
-The dependency-free HTTP service lives at `../src/nhl_gm_api.py`, schedule and standings orchestration lives at `../src/league_orchestrator.py`, and structured trade evaluation/execution lives at `../src/trade_service.py`. The next backend increment is to connect direct game simulation or scouting actions to the mobile UI.
+The dependency-free HTTP service lives at `../src/nhl_gm_api.py`, save controls live at `../src/game_service.py`, schedule and standings orchestration lives at `../src/league_orchestrator.py`, and structured trade evaluation/execution lives at `../src/trade_service.py`.

@@ -2,8 +2,12 @@
   "expo": {
     "name": "NHL GM Game",
     "slug": "nhl-gm-game",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "dark"
+    "userInterfaceStyle": "dark",
+    "android": {
+      "package": "com.krk344.nhlgmgame",
+      "versionCode": 2
+    }
   }
 }

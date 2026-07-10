@@ -6,11 +6,14 @@ import math
 import os
 import re
 import sqlite3
+import sys
+import traceback
 from contextlib import closing
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 try:
+    from .game_service import get_game_state, reset_game, select_user_team
     from .nhl_gm_core import connect_database, init_database
     from .league_orchestrator import (
         advance_day,
@@ -25,6 +28,7 @@ try:
         get_trade_market,
     )
 except ImportError:  # Support direct execution: python src/nhl_gm_api.py
+    from game_service import get_game_state, reset_game, select_user_team
     from nhl_gm_core import connect_database, init_database
     from league_orchestrator import (
         advance_day,
@@ -247,6 +251,11 @@ class ApiHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _send_internal_error(self, error):
+        print(f"Unhandled NHL GM API error: {error}", file=sys.stderr)
+        traceback.print_exc()
+        self._send_json(500, {"error": "Internal server error"})
+
     def do_OPTIONS(self):
         self._send_json(200, {})
 
@@ -287,7 +296,29 @@ class ApiHandler(BaseHTTPRequestHandler):
         query = parse_qs(parsed.query)
         try:
             if path == "/api/v1/health":
-                self._send_json(200, {"status": "ok"})
+                self._send_json(200, {"status": "ok", "version": "0.2.0-alpha"})
+                return
+            if path == "/api/v1/game":
+                self._send_json(200, get_game_state())
+                return
+            if path == "/api/v1/debug-report":
+                game = get_game_state()
+                user_team_id = game["user_team_id"]
+                team_schedule = get_schedule(team_id=user_team_id, limit=200)["games"]
+                self._send_json(
+                    200,
+                    {
+                        "version": "0.2.0-alpha",
+                        "game": game,
+                        "standings": get_standings()["standings"],
+                        "recent_games": [
+                            item for item in team_schedule if item["status"] == "completed"
+                        ][-10:],
+                        "trade_history": get_trade_history(user_team_id, limit=10)[
+                            "trades"
+                        ],
+                    },
+                )
                 return
             if path == "/api/v1/teams":
                 self._send_json(200, list_teams())
@@ -337,14 +368,32 @@ class ApiHandler(BaseHTTPRequestHandler):
             self._send_json(404, {"error": str(error)})
         except ValueError as error:
             self._send_json(400, {"error": str(error)})
-        except Exception:
-            self._send_json(500, {"error": "Internal server error"})
+        except Exception as error:
+            self._send_internal_error(error)
 
     def do_POST(self):
         path = urlparse(self.path).path.rstrip("/") or "/"
         try:
             if path == "/api/v1/advance-day":
                 self._send_json(200, advance_day())
+                return
+            if path == "/api/v1/game/select-team":
+                payload = self._read_json()
+                if "team_id" not in payload:
+                    raise ValueError("Missing field: team_id")
+                self._send_json(200, select_user_team(int(payload["team_id"])))
+                return
+            if path == "/api/v1/game/reset":
+                payload = self._read_json()
+                if payload.get("confirm") != "RESET":
+                    raise ValueError("Reset requires confirm='RESET'")
+                self._send_json(
+                    200,
+                    reset_game(
+                        seed=payload.get("seed", 7),
+                        save_name=payload.get("save_name", "Alpha Franchise"),
+                    ),
+                )
                 return
             if path in ("/api/v1/trades/evaluate", "/api/v1/trades/execute"):
                 arguments = self._trade_arguments(self._read_json())
@@ -360,8 +409,8 @@ class ApiHandler(BaseHTTPRequestHandler):
         except ValueError as error:
             status = 409 if path == "/api/v1/advance-day" else 400
             self._send_json(status, {"error": str(error)})
-        except Exception:
-            self._send_json(500, {"error": "Internal server error"})
+        except Exception as error:
+            self._send_internal_error(error)
 
     def log_message(self, format, *args):
         return

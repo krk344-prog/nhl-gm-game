@@ -7,6 +7,7 @@ import unittest
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
+from src.game_service import get_game_state, reset_game, select_user_team
 from src.nhl_gm_api import create_server, get_dashboard, get_roster
 from src.league_orchestrator import (
     advance_day,
@@ -29,7 +30,7 @@ class ApiStateTest(unittest.TestCase):
         self.previous_db_path = os.environ.get("NHL_GM_DB_PATH")
         os.environ["NHL_GM_DB_PATH"] = os.path.join(self.temp_dir.name, "test.db")
         random.seed(7)
-        init_database()
+        init_database(seed=7)
         initialize_league()
 
     def tearDown(self):
@@ -42,7 +43,7 @@ class ApiStateTest(unittest.TestCase):
     def test_dashboard_returns_live_cap_and_ratings(self):
         dashboard = get_dashboard(1)
 
-        self.assertEqual(dashboard["team"]["name"], "Titans")
+        self.assertEqual(dashboard["team"]["name"], "Blizzards")
         self.assertEqual(
             dashboard["roster"],
             {
@@ -71,6 +72,25 @@ class ApiStateTest(unittest.TestCase):
     def test_unknown_team_raises_lookup_error(self):
         with self.assertRaisesRegex(LookupError, "Team 999 does not exist"):
             get_dashboard(999)
+
+    def test_game_save_selects_team_and_resets_deterministically(self):
+        initial = get_game_state()
+        self.assertEqual(len(initial["teams"]), 8)
+        self.assertEqual(initial["user_team_id"], 1)
+        self.assertFalse(initial["requires_reset"])
+        self.assertTrue(all(team["roster_count"] == 23 for team in initial["teams"]))
+        self.assertTrue(all(team["cap_hit"] <= 92_000_000 for team in initial["teams"]))
+
+        selected = select_user_team(4)
+        self.assertEqual(selected["user_team_id"], 4)
+        advance_day()
+
+        reset = reset_game(seed=99, save_name="QA Reset")
+        self.assertEqual(reset["save"]["name"], "QA Reset")
+        self.assertEqual(reset["save"]["seed"], 99)
+        self.assertEqual(reset["save"]["current_day"], 1)
+        self.assertEqual(reset["user_team_id"], 1)
+        self.assertEqual(len(reset["teams"]), 8)
 
     def test_trade_market_and_evaluation_use_persisted_players(self):
         market = get_trade_market(1)
@@ -168,6 +188,50 @@ class ApiStateTest(unittest.TestCase):
         self.assertEqual(target_team, 2)
         self.assertEqual(get_trade_history(1)["trades"][0]["status"], "rejected")
 
+    def test_cba_blocked_trade_rolls_back_and_records_history(self):
+        market = get_trade_market(1)
+        accepted = None
+        for offered in market["offered_players"]:
+            for target in market["target_players"]:
+                evaluation = evaluate_trade(1, offered["id"], 2, target["id"])
+                if evaluation["accepted"]:
+                    accepted = evaluation
+                    break
+            if accepted:
+                break
+        self.assertIsNotNone(accepted)
+        with connect_database() as conn:
+            conn.execute(
+                "UPDATE league_calendar SET salary_cap_ceiling = 1 WHERE id = 1"
+            )
+            conn.commit()
+
+        result = execute_trade(
+            1,
+            accepted["offered"]["id"],
+            2,
+            accepted["target"]["id"],
+        )
+
+        self.assertFalse(result["executed"])
+        self.assertEqual(result["status"], "blocked")
+        with connect_database() as conn:
+            self.assertEqual(
+                conn.execute(
+                    "SELECT team_id FROM players WHERE id = ?",
+                    (accepted["offered"]["id"],),
+                ).fetchone()[0],
+                1,
+            )
+            self.assertEqual(
+                conn.execute(
+                    "SELECT team_id FROM players WHERE id = ?",
+                    (accepted["target"]["id"],),
+                ).fetchone()[0],
+                2,
+            )
+        self.assertEqual(get_trade_history(1)["trades"][0]["status"], "blocked")
+
     def test_schedule_seeds_full_home_and_away_season(self):
         schedule = get_schedule(team_id=1, limit=200)["games"]
 
@@ -178,19 +242,41 @@ class ApiStateTest(unittest.TestCase):
             sum(game["home_team_id"] == 1 for game in schedule),
             41,
         )
+        with connect_database() as conn:
+            self.assertEqual(
+                conn.execute("SELECT COUNT(*) FROM schedule").fetchone()[0], 328
+            )
 
     def test_advance_day_simulates_slate_and_updates_standings(self):
         result = advance_day()
 
         self.assertEqual(result["calendar"]["current_day"], 2)
-        self.assertEqual(len(result["games"]), 1)
+        self.assertEqual(len(result["games"]), 4)
         game = result["games"][0]
         self.assertNotEqual(game["home_score"], game["away_score"])
         standings = get_standings()["standings"]
-        self.assertEqual(sum(team["games_played"] for team in standings), 2)
-        self.assertIn(sum(team["points"] for team in standings), (2, 3))
-        completed = get_schedule(day=2)["games"][0]
-        self.assertEqual(completed["status"], "completed")
+        self.assertEqual(sum(team["games_played"] for team in standings), 8)
+        self.assertTrue(8 <= sum(team["points"] for team in standings) <= 12)
+        completed = get_schedule(day=2)["games"]
+        self.assertEqual(len(completed), 4)
+        self.assertTrue(all(game["status"] == "completed" for game in completed))
+
+    def test_full_season_completes_all_games_and_stops_at_day_186(self):
+        for _ in range(185):
+            advance_day()
+
+        standings = get_standings()["standings"]
+        self.assertEqual(len(standings), 8)
+        self.assertTrue(all(team["games_played"] == 82 for team in standings))
+        with connect_database() as conn:
+            self.assertEqual(
+                conn.execute(
+                    "SELECT COUNT(*) FROM schedule WHERE status = 'completed'"
+                ).fetchone()[0],
+                328,
+            )
+        with self.assertRaisesRegex(ValueError, "calendar is already complete"):
+            advance_day()
 
     def test_http_routes_return_json_and_cors(self):
         server = create_server("127.0.0.1", 0)
@@ -204,21 +290,41 @@ class ApiStateTest(unittest.TestCase):
                 self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
                 self.assertEqual(payload["roster"]["total"], 23)
 
+            with urlopen(f"{base_url}/api/v1/game") as response:
+                game = json.load(response)
+                self.assertEqual(response.status, 200)
+                self.assertEqual(len(game["teams"]), 8)
+
+            with urlopen(f"{base_url}/api/v1/debug-report") as response:
+                report = json.load(response)
+                self.assertEqual(report["version"], "0.2.0-alpha")
+                self.assertEqual(len(report["standings"]), 8)
+
+            select_request = Request(
+                f"{base_url}/api/v1/game/select-team",
+                data=json.dumps({"team_id": 3}).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urlopen(select_request) as response:
+                game = json.load(response)
+                self.assertEqual(game["user_team_id"], 3)
+
             with urlopen(f"{base_url}/api/v1/schedule?day=2") as response:
                 payload = json.load(response)
-                self.assertEqual(len(payload["games"]), 1)
+                self.assertEqual(len(payload["games"]), 4)
 
             request = Request(f"{base_url}/api/v1/advance-day", method="POST")
             with urlopen(request) as response:
                 payload = json.load(response)
                 self.assertEqual(payload["calendar"]["current_day"], 2)
-                self.assertEqual(len(payload["games"]), 1)
+                self.assertEqual(len(payload["games"]), 4)
 
             with urlopen(f"{base_url}/api/v1/standings") as response:
                 payload = json.load(response)
                 self.assertEqual(
                     sum(team["games_played"] for team in payload["standings"]),
-                    2,
+                    8,
                 )
 
             with urlopen(f"{base_url}/api/v1/trade-market?user_team_id=1") as response:
@@ -245,6 +351,20 @@ class ApiStateTest(unittest.TestCase):
                 self.assertEqual(response.status, 200)
                 self.assertEqual(evaluation["status"], "evaluated")
                 self.assertIn("required_value", evaluation)
+
+            reset_request = Request(
+                f"{base_url}/api/v1/game/reset",
+                data=json.dumps(
+                    {"confirm": "RESET", "seed": 31, "save_name": "HTTP Reset"}
+                ).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urlopen(reset_request) as response:
+                reset = json.load(response)
+                self.assertEqual(reset["save"]["name"], "HTTP Reset")
+                self.assertEqual(reset["save"]["current_day"], 1)
+                self.assertEqual(len(reset["teams"]), 8)
 
             with self.assertRaises(HTTPError) as error:
                 urlopen(f"{base_url}/api/v1/teams/999/roster")
