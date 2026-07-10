@@ -70,6 +70,28 @@ def init_database():
             FOREIGN KEY(team_id) REFERENCES teams(id)
         )
     """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS trade_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            day INTEGER NOT NULL,
+            user_team_id INTEGER NOT NULL,
+            target_team_id INTEGER NOT NULL,
+            offered_player_id INTEGER NOT NULL,
+            target_player_id INTEGER NOT NULL,
+            offered_value REAL NOT NULL,
+            target_value REAL NOT NULL,
+            required_value REAL NOT NULL,
+            relationship_score REAL NOT NULL,
+            status TEXT NOT NULL CHECK(status IN ('approved', 'rejected', 'blocked')),
+            reason TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_team_id) REFERENCES teams(id),
+            FOREIGN KEY(target_team_id) REFERENCES teams(id),
+            FOREIGN KEY(offered_player_id) REFERENCES players(id),
+            FOREIGN KEY(target_player_id) REFERENCES players(id)
+        )
+    """)
     
     # Check if database require fresh asset generation seeding
     cursor.execute("SELECT COUNT(*) FROM league_calendar")
@@ -386,62 +408,42 @@ class ContractAdjustedSurplusValueDesk:
 
     @staticmethod
     def process_trade_proposal(user_player_id, target_team_id, target_player_id):
-        conn = connect_database()
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        
-        # Pull player metrics data records
-        cursor.execute("SELECT * FROM players WHERE id = ?", (user_player_id,))
-        u_p = dict(cursor.fetchone())
-        cursor.execute("SELECT * FROM players WHERE id = ?", (target_player_id,))
-        t_p = dict(cursor.fetchone())
-        
-        # Pull rival general manager tracking parameters
-        cursor.execute("SELECT * FROM teams WHERE id = ?", (target_team_id,))
-        rival_team = dict(cursor.fetchone())
-        conn.close()
-        
-        # Calculate matching validation metrics
-        u_casv = ContractAdjustedSurplusValueDesk.evaluate_casv_index(u_p, rival_team['franchise_mandate'])
-        t_casv = ContractAdjustedSurplusValueDesk.evaluate_casv_index(t_p, rival_team['franchise_mandate'])
-        
-        # Apply the Relational Friction Modifier (R_ij) luxury premium tax
-        r_ij = rival_team['relationship_score']
-        required_premium_scalar = 1.0 + ((100.0 - r_ij) / 200.0)
-        adjusted_threshold_barrier = t_casv * required_premium_scalar
-        
-        log = []
-        log.append(f"Incoming Trade Desk Pitch Analysis Grid:")
-        log.append(f"  User Asset: {u_p['name']} | Calculated Valuation Value: {u_casv:.2f}")
-        log.append(f"  Rival Asset: {t_p['name']} | Target Base Value Index: {t_casv:.2f}")
-        log.append(f"  Rival Alignment Mandate Mode: {rival_team['franchise_mandate']}")
-        log.append(f"  Relational Tax Premium Multiplier (R_ij Score {r_ij:.1f}): x{required_premium_scalar:.2f}")
-        log.append(f"  Adjusted Barrier Goal Threshold Required: {adjusted_threshold_barrier:.2f}")
-        
-        # Check transaction gate validation criteria outcomes
-        if u_casv >= adjusted_threshold_barrier:
-            # Check systemic transaction compliance gate limits
-            conn = connect_database()
-            cursor = conn.cursor()
-            
-            # Execute transactional row migrations
-            cursor.execute("UPDATE players SET team_id = ? WHERE id = ?", (target_team_id, user_player_id))
-            cursor.execute("UPDATE players SET team_id = 1 WHERE id = ?", (target_player_id))
-            
-            # Check legality states across modified sheets
-            h_legal, _ = ComplianceGate.verify_roster_legality(1)
-            a_legal, _ = ComplianceGate.verify_roster_legality(target_team_id)
-            
-            if h_legal and a_legal:
-                conn.commit()
-                log.append("\n[TRANSACTION APPROVED] Front-office analytics accepted. Trade processed.")
-            else:
-                conn.rollback()
-                log.append("\n[TRADE TRANSACTION BLOCKED] Blocked due to upcoming mid-season salary cap non-compliance.")
-            conn.close()
+        # Preserve the terminal interface while routing every trade through the
+        # same validated, atomic service used by the JSON API and mobile client.
+        try:
+            from .trade_service import execute_trade
+        except ImportError:
+            from trade_service import execute_trade
+
+        result = execute_trade(1, user_player_id, target_team_id, target_player_id)
+        log = [
+            "Incoming Trade Desk Pitch Analysis Grid:",
+            (
+                f"  User Asset: {result['offered']['name']} | "
+                f"Calculated Valuation Value: {result['offered']['casv']:.2f}"
+            ),
+            (
+                f"  Rival Asset: {result['target']['name']} | "
+                f"Target Base Value Index: {result['target']['casv']:.2f}"
+            ),
+            (
+                "  Rival Alignment Mandate Mode: "
+                f"{result['target_team']['franchise_mandate']}"
+            ),
+            (
+                "  Relational Tax Premium Multiplier "
+                f"(R_ij Score {result['relationship_score']:.1f}): "
+                f"x{result['premium_multiplier']:.3f}"
+            ),
+            f"  Adjusted Barrier Goal Threshold Required: {result['required_value']:.2f}",
+        ]
+        if result["executed"]:
+            log.append(
+                "\n[TRANSACTION APPROVED] Front-office analytics accepted. "
+                "Trade processed."
+            )
         else:
-            log.append("\n[TRADE PROPOSAL REJECTED] Rival engine analysis reports low CASV margin return value.")
-            
+            log.append(f"\n[TRADE {result['status'].upper()}] {result['error']}")
         return "\n".join(log)
 
 class AdvisorRiskScoringEngine:

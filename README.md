@@ -40,7 +40,7 @@ npm install
 npm start
 ```
 
-The dashboard and roster load live persisted state from the Python API. If the API is unavailable, those screens remain usable with clearly labeled demo data. Set `EXPO_PUBLIC_API_URL` when the mobile client cannot reach the default `http://127.0.0.1:8000/api/v1` address.
+The dashboard, roster, and Trade Center load live persisted state from the Python API. If the API is unavailable, connected read-only screens remain usable with clearly labeled demo data. Set `EXPO_PUBLIC_API_URL` when the mobile client cannot reach the default `http://127.0.0.1:8000/api/v1` address.
 
 ## JSON API
 
@@ -58,9 +58,15 @@ Available read endpoints:
 - `GET /api/v1/teams/{team_id}/roster`
 - `GET /api/v1/standings`
 - `GET /api/v1/schedule?day={day}&team_id={team_id}`
+- `GET /api/v1/trade-market?user_team_id={team_id}`
+- `GET /api/v1/trades/history?user_team_id={team_id}`
 - `POST /api/v1/advance-day`
+- `POST /api/v1/trades/evaluate`
+- `POST /api/v1/trades/execute`
 
 Advancing a day settles cap charges, recovers player fatigue, simulates every scheduled game, and updates persistent standings. The seeded two-team prototype produces a balanced 82-game home-and-away schedule across the 186-day calendar.
+
+The Trade Center reads both persisted rosters, recalculates CASV against the rival mandate and GM relationship premium, and records approved, rejected, or CBA-blocked proposals. Approved one-for-one trades swap player rights in a single SQLite transaction only after both post-trade rosters pass the cap and 23-player checks.
 
 Use `--db path/to/game.db` or `NHL_GM_DB_PATH` to select a different save file.
 
@@ -73,7 +79,7 @@ Use `--db path/to/game.db` or `NHL_GM_DB_PATH` to select a different save file.
 - **Scouting fog-of-war** with exponential uncertainty decay based on observation count.
 - **60-minute tactical match simulator** using possession, Corsi-style shot attempts, line chemistry, xG modifiers, royal-road passing, and goalie fatigue.
 - **Persistent league loop** with schedule generation, structured game results, standings, overtime points, streaks, and daily slate automation.
-- **Contract-Adjusted Surplus Value trade desk** for evaluating player trades against team mandates and relationship friction.
+- **Live Contract-Adjusted Surplus Value trade desk** with persisted market rosters, relationship premiums, transactional execution, CBA revalidation, and proposal history.
 - **Advisor Risk Scoring Engine** for cap exposure, overpaid assets, and league trust risk.
 - **Executive terminal shell** with box-drawing interface panels and command-driven simulation controls.
 

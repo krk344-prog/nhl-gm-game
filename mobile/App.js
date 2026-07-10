@@ -66,6 +66,21 @@ const fallbackRoster = [
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1';
 
+async function requestJson(path, options = {}) {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    },
+  });
+  const payload = await response.json();
+  if (!response.ok) {
+    throw new Error(payload.error || 'The NHL GM API returned an error');
+  }
+  return payload;
+}
+
 function mapDashboard(payload) {
   return {
     ...fallbackTeamState,
@@ -425,67 +440,167 @@ function GamesScreen() {
   );
 }
 
-function TradeScreen() {
+function TradeScreen({ onTradeComplete }) {
+  const [market, setMarket] = useState(null);
+  const [offeredIndex, setOfferedIndex] = useState(0);
+  const [targetIndex, setTargetIndex] = useState(0);
+  const [analysis, setAnalysis] = useState(null);
+  const [tradeStatus, setTradeStatus] = useState('loading');
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const loadMarket = useCallback(async () => {
+    const payload = await requestJson('/trade-market?user_team_id=1');
+    setMarket(payload);
+    setOfferedIndex(0);
+    setTargetIndex(0);
+    setTradeStatus('live');
+    return payload;
+  }, []);
+
+  useEffect(() => {
+    loadMarket().catch((error) => {
+      setTradeStatus('offline');
+      setMessage(error.message);
+    });
+  }, [loadMarket]);
+
+  const offeredPlayer = market?.offered_players?.[offeredIndex];
+  const targetPlayer = market?.target_players?.[targetIndex];
+  const targetTeam = market?.target_team;
+
+  useEffect(() => {
+    if (!offeredPlayer || !targetPlayer || !targetTeam) return undefined;
+    let active = true;
+    setAnalysis(null);
+    requestJson('/trades/evaluate', {
+      method: 'POST',
+      body: JSON.stringify({
+        user_team_id: market.user_team.id,
+        offered_player_id: offeredPlayer.id,
+        target_team_id: targetTeam.id,
+        target_player_id: targetPlayer.id,
+      }),
+    })
+      .then((payload) => {
+        if (active) setAnalysis(payload);
+      })
+      .catch((error) => {
+        if (active) setMessage(error.message);
+      });
+    return () => {
+      active = false;
+    };
+  }, [market, offeredPlayer, targetPlayer, targetTeam]);
+
+  const cyclePlayer = (side) => {
+    setMessage('');
+    if (side === 'offered') {
+      setOfferedIndex((index) => (index + 1) % market.offered_players.length);
+    } else {
+      setTargetIndex((index) => (index + 1) % market.target_players.length);
+    }
+  };
+
+  const submitTrade = async () => {
+    if (!analysis || submitting) return;
+    setSubmitting(true);
+    setMessage('');
+    try {
+      const result = await requestJson('/trades/execute', {
+        method: 'POST',
+        body: JSON.stringify({
+          user_team_id: market.user_team.id,
+          offered_player_id: offeredPlayer.id,
+          target_team_id: targetTeam.id,
+          target_player_id: targetPlayer.id,
+        }),
+      });
+      setMessage(`TRADE APPROVED: ${result.target.name} acquired for ${result.offered.name}.`);
+      await Promise.all([loadMarket(), onTradeComplete?.()]);
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const valueDelta = analysis?.user_value_delta || 0;
+  const valueEdge = valueDelta > 0.5 ? 'YOU WIN' : valueDelta < -0.5 ? 'RIVAL WINS' : 'EVEN VALUE';
+  const gaugeColor = analysis?.accepted ? COLORS.green : COLORS.red;
+
   return (
     <ScrollView contentContainerStyle={styles.scrollBody}>
       <ScreenTitle title="TRADE CENTER" action="⌕" />
+      <SyncStatus status={tradeStatus} />
       <View style={styles.segmented}>
         <View style={[styles.segmentButton, styles.segmentActive]}><Text style={[styles.segmentText, styles.segmentTextActive]}>TRADE PROPOSAL</Text></View>
         <View style={styles.segmentButton}><Text style={styles.segmentText}>TRADE HISTORY</Text></View>
       </View>
 
-      <TradeAsset title="OFFERING (YOU)" cap="CAP HIT: $8.75M" name="#34  C. Hughes" detail="C | Age: 24 | Elite Playmaker" ovr="84" aav="$8.75M" years="3 YEARS LEFT" color={COLORS.blue} />
-      <TradeAsset title="RECEIVING (BOS)" cap="CAP HIT: $8.70M" name="#73  C. McAvoy" detail="D | Age: 26 | Two-Way Defender" ovr="86" aav="$8.70M" years="6 YEARS LEFT" color={COLORS.yellow} />
+      {market && offeredPlayer && targetPlayer ? (
+        <>
+          <Text style={styles.tradeHint}>Tap either player card to cycle through that team's live roster.</Text>
+          <TradeAsset title="OFFERING (YOU)" player={offeredPlayer} color={COLORS.blue} onPress={() => cyclePlayer('offered')} />
+          <TradeAsset title={`RECEIVING (${targetTeam.name})`} player={targetPlayer} color={COLORS.yellow} onPress={() => cyclePlayer('target')} />
+        </>
+      ) : (
+        <Card><Text style={styles.muted}>{message || 'Loading the live trade market...'}</Text></Card>
+      )}
 
       <Card style={styles.casvCard}>
         <Text style={styles.sectionTitle}>CASV ANALYSIS</Text>
         <View style={styles.casvRow}>
           <View style={styles.centerColumn}>
-            <Text style={[styles.label, { color: COLORS.green }]}>YOU</Text>
-            <Text style={[styles.metricValue, { color: COLORS.green }]}>48.72</Text>
-            <Text style={styles.muted}>Total Value</Text>
+            <Text style={[styles.label, { color: COLORS.blue }]}>YOUR OFFER</Text>
+            <Text style={[styles.metricValue, { color: COLORS.blue }]}>{analysis ? analysis.offered.casv.toFixed(2) : '--'}</Text>
+            <Text style={styles.muted}>CASV Value</Text>
           </View>
-          <View style={styles.tradeGauge}>
-            <Text style={styles.gaugeMain}>YOU WIN</Text>
-            <Text style={styles.gaugeDelta}>+6.62</Text>
-            <Text style={styles.muted}>Fair Trade</Text>
+          <View style={[styles.tradeGauge, { borderColor: gaugeColor }]}>
+            <Text style={styles.gaugeMain}>{analysis ? valueEdge : 'ANALYZING'}</Text>
+            <Text style={[styles.gaugeDelta, { color: gaugeColor }]}>{analysis ? `${valueDelta >= 0 ? '+' : ''}${valueDelta.toFixed(2)}` : '--'}</Text>
+            <Text style={styles.muted}>{analysis?.decision || 'CASV Desk'}</Text>
           </View>
           <View style={styles.centerColumn}>
-            <Text style={[styles.label, { color: COLORS.yellow }]}>BOS</Text>
-            <Text style={[styles.metricValue, { color: COLORS.yellow }]}>42.10</Text>
-            <Text style={styles.muted}>Total Value</Text>
+            <Text style={[styles.label, { color: COLORS.yellow }]}>{targetTeam?.name || 'RIVAL'}</Text>
+            <Text style={[styles.metricValue, { color: COLORS.yellow }]}>{analysis ? analysis.target.casv.toFixed(2) : '--'}</Text>
+            <Text style={styles.muted}>CASV Value</Text>
           </View>
         </View>
         <View style={styles.twoCol}>
-          <MetricCard label="TRADE DIFFICULTY" value="MEDIUM-HIGH" color={COLORS.yellow} />
-          <MetricCard label="RELATIONSHIP (R_ij)" value="45/100" color={COLORS.red} />
+          <MetricCard label="TRADE DIFFICULTY" value={analysis?.difficulty || '--'} color={COLORS.yellow} />
+          <MetricCard label="RELATIONSHIP (R_ij)" value={analysis ? `${analysis.relationship_score}/100` : '--'} color={COLORS.red} />
         </View>
+        {analysis ? <Text style={styles.tradeStatus}>Rival requires {analysis.required_value.toFixed(2)} CASV after a ×{analysis.premium_multiplier.toFixed(3)} relationship premium.</Text> : null}
       </Card>
 
-      <TouchableOpacity style={styles.primaryButton} activeOpacity={0.85}>
-        <Text style={styles.primaryButtonText}>SUBMIT TRADE PROPOSAL</Text>
+      {message ? <Text style={[styles.actionMessage, { color: message.startsWith('TRADE APPROVED') ? COLORS.green : COLORS.red }]}>{message}</Text> : null}
+      <TouchableOpacity style={[styles.primaryButton, (!analysis || submitting) && styles.primaryButtonDisabled]} activeOpacity={0.85} onPress={submitTrade} disabled={!analysis || submitting}>
+        <Text style={styles.primaryButtonText}>{submitting ? 'SUBMITTING...' : 'SUBMIT TRADE PROPOSAL'}</Text>
       </TouchableOpacity>
     </ScrollView>
   );
 }
 
-function TradeAsset({ title, cap, name, detail, ovr, aav, years, color }) {
+function TradeAsset({ title, player, color, onPress }) {
   return (
-    <Card style={styles.tradeAsset}>
-      <View style={[styles.tradeAssetTop, { backgroundColor: color === COLORS.blue ? COLORS.blueSoft : '#66510c' }]}> 
-        <Text style={styles.tradeAssetTitle}>{title}</Text>
-        <Text style={styles.tradeAssetCap}>{cap}</Text>
-      </View>
-      <View style={styles.tradePlayerRow}>
-        <View style={[styles.avatar, { borderColor: color }]}><Text style={styles.avatarText}>🏒</Text></View>
-        <View style={styles.tradePlayerText}>
-          <Text style={styles.playerName}>{name}</Text>
-          <Text style={styles.playerRole}>{detail}</Text>
-          <Text style={styles.playerRole}>OVR {ovr}     AAV {aav}     {years}</Text>
+    <TouchableOpacity activeOpacity={0.85} onPress={onPress}>
+      <Card style={styles.tradeAsset}>
+        <View style={[styles.tradeAssetTop, { backgroundColor: color === COLORS.blue ? COLORS.blueSoft : '#66510c' }]}>
+          <Text style={styles.tradeAssetTitle}>{title}</Text>
+          <Text style={styles.tradeAssetCap}>CAP HIT: {money(player.aav / 1000000)}</Text>
         </View>
-        <Text style={styles.closeIcon}>×</Text>
-      </View>
-    </Card>
+        <View style={styles.tradePlayerRow}>
+          <View style={[styles.avatar, { borderColor: color }]}><Text style={styles.avatarText}>🏒</Text></View>
+          <View style={styles.tradePlayerText}>
+            <Text style={styles.playerName}>#{player.id}  {player.name}</Text>
+            <Text style={styles.playerRole}>{player.position} | Age: {player.age} | {player.archetype}</Text>
+            <Text style={styles.playerRole}>OVR {player.overall}     AAV {money(player.aav / 1000000)}     {player.contract_years} YEARS LEFT</Text>
+          </View>
+          <Text style={styles.closeIcon}>›</Text>
+        </View>
+      </Card>
+    </TouchableOpacity>
   );
 }
 
@@ -609,10 +724,10 @@ export default function App() {
   const content = useMemo(() => {
     if (activeTab === 'roster') return <RosterScreen roster={roster} teamState={teamState} syncStatus={syncStatus} />;
     if (activeTab === 'games') return <GamesScreen />;
-    if (activeTab === 'trade') return <TradeScreen />;
+    if (activeTab === 'trade') return <TradeScreen onTradeComplete={refreshGameState} />;
     if (activeTab === 'office') return <OfficeScreen />;
     return <DashboardScreen teamState={teamState} syncStatus={syncStatus} onAdvanceDay={handleAdvanceDay} advancing={advancing} actionMessage={actionMessage} />;
-  }, [actionMessage, activeTab, advancing, handleAdvanceDay, roster, syncStatus, teamState]);
+  }, [actionMessage, activeTab, advancing, handleAdvanceDay, refreshGameState, roster, syncStatus, teamState]);
 
   return (
     <SafeAreaView style={styles.appShell}>
@@ -710,6 +825,7 @@ const styles = StyleSheet.create({
   twoColLoose: { flexDirection: 'row', flexWrap: 'wrap' },
   bullet: { color: COLORS.text, width: '50%', fontSize: 13, paddingVertical: 5 },
   tradeAsset: { padding: 0, overflow: 'hidden' },
+  tradeHint: { color: COLORS.muted, fontSize: 11, lineHeight: 16, marginBottom: 8, paddingHorizontal: 4 },
   tradeAssetTop: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, paddingHorizontal: 12 },
   tradeAssetTitle: { color: COLORS.text, fontSize: 12, fontWeight: '900' },
   tradeAssetCap: { color: COLORS.text, fontSize: 11, fontWeight: '800' },
@@ -724,7 +840,9 @@ const styles = StyleSheet.create({
   tradeGauge: { width: 112, height: 112, borderRadius: 56, borderWidth: 10, borderColor: COLORS.green, justifyContent: 'center', alignItems: 'center' },
   gaugeMain: { color: COLORS.text, fontSize: 12, fontWeight: '900' },
   gaugeDelta: { color: COLORS.green, fontSize: 25, fontWeight: '900', marginTop: 2 },
+  tradeStatus: { color: COLORS.muted, fontSize: 11, lineHeight: 17, marginTop: 9, textAlign: 'center' },
   primaryButton: { backgroundColor: '#168235', borderRadius: 9, paddingVertical: 15, alignItems: 'center', marginTop: 4, marginBottom: 20 },
+  primaryButtonDisabled: { opacity: 0.5 },
   primaryButtonText: { color: COLORS.text, fontSize: 16, fontWeight: '900', letterSpacing: 0.8 },
   advisorCard: { alignItems: 'center' },
   riskCircle: { width: 150, height: 150, borderRadius: 75, borderWidth: 14, borderColor: COLORS.yellow, alignItems: 'center', justifyContent: 'center', marginVertical: 8, backgroundColor: '#071626' },

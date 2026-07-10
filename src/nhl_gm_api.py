@@ -18,6 +18,12 @@ try:
         get_standings,
         initialize_league,
     )
+    from .trade_service import (
+        evaluate_trade,
+        execute_trade,
+        get_trade_history,
+        get_trade_market,
+    )
 except ImportError:  # Support direct execution: python src/nhl_gm_api.py
     from nhl_gm_core import connect_database, init_database
     from league_orchestrator import (
@@ -25,6 +31,12 @@ except ImportError:  # Support direct execution: python src/nhl_gm_api.py
         get_schedule,
         get_standings,
         initialize_league,
+    )
+    from trade_service import (
+        evaluate_trade,
+        execute_trade,
+        get_trade_history,
+        get_trade_market,
     )
 
 
@@ -238,6 +250,37 @@ class ApiHandler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self._send_json(200, {})
 
+    def _read_json(self):
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError as error:
+            raise ValueError("Invalid Content-Length header") from error
+        if length <= 0:
+            raise ValueError("A JSON request body is required")
+        try:
+            payload = json.loads(self.rfile.read(length))
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise ValueError("Request body must be valid JSON") from error
+        if not isinstance(payload, dict):
+            raise ValueError("Request body must be a JSON object")
+        return payload
+
+    @staticmethod
+    def _trade_arguments(payload):
+        required = (
+            "user_team_id",
+            "offered_player_id",
+            "target_team_id",
+            "target_player_id",
+        )
+        missing = [name for name in required if name not in payload]
+        if missing:
+            raise ValueError("Missing trade fields: " + ", ".join(missing))
+        try:
+            return {name: int(payload[name]) for name in required}
+        except (TypeError, ValueError) as error:
+            raise ValueError("Trade identifiers must be integers") from error
+
     def do_GET(self):
         parsed = urlparse(self.path)
         path = parsed.path.rstrip("/") or "/"
@@ -259,6 +302,25 @@ class ApiHandler(BaseHTTPRequestHandler):
                 self._send_json(
                     200, get_schedule(day=day, team_id=team_id, limit=limit)
                 )
+                return
+            if path == "/api/v1/trade-market":
+                user_team_id = int(query.get("user_team_id", [1])[0])
+                target_team_id = (
+                    int(query["target_team_id"][0])
+                    if "target_team_id" in query
+                    else None
+                )
+                self._send_json(
+                    200,
+                    get_trade_market(
+                        user_team_id=user_team_id, target_team_id=target_team_id
+                    ),
+                )
+                return
+            if path == "/api/v1/trades/history":
+                user_team_id = int(query.get("user_team_id", [1])[0])
+                limit = int(query.get("limit", [20])[0])
+                self._send_json(200, get_trade_history(user_team_id, limit=limit))
                 return
             match = self.team_route.match(path)
             if match:
@@ -284,9 +346,20 @@ class ApiHandler(BaseHTTPRequestHandler):
             if path == "/api/v1/advance-day":
                 self._send_json(200, advance_day())
                 return
+            if path in ("/api/v1/trades/evaluate", "/api/v1/trades/execute"):
+                arguments = self._trade_arguments(self._read_json())
+                if path.endswith("/evaluate"):
+                    self._send_json(200, evaluate_trade(**arguments))
+                    return
+                result = execute_trade(**arguments)
+                self._send_json(200 if result["executed"] else 409, result)
+                return
             self._send_json(404, {"error": "Route not found"})
+        except LookupError as error:
+            self._send_json(404, {"error": str(error)})
         except ValueError as error:
-            self._send_json(409, {"error": str(error)})
+            status = 409 if path == "/api/v1/advance-day" else 400
+            self._send_json(status, {"error": str(error)})
         except Exception:
             self._send_json(500, {"error": "Internal server error"})
 
