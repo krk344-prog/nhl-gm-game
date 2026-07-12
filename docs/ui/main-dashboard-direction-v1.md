@@ -1,89 +1,115 @@
-# Main Dashboard Direction v1 — UI Review Pending
+# Main Command Center — Stage 2 UI Review Pending
 
-## Purpose
+## Approval state
 
-Define a premium, decision-first command center for the controlled franchise. This is a Stage 1 direction artifact, not an implementation approval.
+Kyle approved the alternate Stage 1 direction on July 12, 2026. The approved direction is a decision-first command center with a premium dark hockey-operations visual language, desktop navigation rail, mobile bottom navigation, franchise pulse, and a prominent `Needs Your Attention` queue.
 
-![Main dashboard direction wireframe](./main-dashboard-wireframe-v1.svg)
+This document now governs the Stage 2 polished mockup review. Broad production implementation remains blocked until Kyle approves this polished direction.
 
-## Specialist deliverables
+## Stage 2 previews
 
-### NHL Operations — game-day roster compliance alert
+### Desktop — realistic dense and non-ideal state
 
-**Requirement:** The dashboard must surface an actionable lineup-compliance warning whenever the proposed game roster is below the applicable dressed-player minimum or otherwise fails the active season ruleset. The warning must identify the deadline, affected roster state, and a direct path to correct the lineup. The UI must read the versioned rules registry rather than hard-code a season-independent number.
+![Polished desktop command center](./main-dashboard-stage2-desktop.svg)
+
+### Mobile — intentionally reordered decision-first state
+
+![Polished mobile command center](./main-dashboard-stage2-mobile.svg)
+
+## Cycle specialist deliverables
+
+### NHL Operations — 2026–27 schedule integrity gate
+
+**Verified requirement:** A save bound to the 2026–27 ruleset must not begin or continue a regular season unless its generated schedule matches the season-defined game count. For 2026–27, the schedule must contain 84 games per team rather than inheriting the Alpha's 82-game assumption.
 
 **Acceptance criteria**
 
-1. The alert is generated from the save's active ruleset.
-2. It distinguishes active-roster limits from game-lineup requirements.
-3. Injured/reserve status and season exceptions are evaluated before declaring noncompliance.
-4. The user can open the exact roster state causing the warning.
-5. The simulation cannot silently advance through a mandatory unresolved lineup decision.
+1. The schedule generator reads `regular_season_games` from the active immutable ruleset.
+2. Season initialization fails with an actionable integrity error when any team has a different game total.
+3. Home/road and standings reconciliation tests use the ruleset value rather than a hard-coded 82.
+4. Existing 82-game prototype saves remain explicitly labeled as legacy Alpha saves and are never silently presented as 2026–27-compliant.
+5. The dashboard surfaces the mismatch as a mandatory decision and prevents season advancement until the save is repaired or reset.
 
-This avoids presenting a generic `23-player roster` number as though it were the same as the dressed game roster and keeps the UI compatible with future CBA/rules changes.
+**Authority note:** The NHL and NHLPA ratified a CBA extension in July 2025 that expands the regular season to 84 games beginning in 2026–27. Implementation must preserve source provenance in the rules registry.
 
-### Competing Games — clean-room pattern translation
+### Competing Games — contextual comparison drawer
 
-**Observed pattern:** Deep management games let players delegate broad operational areas while retaining control over high-value decisions. They also provide strong mode-level context, but dense menus can create a steep learning curve.
+**Observed clean-room pattern:** Strong management simulations keep the primary workspace focused while allowing the user to compare alternatives without losing context. Weak implementations force repeated navigation between a list, a profile, and a transaction screen.
 
-**Original requirement:** Add a decision-first command center that summarizes only material changes, deadlines, risks, and recommended actions. Detailed data remains one click away in specialist workspaces. Each card must answer: what changed, why it matters, when action is due, and where to act.
+**Original product requirement:** Selecting a player, contract, scouting report, or decision card opens a reusable contextual comparison drawer. The drawer shows no more than three user-selected comparators, highlights material differences, preserves uncertainty ranges, and keeps the originating decision visible.
 
-**Differentiation:** Rather than reproducing another game's menu structure, Northstar uses an explainable front-office operating rhythm: decision queue, franchise pulse, today's timeline, and contextual intelligence. Delegation settings will later control which cards appear and which actions can be auto-resolved.
+**Differentiation and implementation notes**
 
-### Coding — bounded artifact
+- Use the same drawer contract across roster, scouting, trade, contract, and draft workflows.
+- Show only decision-relevant fields by default; advanced data remains behind categorized tabs.
+- Preserve scouting uncertainty rather than exposing hidden true ratings.
+- Keyboard focus moves into the drawer and returns to the invoking control on close.
+- Mobile uses a full-height sheet with a sticky decision summary instead of a squeezed side panel.
 
-Added a dependency-free SVG dashboard wireframe and this implementation specification on `agent/ui-dashboard-approval-v1`. No production behavior or existing UI code is changed. The branch is intentionally reversible and stacked on the current scouting-intelligence draft.
+No proprietary code, assets, wording, databases, or layouts are used.
 
-### Testing — design validation checklist
+### Coding — focused Stage 2 artifact update
 
-Status: **Specification pass; implementation not yet testable.**
+Added two dependency-free SVG mockups to the existing `agent/ui-dashboard-approval-v1` branch and updated this specification to record Stage 1 approval. No runtime behavior, dependencies, or production UI were changed. The diff remains reversible and contained within draft PR #7.
 
-Validate the implemented screen against:
+### Testing — bounded PR #7 validation
 
-- 1280×720, 1440×900, 1920×1080 desktop layouts without clipped primary actions;
-- 390×844 mobile layout with intentional card reordering rather than scaled-down desktop columns;
-- keyboard traversal in visual order, visible focus indicators, and no focus traps;
-- 200% text zoom without loss of decisions or deadlines;
-- status meaning conveyed by text/icon in addition to color;
-- dense state with at least six decisions and long team/player names;
-- empty state, offline state, loading state, and API error state;
-- lineup alert linked to the exact corrective screen;
-- screen-reader labels for metrics, progress indicators, and urgency;
-- no hidden horizontal scrolling for primary dashboard content.
+**Result: pass with one documented limitation.**
 
-### UI/UX Design — information hierarchy
+Validated the current Stage 2 artifact against these static acceptance criteria:
 
-The proposed hierarchy is:
+- both SVGs include accessible `title` and `desc` elements;
+- desktop mockup is explicitly data-dense and includes six decisions;
+- desktop and mobile both display the 84-game integrity defect as a mandatory/high-priority state;
+- both layouts include a visible offline/non-ideal state;
+- mobile reorders content around decisions and uses bottom navigation rather than scaling the desktop grid;
+- urgency is communicated by text labels in addition to color;
+- primary actions remain singular and contextual per decision card;
+- no production code is touched, so runtime accessibility, focus order, zoom, touch behavior, and API-state testing remain pending Stage 3.
 
-1. **Orientation:** date, game-day state, controlled team, and advance-day action.
-2. **Franchise pulse:** record, standings, next game, cap, owner confidence, and health.
-3. **Decision queue:** urgent or high-value work requiring the GM's judgment.
-4. **Functional summaries:** cap/contracts, roster health, scouting, and league context.
-5. **Timeline:** operating cadence and upcoming deadlines.
+GitHub's combined commit-status endpoint currently reports no legacy status contexts for the latest PR head. This does not prove workflow success; Actions/check-run inspection remains required before merge.
 
-Progressive disclosure keeps tables, dossiers, and historical detail inside their dedicated workspaces. The dashboard remains a command center rather than a data warehouse.
+### UI/UX Design — polished component and hierarchy pass
 
-## Visual direction
+The polished direction now establishes:
 
-- Dark navy foundation with restrained blue accents and high-contrast neutral typography.
-- Large type and stronger contrast only for decisions and primary metrics.
-- Consistent 8-point spacing system and 16–18 px card radii.
-- Minimal hockey decoration; product identity comes from language, data, and operational rhythm.
-- Cards use short summaries and one primary action. Secondary detail opens contextually.
-- Urgency is indicated by label, icon/state, and color—not color alone.
+1. **Orientation header:** date, game state, outstanding mandatory work, and advance control.
+2. **Franchise pulse:** only the most decision-relevant organization metrics.
+3. **Needs Your Attention:** the dominant visual region, sorted by mandatory status and urgency.
+4. **Functional summaries:** scouting, cap/contracts, health, and league context at lower emphasis.
+5. **Timeline and system state:** deadlines plus explicit offline behavior.
 
-## Responsive intent
+The mobile layout promotes mandatory decisions immediately below the franchise pulse, uses compact horizontally paired summaries, and reserves persistent bottom navigation for core workspaces.
 
-Desktop uses a persistent left navigation and a two-column decision queue. Mobile replaces the rail with bottom navigation, places the decision queue immediately after the compact franchise pulse, and converts secondary summaries into horizontally paged or collapsible sections. The advance-day action remains visible but cannot obscure unresolved mandatory decisions.
+## Visual system decisions
+
+- Dark navy foundation, cool neutral typography, and restrained operational blue accents.
+- Red and amber are reserved for status and always paired with text labels.
+- 8-point spacing rhythm with 14–18 px card radii and consistent internal padding.
+- One primary action per decision card; secondary detail uses text links or contextual drawers.
+- Hockey identity comes from terminology, operating cadence, and franchise context rather than decorative rink motifs.
+- Dense information is grouped by decision relevance, not displayed at equal weight.
+
+## Stage 2 visual acceptance criteria
+
+- Mandatory decisions remain above the fold at 1280×720 and 390×844.
+- Advance Day cannot obscure or bypass mandatory unresolved work.
+- Desktop and mobile use the same priority model but intentionally different compositions.
+- Dense states remain scannable with six or more decisions and long names.
+- Offline, loading, empty, and API-error states preserve orientation and recovery actions.
+- Status is never conveyed by color alone.
+- Type remains readable at 200% zoom without hiding deadlines or primary actions.
+- Keyboard focus order follows visual order, with visible focus and no traps.
+- Touch targets are at least 44×44 CSS pixels for interactive mobile controls.
 
 ## Approval request
 
-**Stage 1 — Direction Wireframe**
+**Stage 2 — Polished Visual Mockup**
 
-Kyle: choose one response for this direction:
+Kyle: choose one response for the desktop and mobile direction:
 
-- **Approve** — proceed to a polished visual mockup with realistic dense and error states.
+- **Approve** — proceed to a small implemented dashboard shell and Stage 3 screenshot validation.
 - **Request changes** — identify the elements to revise.
-- **Request alternate concept** — produce a materially different dashboard direction before implementation.
+- **Request alternate concept** — return to a materially different polished direction.
 
-No broad dashboard implementation should begin until Stage 1 is approved.
+Current status: `UI Review Pending — Stage 2`.
