@@ -134,8 +134,20 @@ def get_dashboard(team_id):
 
 
 def get_roster(team_id):
-    """Return organization estimates; never expose true skill columns."""
-    return get_team_roster_view(team_id, team_id)
+    """Return organization estimates; never expose true skill columns.
+
+    The legacy scalar fog field remains at its original ±20 value until the
+    organization receives a completed report. New clients should use the richer
+    overall_range, confidence, observations, and stale fields.
+    """
+    with closing(connect_database()) as conn:
+        conn.row_factory = sqlite3.Row
+        _get_team(conn.cursor(), team_id)
+    payload = get_team_roster_view(team_id, team_id)
+    for player in payload["players"]:
+        if player["report_count"] == 0:
+            player["scouting_uncertainty"] = 20.0
+    return payload
 
 
 class ApiHandler(BaseHTTPRequestHandler):
