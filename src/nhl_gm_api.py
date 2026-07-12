@@ -63,6 +63,9 @@ def list_teams():
 
 
 def get_dashboard(team_id):
+    with closing(connect_database()) as conn:
+        conn.row_factory = sqlite3.Row
+        _get_team(conn.cursor(), team_id)
     initialize_scouting()
     roster_payload = get_team_roster_view(team_id, team_id)
     with closing(connect_database()) as conn:
