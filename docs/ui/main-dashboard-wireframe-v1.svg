@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1024" viewBox="0 0 1440 1024" role="img" aria-labelledby="title desc">
+<title id="title">NHL GM Main Dashboard Direction Wireframe</title>
+<desc id="desc">Premium information-dense desktop dashboard concept with navigation, franchise status, action queue, cap summary, schedule, scouting intelligence, roster health, and league context.</desc>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#09111f"/><stop offset="1" stop-color="#121d30"/></linearGradient>
+  <linearGradient id="hero" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#17345d"/><stop offset="1" stop-color="#0d2442"/></linearGradient>
+  <filter id="shadow"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-opacity="0.22"/></filter>
+  <style>
+    .label{font:600 13px Arial,sans-serif;fill:#8fa3bd;letter-spacing:.6px}.title{font:700 28px Arial,sans-serif;fill:#f7f9fc}.h2{font:700 18px Arial,sans-serif;fill:#f7f9fc}.body{font:400 14px Arial,sans-serif;fill:#cbd5e1}.small{font:400 12px Arial,sans-serif;fill:#8fa3bd}.metric{font:700 25px Arial,sans-serif;fill:#ffffff}.nav{font:600 14px Arial,sans-serif;fill:#b7c4d7}.chip{font:700 11px Arial,sans-serif;fill:#dbeafe;letter-spacing:.5px}
+  </style>
+</defs>
+<rect width="1440" height="1024" fill="url(#bg)"/>
+<rect x="0" y="0" width="224" height="1024" fill="#08101c"/>
+<text x="28" y="45" class="h2">NORTHSTAR HOCKEY</text><text x="28" y="66" class="small">FRONT OFFICE SIMULATION</text>
+<g class="nav"><text x="30" y="126" fill="#fff">●  Command Center</text><text x="30" y="174">Roster</text><text x="30" y="218">Scouting</text><text x="30" y="262">Trade Center</text><text x="30" y="306">Contracts &amp; Cap</text><text x="30" y="350">Draft War Room</text><text x="30" y="394">Staff</text><text x="30" y="438">League</text><text x="30" y="482">Inbox</text></g>
+<rect x="18" y="96" width="188" height="46" rx="10" fill="#17345d"/>
+<line x1="224" y1="0" x2="224" y2="1024" stroke="#24354d"/>
+<text x="28" y="950" class="small">Season 2026–27</text><text x="28" y="973" class="body">Buffalo · General Manager</text>
+
+<text x="264" y="48" class="label">COMMAND CENTER</text><text x="264" y="82" class="title">Good morning, General Manager</text>
+<text x="264" y="108" class="body">Sunday, October 18 · Game Day · 4 decisions require attention</text>
+<rect x="1182" y="34" width="218" height="44" rx="12" fill="#203149"/><text x="1200" y="61" class="body">Advance Day</text><text x="1368" y="61" class="body">→</text>
+
+<rect x="264" y="136" width="1136" height="150" rx="18" fill="url(#hero)" filter="url(#shadow)"/>
+<text x="292" y="170" class="label">FRANCHISE PULSE</text><text x="292" y="209" class="title">Buffalo Blades</text><text x="292" y="238" class="body">6–2–1 · 2nd Atlantic · Next: vs. Toronto, 7:00 PM</text>
+<g transform="translate(736 164)"><text class="label">CAP SPACE</text><text y="38" class="metric">$6.42M</text><text y="62" class="small">$2.15M projected deadline space</text></g>
+<g transform="translate(1002 164)"><text class="label">OWNER CONFIDENCE</text><text y="38" class="metric">78</text><text y="62" class="small">Stable · Playoff expectation</text></g>
+<g transform="translate(1240 164)"><text class="label">TEAM HEALTH</text><text y="38" class="metric">92%</text><text y="62" class="small">2 day-to-day</text></g>
+
+<text x="264" y="330" class="h2">Decision Queue</text><text x="1345" y="330" class="small" text-anchor="end">View all</text>
+<g filter="url(#shadow)"><rect x="264" y="350" width="550" height="192" rx="16" fill="#111d2e"/></g>
+<rect x="284" y="372" width="88" height="24" rx="12" fill="#6b2b2b"/><text x="328" y="389" class="chip" text-anchor="middle">URGENT</text>
+<text x="284" y="428" class="h2">Set tonight’s 20-player lineup</text><text x="284" y="454" class="body">Two players are questionable. Your current lineup has 19 eligible players.</text>
+<text x="284" y="487" class="small">Deadline: 5:00 PM · Operations risk: High</text>
+<rect x="650" y="474" width="140" height="42" rx="10" fill="#2d67a9"/><text x="720" y="500" class="body" text-anchor="middle">Review lineup</text>
+
+<g filter="url(#shadow)"><rect x="834" y="350" width="566" height="192" rx="16" fill="#111d2e"/></g>
+<rect x="854" y="372" width="110" height="24" rx="12" fill="#51421d"/><text x="909" y="389" class="chip" text-anchor="middle">SCOUTING</text>
+<text x="854" y="428" class="h2">3 reports ready for review</text><text x="854" y="454" class="body">Top target confidence improved; one report conflicts with analytics.</text>
+<text x="854" y="487" class="small">New: C. Mercer · D. Varga · M. Ellis</text>
+<rect x="1238" y="474" width="140" height="42" rx="10" fill="#203149"/><text x="1308" y="500" class="body" text-anchor="middle">Open reports</text>
+
+<g filter="url(#shadow)"><rect x="264" y="574" width="360" height="250" rx="16" fill="#111d2e"/></g>
+<text x="286" y="608" class="h2">Cap &amp; Contracts</text><text x="286" y="640" class="small">Projected at trade deadline</text>
+<rect x="286" y="663" width="316" height="14" rx="7" fill="#26364c"/><rect x="286" y="663" width="246" height="14" rx="7" fill="#4f8cc9"/>
+<text x="286" y="710" class="body">Active cap</text><text x="602" y="710" class="body" text-anchor="end">$89.58M</text><text x="286" y="742" class="body">Current space</text><text x="602" y="742" class="body" text-anchor="end">$6.42M</text><text x="286" y="774" class="body">Expiring contracts</text><text x="602" y="774" class="body" text-anchor="end">7</text>
+
+<g filter="url(#shadow)"><rect x="644" y="574" width="376" height="250" rx="16" fill="#111d2e"/></g>
+<text x="666" y="608" class="h2">Roster Health</text><text x="666" y="640" class="small">Availability and workload</text>
+<text x="666" y="685" class="body">Top six availability</text><text x="998" y="685" class="body" text-anchor="end">100%</text><text x="666" y="721" class="body">Defense availability</text><text x="998" y="721" class="body" text-anchor="end">83%</text><text x="666" y="757" class="body">Goalie readiness</text><text x="998" y="757" class="body" text-anchor="end">Good</text><text x="666" y="793" class="body">Fatigue flags</text><text x="998" y="793" class="body" text-anchor="end">2</text>
+
+<g filter="url(#shadow)"><rect x="1040" y="574" width="360" height="250" rx="16" fill="#111d2e"/></g>
+<text x="1062" y="608" class="h2">League Context</text><text x="1062" y="640" class="small">What changed around you</text>
+<text x="1062" y="681" class="body">Toronto placed D. Hale on waivers</text><text x="1062" y="715" class="body">Boston opened trade talks on a RD</text><text x="1062" y="749" class="body">Ottawa prospect stock is rising</text><text x="1062" y="783" class="body">Atlantic pace: 101-point cutoff</text>
+
+<g filter="url(#shadow)"><rect x="264" y="846" width="1136" height="130" rx="16" fill="#111d2e"/></g>
+<text x="286" y="880" class="h2">Today’s Timeline</text><text x="286" y="914" class="body">10:00 AM · Staff briefing</text><text x="530" y="914" class="body">1:00 PM · Scout review</text><text x="772" y="914" class="body">5:00 PM · Lineup deadline</text><text x="1032" y="914" class="body">7:00 PM · vs. Toronto</text>
+<text x="286" y="948" class="small">Progressive disclosure: detailed tables and reports open from each card; the dashboard surfaces only decisions, risks, and changes.</text>
+</svg>
