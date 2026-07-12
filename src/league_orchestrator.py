@@ -301,10 +301,10 @@ def advance_day():
         conn.commit()
     DynamicFinancialPool.process_daily_cap_accrual()
     try:
-        from .scouting_service import process_scouting_day
+        from .scouting_runtime import process_scouting_if_due
     except ImportError:  # pragma: no cover
-        from scouting_service import process_scouting_day
-    scouting = process_scouting_day(new_day)
+        from scouting_runtime import process_scouting_if_due
+    scouting = process_scouting_if_due(new_day)
     completed_games = simulate_scheduled_day(new_day)
     return {
         "calendar": {"current_day": new_day, "max_days": max_days},
