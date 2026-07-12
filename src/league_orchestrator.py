@@ -1,21 +1,12 @@
-"""Persistent regular-season schedule, standings, and daily league simulation."""
+"""Persistent regular-season schedule, standings, daily simulation, and scouting."""
 
 import sqlite3
 from contextlib import closing
 
 try:
-    from .nhl_gm_core import (
-        DynamicFinancialPool,
-        TacticalMatchSimulator,
-        connect_database,
-    )
-except ImportError:  # Support direct imports from scripts in src/.
-    from nhl_gm_core import (
-        DynamicFinancialPool,
-        TacticalMatchSimulator,
-        connect_database,
-    )
-
+    from .nhl_gm_core import DynamicFinancialPool, TacticalMatchSimulator, connect_database
+except ImportError:  # pragma: no cover
+    from nhl_gm_core import DynamicFinancialPool, TacticalMatchSimulator, connect_database
 
 REGULAR_SEASON_GAMES = 82
 
@@ -58,20 +49,21 @@ def initialize_league():
             );
             """
         )
-        team_ids = [
-            row[0]
-            for row in conn.execute(
-                "SELECT id FROM teams WHERE tier = 'NHL' ORDER BY id"
-            ).fetchall()
-        ]
+        team_ids = [row[0] for row in conn.execute(
+            "SELECT id FROM teams WHERE tier = 'NHL' ORDER BY id"
+        ).fetchall()]
         conn.executemany(
             "INSERT OR IGNORE INTO standings (team_id) VALUES (?)",
             [(team_id,) for team_id in team_ids],
         )
-        schedule_count = conn.execute("SELECT COUNT(*) FROM schedule").fetchone()[0]
-        if schedule_count == 0:
+        if conn.execute("SELECT COUNT(*) FROM schedule").fetchone()[0] == 0:
             _seed_schedule(conn, team_ids)
         conn.commit()
+    try:
+        from .scouting_service import initialize_scouting
+    except ImportError:  # pragma: no cover
+        from scouting_service import initialize_scouting
+    initialize_scouting()
 
 
 def _round_robin_rounds(team_ids):
@@ -80,7 +72,6 @@ def _round_robin_rounds(team_ids):
         participants.append(None)
     if len(participants) < 2:
         return []
-
     rounds = []
     for _ in range(len(participants) - 1):
         pairings = []
@@ -96,18 +87,11 @@ def _round_robin_rounds(team_ids):
 
 
 def _orient_balanced_home_games(games):
-    """Orient an even-degree matchup graph into exact home/away balance.
-
-    Every team has degree 82 in the generated multigraph. Decomposing that graph
-    into cycles and orienting each cycle gives every vertex equal in-degree and
-    out-degree, which guarantees 41 home and 41 away games without changing the
-    opponent or calendar structure.
-    """
+    """Orient an even-degree matchup graph into exact home/away balance."""
     adjacency = {}
     for edge_id, (_, first, second) in enumerate(games):
         adjacency.setdefault(first, []).append(edge_id)
         adjacency.setdefault(second, []).append(edge_id)
-
     unused = set(range(len(games)))
     oriented = {}
     while unused:
@@ -115,13 +99,9 @@ def _orient_balanced_home_games(games):
         start = games[first_edge][1]
         current = start
         while True:
-            candidates = [
-                edge_id for edge_id in adjacency[current] if edge_id in unused
-            ]
+            candidates = [edge_id for edge_id in adjacency[current] if edge_id in unused]
             if not candidates:
-                raise ValueError(
-                    "Schedule graph could not be decomposed into closed cycles"
-                )
+                raise ValueError("Schedule graph could not be decomposed into closed cycles")
             edge_id = min(candidates)
             unused.remove(edge_id)
             _, first, second = games[edge_id]
@@ -137,7 +117,6 @@ def _seed_schedule(conn, team_ids):
     rounds = _round_robin_rounds(team_ids)
     if not rounds:
         return
-
     max_day = conn.execute(
         "SELECT max_days FROM league_calendar WHERE id = 1"
     ).fetchone()[0]
@@ -145,28 +124,19 @@ def _seed_schedule(conn, team_ids):
     games = []
     day = 2
     round_index = 0
-
     while day <= max_day and min(games_scheduled.values()) < REGULAR_SEASON_GAMES:
-        pairings = rounds[round_index % len(rounds)]
-        for first, second in pairings:
-            if (
-                games_scheduled[first] >= REGULAR_SEASON_GAMES
-                or games_scheduled[second] >= REGULAR_SEASON_GAMES
-            ):
+        for first, second in rounds[round_index % len(rounds)]:
+            if games_scheduled[first] >= REGULAR_SEASON_GAMES or games_scheduled[second] >= REGULAR_SEASON_GAMES:
                 continue
             games.append((day, first, second))
             games_scheduled[first] += 1
             games_scheduled[second] += 1
         day += 2
         round_index += 1
-
     oriented = _orient_balanced_home_games(games)
     conn.executemany(
         "INSERT INTO schedule (day, home_team_id, away_team_id) VALUES (?, ?, ?)",
-        [
-            (day, *oriented[edge_id])
-            for edge_id, (day, _, _) in enumerate(games)
-        ],
+        [(day, *oriented[edge_id]) for edge_id, (day, _, _) in enumerate(games)],
     )
 
 
@@ -196,7 +166,6 @@ def get_schedule(day=None, team_id=None, limit=20):
         parameters.extend([team_id, team_id])
     where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
     parameters.append(max(1, min(200, limit)))
-
     with closing(connect_database()) as conn:
         conn.row_factory = sqlite3.Row
         rows = conn.execute(
@@ -217,21 +186,13 @@ def get_schedule(day=None, team_id=None, limit=20):
 def _next_streak(current, outcome):
     if current.startswith(outcome):
         try:
-            return f"{outcome}{int(current[1:]) + 1}"
+            return f"{outcome}{int(current[len(outcome):]) + 1}"
         except ValueError:
             pass
     return f"{outcome}1"
 
 
-def _record_team_result(
-    conn,
-    team_id,
-    goals_for,
-    goals_against,
-    won,
-    overtime_loss,
-    day,
-):
+def _record_team_result(conn, team_id, goals_for, goals_against, won, overtime_loss, day):
     current_streak = conn.execute(
         "SELECT streak FROM standings WHERE team_id = ?", (team_id,)
     ).fetchone()[0]
@@ -240,26 +201,16 @@ def _record_team_result(
         """
         UPDATE standings
         SET games_played = games_played + 1,
-            wins = wins + ?,
-            losses = losses + ?,
-            overtime_losses = overtime_losses + ?,
-            points = points + ?,
-            goals_for = goals_for + ?,
-            goals_against = goals_against + ?,
-            streak = ?,
-            updated_day = ?
+            wins = wins + ?, losses = losses + ?,
+            overtime_losses = overtime_losses + ?, points = points + ?,
+            goals_for = goals_for + ?, goals_against = goals_against + ?,
+            streak = ?, updated_day = ?
         WHERE team_id = ?
         """,
         (
-            int(won),
-            int(not won and not overtime_loss),
-            int(overtime_loss),
+            int(won), int(not won and not overtime_loss), int(overtime_loss),
             2 if won else 1 if overtime_loss else 0,
-            goals_for,
-            goals_against,
-            _next_streak(current_streak, outcome),
-            day,
-            team_id,
+            goals_for, goals_against, _next_streak(current_streak, outcome), day, team_id,
         ),
     )
 
@@ -267,8 +218,7 @@ def _record_team_result(
 def _release_game_claim(game_id):
     with closing(connect_database()) as conn:
         conn.execute(
-            "UPDATE schedule SET status = 'scheduled' "
-            "WHERE id = ? AND status = 'in_progress'",
+            "UPDATE schedule SET status = 'scheduled' WHERE id = ? AND status = 'in_progress'",
             (game_id,),
         )
         conn.commit()
@@ -280,21 +230,18 @@ def simulate_scheduled_day(day):
     for game in games:
         with closing(connect_database()) as conn:
             claimed = conn.execute(
-                "UPDATE schedule SET status = 'in_progress' "
-                "WHERE id = ? AND status = 'scheduled'",
+                "UPDATE schedule SET status = 'in_progress' WHERE id = ? AND status = 'scheduled'",
                 (game["id"],),
             ).rowcount
             conn.commit()
         if not claimed:
             continue
-
         try:
             result = TacticalMatchSimulator(
                 game["home_team_id"], game["away_team_id"]
             ).execute_match_simulation(structured=True, persist_fatigue=False)
             if result["status"] != "completed":
                 raise RuntimeError(result["error"])
-
             home_won = result["home_score"] > result["away_score"]
             with closing(connect_database()) as conn:
                 conn.execute(
@@ -305,59 +252,40 @@ def simulate_scheduled_day(day):
                     WHERE id = ?
                     """,
                     (
-                        result["home_score"],
-                        result["away_score"],
-                        int(result["overtime"]),
-                        result["log"],
-                        game["id"],
+                        result["home_score"], result["away_score"], int(result["overtime"]),
+                        result["log"], game["id"],
                     ),
                 )
                 conn.executemany(
-                    "UPDATE players SET fatigue = fatigue + 25.0, "
-                    "back_to_back_started = 1 WHERE id = ?",
+                    "UPDATE players SET fatigue = fatigue + 25.0, back_to_back_started = 1 WHERE id = ?",
                     [(result["home_goalie_id"],), (result["away_goalie_id"],)],
                 )
                 _record_team_result(
-                    conn,
-                    game["home_team_id"],
-                    result["home_score"],
-                    result["away_score"],
-                    home_won,
-                    result["overtime"] and not home_won,
-                    day,
+                    conn, game["home_team_id"], result["home_score"], result["away_score"],
+                    home_won, result["overtime"] and not home_won, day,
                 )
                 _record_team_result(
-                    conn,
-                    game["away_team_id"],
-                    result["away_score"],
-                    result["home_score"],
-                    not home_won,
-                    result["overtime"] and home_won,
-                    day,
+                    conn, game["away_team_id"], result["away_score"], result["home_score"],
+                    not home_won, result["overtime"] and home_won, day,
                 )
                 conn.commit()
         except Exception:
             _release_game_claim(game["id"])
             raise
-
         completed.append(
             {
-                "id": game["id"],
-                "day": day,
-                "home_team_id": game["home_team_id"],
-                "home_team": game["home_team"],
+                "id": game["id"], "day": day,
+                "home_team_id": game["home_team_id"], "home_team": game["home_team"],
                 "home_score": result["home_score"],
-                "away_team_id": game["away_team_id"],
-                "away_team": game["away_team"],
-                "away_score": result["away_score"],
-                "overtime": result["overtime"],
+                "away_team_id": game["away_team_id"], "away_team": game["away_team"],
+                "away_score": result["away_score"], "overtime": result["overtime"],
             }
         )
     return completed
 
 
 def advance_day():
-    """Advance one day, settle finances, simulate the slate, and return league state."""
+    """Advance one day, settle finances, scouting, games, and standings."""
     with closing(connect_database()) as conn:
         conn.execute("BEGIN IMMEDIATE")
         current_day, max_days = conn.execute(
@@ -367,19 +295,20 @@ def advance_day():
             conn.rollback()
             raise ValueError("The regular-season calendar is already complete")
         new_day = current_day + 1
-        conn.execute(
-            "UPDATE league_calendar SET current_day = ? WHERE id = 1", (new_day,)
-        )
+        conn.execute("UPDATE league_calendar SET current_day = ? WHERE id = 1", (new_day,))
         conn.execute("UPDATE players SET fatigue = MAX(0.0, fatigue - 5.0)")
-        conn.execute(
-            "UPDATE players SET back_to_back_started = 0 WHERE fatigue = 0.0"
-        )
+        conn.execute("UPDATE players SET back_to_back_started = 0 WHERE fatigue = 0.0")
         conn.commit()
-
     DynamicFinancialPool.process_daily_cap_accrual()
+    try:
+        from .scouting_service import process_scouting_day
+    except ImportError:  # pragma: no cover
+        from scouting_service import process_scouting_day
+    scouting = process_scouting_day(new_day)
     completed_games = simulate_scheduled_day(new_day)
     return {
         "calendar": {"current_day": new_day, "max_days": max_days},
         "games": completed_games,
+        "scouting": scouting,
         **get_standings(),
     }
