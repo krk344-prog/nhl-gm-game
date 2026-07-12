@@ -113,3 +113,5 @@ Kyle: choose one response for the desktop and mobile direction:
 - **Request alternate concept** — return to a materially different polished direction.
 
 Current status: `UI Review Pending — Stage 2`.
+
+The prior Stage 1 wireframe remains retained for traceability but is superseded by these Stage 2 previews for the current approval decision.
