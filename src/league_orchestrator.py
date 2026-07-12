@@ -95,6 +95,44 @@ def _round_robin_rounds(team_ids):
     return rounds
 
 
+def _orient_balanced_home_games(games):
+    """Orient an even-degree matchup graph into exact home/away balance.
+
+    Every team has degree 82 in the generated multigraph. Decomposing that graph
+    into cycles and orienting each cycle gives every vertex equal in-degree and
+    out-degree, which guarantees 41 home and 41 away games without changing the
+    opponent or calendar structure.
+    """
+    adjacency = {}
+    for edge_id, (_, first, second) in enumerate(games):
+        adjacency.setdefault(first, []).append(edge_id)
+        adjacency.setdefault(second, []).append(edge_id)
+
+    unused = set(range(len(games)))
+    oriented = {}
+    while unused:
+        first_edge = min(unused)
+        start = games[first_edge][1]
+        current = start
+        while True:
+            candidates = [
+                edge_id for edge_id in adjacency[current] if edge_id in unused
+            ]
+            if not candidates:
+                raise ValueError(
+                    "Schedule graph could not be decomposed into closed cycles"
+                )
+            edge_id = min(candidates)
+            unused.remove(edge_id)
+            _, first, second = games[edge_id]
+            opponent = second if first == current else first
+            oriented[edge_id] = (current, opponent)
+            current = opponent
+            if current == start:
+                break
+    return oriented
+
+
 def _seed_schedule(conn, team_ids):
     rounds = _round_robin_rounds(team_ids)
     if not rounds:
@@ -104,27 +142,32 @@ def _seed_schedule(conn, team_ids):
         "SELECT max_days FROM league_calendar WHERE id = 1"
     ).fetchone()[0]
     games_scheduled = {team_id: 0 for team_id in team_ids}
+    games = []
     day = 2
     round_index = 0
 
     while day <= max_day and min(games_scheduled.values()) < REGULAR_SEASON_GAMES:
         pairings = rounds[round_index % len(rounds)]
-        for pairing_index, (first, second) in enumerate(pairings):
+        for first, second in pairings:
             if (
                 games_scheduled[first] >= REGULAR_SEASON_GAMES
                 or games_scheduled[second] >= REGULAR_SEASON_GAMES
             ):
                 continue
-            reverse_home = (round_index + pairing_index) % 2 == 1
-            home_id, away_id = (second, first) if reverse_home else (first, second)
-            conn.execute(
-                "INSERT INTO schedule (day, home_team_id, away_team_id) VALUES (?, ?, ?)",
-                (day, home_id, away_id),
-            )
+            games.append((day, first, second))
             games_scheduled[first] += 1
             games_scheduled[second] += 1
         day += 2
         round_index += 1
+
+    oriented = _orient_balanced_home_games(games)
+    conn.executemany(
+        "INSERT INTO schedule (day, home_team_id, away_team_id) VALUES (?, ?, ?)",
+        [
+            (day, *oriented[edge_id])
+            for edge_id, (day, _, _) in enumerate(games)
+        ],
+    )
 
 
 def get_standings():

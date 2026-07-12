@@ -1,0 +1,82 @@
+{
+  "profile_id": "nhl-2025-26-alpha-v0",
+  "as_of": "2026-07-11",
+  "description": "Broad calibration guardrails for the current 82-game alpha engine. These are tuning envelopes, not an official NHL statistical snapshot.",
+  "league_structure": {
+    "games_per_team": 82,
+    "home_games_per_team": 41,
+    "away_games_per_team": 41
+  },
+  "metric_targets": {
+    "average_combined_goals": {
+      "label": "Combined goals per game",
+      "minimum": 5.0,
+      "maximum": 7.5,
+      "unit": "goals/game",
+      "min_samples": 1
+    },
+    "home_win_rate": {
+      "label": "Home-team win rate",
+      "minimum": 0.47,
+      "maximum": 0.58,
+      "unit": "share",
+      "min_samples": 1
+    },
+    "overtime_rate": {
+      "label": "Games reaching overtime",
+      "minimum": 0.18,
+      "maximum": 0.30,
+      "unit": "share",
+      "min_samples": 1
+    },
+    "one_goal_game_rate": {
+      "label": "One-goal game rate",
+      "minimum": 0.32,
+      "maximum": 0.55,
+      "unit": "share",
+      "min_samples": 1
+    },
+    "average_shot_attempts_per_team": {
+      "label": "Simulated shot attempts per team",
+      "minimum": 26.0,
+      "maximum": 34.0,
+      "unit": "attempts/game",
+      "min_samples": 1
+    },
+    "average_points_stddev": {
+      "label": "Within-season standings dispersion",
+      "minimum": 5.0,
+      "maximum": 18.0,
+      "unit": "points standard deviation",
+      "min_samples": 1
+    },
+    "strength_points_correlation": {
+      "label": "Roster-strength to points correlation",
+      "minimum": 0.20,
+      "maximum": 0.85,
+      "unit": "Pearson r",
+      "min_samples": 3
+    },
+    "champion_concentration": {
+      "label": "Most frequent champion share",
+      "minimum": 0.10,
+      "maximum": 0.50,
+      "unit": "share",
+      "min_samples": 8
+    }
+  },
+  "adversarial": {
+    "dominance_threshold_points": 14.0,
+    "description": "Flag a single-axis roster stress scenario when its paired average uplift exceeds this many standings points."
+  },
+  "sources": [
+    {
+      "name": "NHL public statistics",
+      "url": "https://www.nhl.com/stats/"
+    },
+    {
+      "name": "NHL hockey operations guidelines",
+      "url": "https://www.nhl.com/info/hockey-operations-guidelines"
+    }
+  ]
+}
