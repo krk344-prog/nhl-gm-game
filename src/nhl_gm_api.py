@@ -1,8 +1,7 @@
-"""Small JSON API exposing persisted NHL GM game state to the mobile client."""
+"""Dependency-free JSON API exposing persisted NHL GM state."""
 
 import argparse
 import json
-import math
 import os
 import re
 import sqlite3
@@ -15,59 +14,35 @@ from urllib.parse import parse_qs, urlparse
 try:
     from .game_service import get_game_state, reset_game, select_user_team
     from .nhl_gm_core import connect_database, init_database
-    from .league_orchestrator import (
-        advance_day,
-        get_schedule,
-        get_standings,
-        initialize_league,
+    from .league_orchestrator import advance_day, get_schedule, get_standings, initialize_league
+    from .trade_service import evaluate_trade, execute_trade, get_trade_history, get_trade_market
+    from .scouting_service import (
+        create_assignment,
+        get_player_dossier,
+        get_scouting_center,
+        get_team_roster_view,
+        initialize_scouting,
+        list_reports,
+        run_accuracy_calibration,
     )
-    from .trade_service import (
-        evaluate_trade,
-        execute_trade,
-        get_trade_history,
-        get_trade_market,
-    )
-except ImportError:  # Support direct execution: python src/nhl_gm_api.py
+except ImportError:  # pragma: no cover
     from game_service import get_game_state, reset_game, select_user_team
     from nhl_gm_core import connect_database, init_database
-    from league_orchestrator import (
-        advance_day,
-        get_schedule,
-        get_standings,
-        initialize_league,
-    )
-    from trade_service import (
-        evaluate_trade,
-        execute_trade,
-        get_trade_history,
-        get_trade_market,
+    from league_orchestrator import advance_day, get_schedule, get_standings, initialize_league
+    from trade_service import evaluate_trade, execute_trade, get_trade_history, get_trade_market
+    from scouting_service import (
+        create_assignment,
+        get_player_dossier,
+        get_scouting_center,
+        get_team_roster_view,
+        initialize_scouting,
+        list_reports,
+        run_accuracy_calibration,
     )
 
 
 def _rating(values):
     return round(sum(values) / len(values)) if values else 0
-
-
-def _player_overall(player):
-    if player["position"] == "G":
-        values = [player["positioning"], player["reflexes"], player["speed"]]
-    elif player["position"] == "D":
-        values = [
-            player["shooting"],
-            player["passing"],
-            player["positioning"],
-            player["speed"],
-            player["checking"],
-        ]
-    else:
-        values = [
-            player["shooting"],
-            player["passing"],
-            player["positioning"],
-            player["speed"],
-            player["checking"],
-        ]
-    return _rating(values)
 
 
 def _get_team(cursor, team_id):
@@ -88,24 +63,14 @@ def list_teams():
 
 
 def get_dashboard(team_id):
+    initialize_scouting()
+    roster_payload = get_team_roster_view(team_id, team_id)
     with closing(connect_database()) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         team = _get_team(cursor, team_id)
-        calendar = dict(
-            cursor.execute("SELECT * FROM league_calendar WHERE id = 1").fetchone()
-        )
-        players = [
-            dict(row)
-            for row in cursor.execute(
-                "SELECT position, shooting, passing, positioning, reflexes, speed, checking, aav "
-                "FROM players WHERE team_id = ?",
-                (team_id,),
-            ).fetchall()
-        ]
-        standing_row = cursor.execute(
-            "SELECT * FROM standings WHERE team_id = ?", (team_id,)
-        ).fetchone()
+        calendar = dict(cursor.execute("SELECT * FROM league_calendar WHERE id = 1").fetchone())
+        standing_row = cursor.execute("SELECT * FROM standings WHERE team_id = ?", (team_id,)).fetchone()
         next_game_row = cursor.execute(
             """
             SELECT s.day, s.home_team_id, s.away_team_id,
@@ -113,128 +78,64 @@ def get_dashboard(team_id):
             FROM schedule s
             JOIN teams home ON home.id = s.home_team_id
             JOIN teams away ON away.id = s.away_team_id
-            WHERE s.day > ?
-              AND (s.home_team_id = ? OR s.away_team_id = ?)
+            WHERE s.day > ? AND (s.home_team_id = ? OR s.away_team_id = ?)
               AND s.status = 'scheduled'
-            ORDER BY s.day, s.id
-            LIMIT 1
+            ORDER BY s.day, s.id LIMIT 1
             """,
             (calendar["current_day"], team_id, team_id),
         ).fetchone()
-
-    cap_hit = sum(player["aav"] for player in players)
-    days_remaining = max(1, calendar["max_days"] - calendar["current_day"])
-    buying_power = calendar["accrued_margin"] * (
-        calendar["max_days"] / days_remaining
-    )
+        cap_hit = cursor.execute(
+            "SELECT COALESCE(SUM(aav), 0) FROM players WHERE team_id = ?", (team_id,)
+        ).fetchone()[0]
+    players = roster_payload["players"]
     forwards = [player for player in players if player["position"] == "F"]
     defensemen = [player for player in players if player["position"] == "D"]
     goalies = [player for player in players if player["position"] == "G"]
-    offense = _rating(
-        [
-            (player["shooting"] + player["passing"] + player["speed"]) / 3
-            for player in forwards
-        ]
-    )
-    defense = _rating(
-        [
-            (player["positioning"] + player["checking"] + player["passing"]) / 3
-            for player in defensemen
-        ]
-    )
-    goalie_rating = _rating(
-        [(player["positioning"] + player["reflexes"]) / 2 for player in goalies]
-    )
-    standing = dict(standing_row) if standing_row else None
+    offense = _rating([player["overall"] for player in forwards])
+    defense = _rating([player["overall"] for player in defensemen])
+    goalie_rating = _rating([player["overall"] for player in goalies])
+    days_remaining = max(1, calendar["max_days"] - calendar["current_day"])
+    buying_power = calendar["accrued_margin"] * (calendar["max_days"] / days_remaining)
     next_game = None
     if next_game_row:
-        next_game_data = dict(next_game_row)
-        is_home = next_game_data["home_team_id"] == team_id
+        data = dict(next_game_row)
+        is_home = data["home_team_id"] == team_id
         next_game = {
-            "day": next_game_data["day"],
+            "day": data["day"],
             "venue": "home" if is_home else "away",
-            "opponent_id": (
-                next_game_data["away_team_id"]
-                if is_home
-                else next_game_data["home_team_id"]
-            ),
-            "opponent": (
-                next_game_data["away_team"]
-                if is_home
-                else next_game_data["home_team"]
-            ),
+            "opponent_id": data["away_team_id"] if is_home else data["home_team_id"],
+            "opponent": data["away_team"] if is_home else data["home_team"],
         }
-
     return {
         "team": {
-            "id": team["id"],
-            "name": team["name"],
-            "city": team["city"],
-            "tier": team["tier"],
-            "gm_trust_score": team["gm_trust_score"],
+            "id": team["id"], "name": team["name"], "city": team["city"],
+            "tier": team["tier"], "gm_trust_score": team["gm_trust_score"],
             "franchise_mandate": team["franchise_mandate"],
         },
-        "calendar": {
-            "current_day": calendar["current_day"],
-            "max_days": calendar["max_days"],
-        },
+        "calendar": {"current_day": calendar["current_day"], "max_days": calendar["max_days"]},
         "finances": {
-            "cash_balance": team["cash_balance"],
-            "cap_hit": cap_hit,
+            "cash_balance": team["cash_balance"], "cap_hit": cap_hit,
             "cap_ceiling": calendar["salary_cap_ceiling"],
             "cap_space": calendar["salary_cap_ceiling"] - cap_hit,
             "accrued_deadline_buying_power": buying_power,
         },
         "ratings": {
-            "overall": _rating(
-                [value for value in [offense, defense, goalie_rating] if value]
-            ),
-            "offense": offense,
-            "defense": defense,
-            "goalies": goalie_rating,
+            "overall": _rating([value for value in (offense, defense, goalie_rating) if value]),
+            "offense": offense, "defense": defense, "goalies": goalie_rating,
+            "source": "organization scouting consensus",
         },
         "roster": {
-            "total": len(players),
-            "forwards": len(forwards),
-            "defensemen": len(defensemen),
-            "goalies": len(goalies),
+            "total": len(players), "forwards": len(forwards),
+            "defensemen": len(defensemen), "goalies": len(goalies),
         },
-        "standing": standing,
+        "standing": dict(standing_row) if standing_row else None,
         "next_game": next_game,
     }
 
 
 def get_roster(team_id):
-    with closing(connect_database()) as conn:
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        team = _get_team(cursor, team_id)
-        rows = cursor.execute(
-            """
-            SELECT id, name, age, position, archetype, shooting, passing,
-                   positioning, reflexes, speed, checking, aav, contract_years,
-                   fatigue, scout_observations
-            FROM players
-            WHERE team_id = ?
-            ORDER BY CASE position WHEN 'F' THEN 1 WHEN 'D' THEN 2 ELSE 3 END, id
-            """,
-            (team_id,),
-        ).fetchall()
-
-    players = []
-    for row in rows:
-        player = dict(row)
-        player["overall"] = _player_overall(player)
-        player["scouting_uncertainty"] = round(
-            20.0 * math.exp(-0.35 * player["scout_observations"]), 2
-        )
-        players.append(player)
-
-    return {
-        "team": {"id": team["id"], "name": team["name"], "city": team["city"]},
-        "count": len(players),
-        "players": players,
-    }
+    """Return organization estimates; never expose true skill columns."""
+    return get_team_roster_view(team_id, team_id)
 
 
 class ApiHandler(BaseHTTPRequestHandler):
@@ -276,12 +177,7 @@ class ApiHandler(BaseHTTPRequestHandler):
 
     @staticmethod
     def _trade_arguments(payload):
-        required = (
-            "user_team_id",
-            "offered_player_id",
-            "target_team_id",
-            "target_player_id",
-        )
+        required = ("user_team_id", "offered_player_id", "target_team_id", "target_player_id")
         missing = [name for name in required if name not in payload]
         if missing:
             raise ValueError("Missing trade fields: " + ", ".join(missing))
@@ -296,7 +192,7 @@ class ApiHandler(BaseHTTPRequestHandler):
         query = parse_qs(parsed.query)
         try:
             if path == "/api/v1/health":
-                self._send_json(200, {"status": "ok", "version": "0.2.0-alpha"})
+                self._send_json(200, {"status": "ok", "version": "0.2.0-alpha", "scouting": "v1"})
                 return
             if path == "/api/v1/game":
                 self._send_json(200, get_game_state())
@@ -305,20 +201,19 @@ class ApiHandler(BaseHTTPRequestHandler):
                 game = get_game_state()
                 user_team_id = game["user_team_id"]
                 team_schedule = get_schedule(team_id=user_team_id, limit=200)["games"]
-                self._send_json(
-                    200,
-                    {
-                        "version": "0.2.0-alpha",
-                        "game": game,
-                        "standings": get_standings()["standings"],
-                        "recent_games": [
-                            item for item in team_schedule if item["status"] == "completed"
-                        ][-10:],
-                        "trade_history": get_trade_history(user_team_id, limit=10)[
-                            "trades"
-                        ],
+                scouting = get_scouting_center(user_team_id)
+                self._send_json(200, {
+                    "version": "0.2.0-alpha",
+                    "game": game,
+                    "standings": get_standings()["standings"],
+                    "recent_games": [item for item in team_schedule if item["status"] == "completed"][-10:],
+                    "trade_history": get_trade_history(user_team_id, limit=10)["trades"],
+                    "scouting": {
+                        "department": scouting["department"],
+                        "active_assignments": [item for item in scouting["assignments"] if item["status"] == "active"],
+                        "recent_reports": scouting["recent_reports"][:5],
                     },
-                )
+                })
                 return
             if path == "/api/v1/teams":
                 self._send_json(200, list_teams())
@@ -330,38 +225,42 @@ class ApiHandler(BaseHTTPRequestHandler):
                 day = int(query["day"][0]) if "day" in query else None
                 team_id = int(query["team_id"][0]) if "team_id" in query else None
                 limit = int(query.get("limit", [20])[0])
-                self._send_json(
-                    200, get_schedule(day=day, team_id=team_id, limit=limit)
-                )
+                self._send_json(200, get_schedule(day=day, team_id=team_id, limit=limit))
                 return
             if path == "/api/v1/trade-market":
                 user_team_id = int(query.get("user_team_id", [1])[0])
-                target_team_id = (
-                    int(query["target_team_id"][0])
-                    if "target_team_id" in query
-                    else None
-                )
-                self._send_json(
-                    200,
-                    get_trade_market(
-                        user_team_id=user_team_id, target_team_id=target_team_id
-                    ),
-                )
+                target_team_id = int(query["target_team_id"][0]) if "target_team_id" in query else None
+                self._send_json(200, get_trade_market(user_team_id, target_team_id))
                 return
             if path == "/api/v1/trades/history":
                 user_team_id = int(query.get("user_team_id", [1])[0])
                 limit = int(query.get("limit", [20])[0])
                 self._send_json(200, get_trade_history(user_team_id, limit=limit))
                 return
+            if path == "/api/v1/scouting":
+                self._send_json(200, get_scouting_center(int(query.get("team_id", [1])[0])))
+                return
+            if path == "/api/v1/scouting/reports":
+                team_id = int(query.get("team_id", [1])[0])
+                player_id = int(query["player_id"][0]) if "player_id" in query else None
+                limit = int(query.get("limit", [50])[0])
+                self._send_json(200, {"reports": list_reports(team_id, player_id, limit)})
+                return
+            if path == "/api/v1/scouting/player":
+                team_id = int(query.get("team_id", [1])[0])
+                if "player_id" not in query:
+                    raise ValueError("Missing query field: player_id")
+                self._send_json(200, get_player_dossier(team_id, int(query["player_id"][0])))
+                return
+            if path == "/api/v1/scouting/calibration":
+                team_id = int(query.get("team_id", [1])[0])
+                samples = int(query.get("samples", [5])[0])
+                self._send_json(200, run_accuracy_calibration(team_id, samples=samples))
+                return
             match = self.team_route.match(path)
             if match:
                 team_id = int(match.group(1))
-                payload = (
-                    get_dashboard(team_id)
-                    if match.group(2) == "dashboard"
-                    else get_roster(team_id)
-                )
-                self._send_json(200, payload)
+                self._send_json(200, get_dashboard(team_id) if match.group(2) == "dashboard" else get_roster(team_id))
                 return
             self._send_json(404, {"error": "Route not found"})
         except LookupError as error:
@@ -387,13 +286,10 @@ class ApiHandler(BaseHTTPRequestHandler):
                 payload = self._read_json()
                 if payload.get("confirm") != "RESET":
                     raise ValueError("Reset requires confirm='RESET'")
-                self._send_json(
-                    200,
-                    reset_game(
-                        seed=payload.get("seed", 7),
-                        save_name=payload.get("save_name", "Alpha Franchise"),
-                    ),
-                )
+                self._send_json(200, reset_game(
+                    seed=payload.get("seed", 7),
+                    save_name=payload.get("save_name", "Alpha Franchise"),
+                ))
                 return
             if path in ("/api/v1/trades/evaluate", "/api/v1/trades/execute"):
                 arguments = self._trade_arguments(self._read_json())
@@ -403,12 +299,26 @@ class ApiHandler(BaseHTTPRequestHandler):
                 result = execute_trade(**arguments)
                 self._send_json(200 if result["executed"] else 409, result)
                 return
+            if path == "/api/v1/scouting/assignments":
+                payload = self._read_json()
+                required = ("team_id", "scout_id", "player_id")
+                missing = [field for field in required if field not in payload]
+                if missing:
+                    raise ValueError("Missing scouting fields: " + ", ".join(missing))
+                assignment = create_assignment(
+                    int(payload["team_id"]),
+                    int(payload["scout_id"]),
+                    int(payload["player_id"]),
+                    focus=payload.get("focus", "overall"),
+                    depth=payload.get("depth", "standard"),
+                )
+                self._send_json(201, assignment)
+                return
             self._send_json(404, {"error": "Route not found"})
         except LookupError as error:
             self._send_json(404, {"error": str(error)})
         except ValueError as error:
-            status = 409 if path == "/api/v1/advance-day" else 400
-            self._send_json(status, {"error": str(error)})
+            self._send_json(409 if path == "/api/v1/advance-day" else 400, {"error": str(error)})
         except Exception as error:
             self._send_internal_error(error)
 
@@ -424,12 +334,8 @@ def main():
     parser = argparse.ArgumentParser(description="Serve NHL GM game state as JSON")
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8000)
-    parser.add_argument(
-        "--db",
-        help="SQLite database path (defaults to NHL_GM_DB_PATH or nhl_gm_core.db)",
-    )
+    parser.add_argument("--db", help="SQLite database path")
     args = parser.parse_args()
-
     if args.db:
         os.environ["NHL_GM_DB_PATH"] = args.db
     init_database()
