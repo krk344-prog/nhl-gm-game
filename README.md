@@ -1,81 +1,51 @@
 # NHL GM Game
 
-A Python-based NHL general manager simulation game built around persistent franchise state, CBA-style cap logic, scouting uncertainty, tactical match simulation, trade evaluation, executive risk management, and a mobile-first franchise UI prototype.
+A Python-based NHL general manager simulation game built around persistent franchise state, season-versioned rules, CBA-style cap logic, scouting uncertainty, tactical match simulation, trade evaluation, executive risk management, and a mobile-first franchise UI prototype.
 
 ## Current Core
 
-The initial game engine lives in:
+The simulation engine lives in:
 
 ```bash
 src/nhl_gm_core.py
 ```
 
-It currently runs as a terminal-based simulation app with SQLite persistence.
+It now binds every save to an immutable season ruleset from `config/rules/`. New saves must receive a cap-accrual denominator derived from the generated official schedule; existing prototype saves migrate their stored `max_days` value automatically.
+
+Run a new 2025-26 prototype save locally with:
+
+```bash
+NHL_GM_ACCRUAL_DAYS=192 python src/nhl_gm_core.py
+```
+
+The environment value is an explicit schedule input, not a permanent league constant. When schedule generation is added, the engine will pass this value directly from the persisted league calendar.
 
 ## Mobile UI Prototype
 
-A first-pass Expo / React Native mobile interface now lives in:
+A first-pass Expo / React Native mobile interface lives in:
 
 ```bash
 mobile/App.js
 ```
 
-The mobile UI includes:
-
-- Dashboard
-- Roster
-- Game Simulation
-- Trade Center
-- Front Office
-- Advisor Risk panel
-
-Run it locally with:
-
-```bash
-cd mobile
-npm install
-npm start
-```
-
-The mobile UI currently uses mock game state that mirrors the Python engine. The next engineering step is to expose the Python simulation through an API layer and replace mock state with live persisted data.
+The mobile UI currently uses mock game state. The next engineering step is to expose the season-aware Python simulation through an API layer and replace mock state with live persisted data.
 
 ## Implemented Systems
 
-- **Persistent SQLite state machine** for teams, players, league calendar, budgets, cap state, and roster data.
-- **Daily cap charge engine** using `Daily Charge = Player AAV / 186`.
-- **Accrued deadline buying power** using unused daily cap margin and deadline scaling.
-- **Roster legality checks** for 23-player roster limits and the $92,000,000 salary cap ceiling.
-- **Scouting fog-of-war** with exponential uncertainty decay based on observation count.
-- **60-minute tactical match simulator** using possession, Corsi-style shot attempts, line chemistry, xG modifiers, royal-road passing, and goalie fatigue.
-- **Contract-Adjusted Surplus Value trade desk** for evaluating player trades against team mandates and relationship friction.
-- **Advisor Risk Scoring Engine** for cap exposure, overpaid assets, and league trust risk.
-- **Executive terminal shell** with box-drawing interface panels and command-driven simulation controls.
+- Persistent SQLite state for teams, players, league calendar, budgets, cap state, and roster data.
+- Versioned season rules registry with source provenance and verification controls.
+- Backward-compatible save migration adding season ID, rules schema, cap floor, roster limit, and accrual days.
+- Daily cap charge and deadline-room calculations using the saved schedule denominator.
+- Registry-driven roster and salary-cap compliance checks.
+- Scouting fog-of-war with exponential uncertainty decay.
+- Contract-adjusted surplus-value analysis.
+- Advisor risk scoring.
+- Front-office research and training curriculum agent.
 
-## Run the Python Engine Locally
-
-```bash
-python src/nhl_gm_core.py
-```
-
-The app creates a local SQLite database named:
+## Tests
 
 ```bash
-nhl_gm_core.db
+pytest
 ```
 
-## Roadmap Direction
-
-The next development phase is to move from a single-file terminal prototype into a modular, multi-season franchise engine. Planned modules include:
-
-- Out-of-town match automation
-- Draft lottery allocation
-- Player lifecycle progression and veteran decline
-- Retirement and buyout processing
-- UFA auction / July 1 free agency matrix
-- Waiver wire and reassignment systems
-- LTIR emergency cap relief
-- Coaching staff and tactical system mastery
-- Business operations, revenue, and attendance modeling
-- Fan volatility, media pressure, and GM job security systems
-
-See [`docs/feature_landscape_and_roadmap.md`](docs/feature_landscape_and_roadmap.md) for the fuller architecture and roadmap notes.
+The integration suite covers season binding, legacy migration, season mismatch protection, dynamic daily accounting, and registry-driven compliance.
