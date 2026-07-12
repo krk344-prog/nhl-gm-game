@@ -19,7 +19,19 @@ jobs:
       - name: Compile backend
         run: python -m compileall -q src
       - name: Run backend and full-season tests
-        run: python -m unittest discover -s tests -q
+        run: |
+          set +e
+          python -m unittest discover -s tests -q > /tmp/backend-tests.log 2>&1
+          status=$?
+          cat /tmp/backend-tests.log
+          exit $status
+      - name: Upload backend test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-log
+          path: /tmp/backend-tests.log
+          if-no-files-found: error
 
   android-bundle:
     runs-on: ubuntu-latest
