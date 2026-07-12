@@ -5,29 +5,17 @@ from contextlib import closing
 
 try:
     from .league_orchestrator import initialize_league
-    from .nhl_gm_core import (
-        DEFAULT_GAME_SEED,
-        SCHEMA_VERSION,
-        connect_database,
-        init_database,
-    )
-except ImportError:  # Support direct imports from scripts in src/.
+    from .nhl_gm_core import DEFAULT_GAME_SEED, SCHEMA_VERSION, connect_database, init_database
+except ImportError:  # pragma: no cover
     from league_orchestrator import initialize_league
-    from nhl_gm_core import (
-        DEFAULT_GAME_SEED,
-        SCHEMA_VERSION,
-        connect_database,
-        init_database,
-    )
+    from nhl_gm_core import DEFAULT_GAME_SEED, SCHEMA_VERSION, connect_database, init_database
 
 
 def get_game_state():
     """Return save metadata and the selectable NHL franchise list."""
     with closing(connect_database()) as conn:
         conn.row_factory = sqlite3.Row
-        settings = conn.execute(
-            "SELECT * FROM game_settings WHERE id = 1"
-        ).fetchone()
+        settings = conn.execute("SELECT * FROM game_settings WHERE id = 1").fetchone()
         if settings is None:
             raise LookupError("No game save is initialized")
         teams = conn.execute(
@@ -48,13 +36,9 @@ def get_game_state():
         completed_games = conn.execute(
             "SELECT COUNT(*) FROM schedule WHERE status = 'completed'"
         ).fetchone()[0]
-
     setting_data = dict(settings)
     team_data = [dict(team) for team in teams]
-    selected = next(
-        (team for team in team_data if team["id"] == setting_data["user_team_id"]),
-        None,
-    )
+    selected = next((team for team in team_data if team["id"] == setting_data["user_team_id"]), None)
     return {
         "save": {
             "name": setting_data["save_name"],
@@ -68,9 +52,7 @@ def get_game_state():
         "user_team_id": setting_data["user_team_id"],
         "user_team": selected,
         "teams": team_data,
-        "requires_reset": (
-            setting_data["schema_version"] < SCHEMA_VERSION or len(team_data) < 8
-        ),
+        "requires_reset": setting_data["schema_version"] < SCHEMA_VERSION or len(team_data) < 8,
     }
 
 
@@ -83,11 +65,7 @@ def select_user_team(team_id):
         if team is None:
             raise LookupError(f"NHL team {team_id} does not exist")
         conn.execute(
-            """
-            UPDATE game_settings
-            SET user_team_id = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE id = 1
-            """,
+            "UPDATE game_settings SET user_team_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1",
             (team_id,),
         )
         conn.commit()
@@ -102,11 +80,14 @@ def reset_game(seed=DEFAULT_GAME_SEED, save_name="Alpha Franchise"):
     save_name = str(save_name).strip() or "Alpha Franchise"
     if len(save_name) > 60:
         raise ValueError("Save name cannot exceed 60 characters")
-
     with closing(connect_database()) as conn:
         conn.execute("PRAGMA foreign_keys = OFF")
         conn.execute("BEGIN EXCLUSIVE")
         for table in (
+            "scouting_reports",
+            "scouting_assignments",
+            "team_player_knowledge",
+            "scouts",
             "schedule",
             "standings",
             "trade_history",
@@ -117,16 +98,11 @@ def reset_game(seed=DEFAULT_GAME_SEED, save_name="Alpha Franchise"):
         ):
             conn.execute(f"DROP TABLE IF EXISTS {table}")
         conn.commit()
-
     init_database(seed=seed)
     initialize_league()
     with closing(connect_database()) as conn:
         conn.execute(
-            """
-            UPDATE game_settings
-            SET save_name = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE id = 1
-            """,
+            "UPDATE game_settings SET save_name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1",
             (save_name,),
         )
         conn.commit()
