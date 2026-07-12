@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "season_id": "2025-26",
+  "effective_from": "2025-07-01",
+  "effective_through": "2026-06-30",
+  "ruleset_status": "official",
+  "competition": {
+    "regular_season_games": 82,
+    "accrual_days": null,
+    "accrual_days_strategy": "derive_from_official_schedule"
+  },
+  "salary_system": {
+    "upper_limit": 95500000,
+    "lower_limit": 70600000,
+    "minimum_nhl_salary": 775000,
+    "maximum_individual_salary_percent": 20.0,
+    "active_roster_maximum": 23,
+    "contract_limit": 50,
+    "reserve_list_limit": 90,
+    "maximum_contract_years_re_signing": 8,
+    "maximum_contract_years_new_club": 7,
+    "playoff_salary_cap_applies": false
+  },
+  "transaction_rules": {
+    "waiver_period_hours": 24,
+    "paper_transactions_restricted": false
+  },
+  "sources": [
+    {
+      "id": "nhl_cap_2025_2028_announcement",
+      "authority": "joint_league_union",
+      "verification_status": "verified",
+      "title": "NHL and NHLPA announce team payroll ranges for 2025-26 through 2027-28",
+      "url": "https://www.nhl.com/news/nhl-nhlpa-team-payroll-ranges-for-next-3-seasons",
+      "supports": ["salary_system.upper_limit", "salary_system.lower_limit"]
+    },
+    {
+      "id": "nhl_2013_cba_and_2020_mou",
+      "authority": "collective_bargaining_agreement",
+      "verification_status": "inherited",
+      "title": "2013 NHL/NHLPA CBA as extended by the 2020 Memorandum of Understanding",
+      "url": "https://media.nhl.com/site/asset/public/ext/NHLPA_NHL_MOU.pdf",
+      "supports": ["salary_system", "transaction_rules"]
+    }
+  ]
+}

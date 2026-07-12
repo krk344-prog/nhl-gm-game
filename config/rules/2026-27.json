@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "season_id": "2026-27",
+  "effective_from": "2026-07-01",
+  "effective_through": "2027-06-30",
+  "ruleset_status": "official_with_pending_operational_details",
+  "competition": {
+    "regular_season_games": 84,
+    "accrual_days": null,
+    "accrual_days_strategy": "derive_from_official_schedule"
+  },
+  "salary_system": {
+    "upper_limit": 104000000,
+    "lower_limit": 76900000,
+    "minimum_nhl_salary": 850000,
+    "maximum_individual_salary_percent": 20.0,
+    "active_roster_maximum": 23,
+    "contract_limit": 50,
+    "reserve_list_limit": 90,
+    "maximum_contract_years_re_signing": 7,
+    "maximum_contract_years_new_club": 6,
+    "playoff_salary_cap_applies": true
+  },
+  "transaction_rules": {
+    "waiver_period_hours": 24,
+    "paper_transactions_restricted": true
+  },
+  "sources": [
+    {
+      "id": "nhl_cap_2025_2028_announcement",
+      "authority": "joint_league_union",
+      "verification_status": "verified",
+      "title": "NHL and NHLPA announce team payroll ranges for 2025-26 through 2027-28",
+      "url": "https://www.nhl.com/news/nhl-nhlpa-team-payroll-ranges-for-next-3-seasons",
+      "supports": ["salary_system.upper_limit", "salary_system.lower_limit"]
+    },
+    {
+      "id": "nhl_nhlpa_2026_2030_mou",
+      "authority": "collective_bargaining_agreement",
+      "verification_status": "verified_summary_pending_full_rule_mapping",
+      "title": "NHL/NHLPA 2026-2030 labor agreement",
+      "url": "https://www.nhl.com/news/nhl-nhlpa-agree-on-4-year-extension-to-cba",
+      "supports": ["competition.regular_season_games", "salary_system.minimum_nhl_salary", "salary_system.maximum_contract_years_re_signing", "salary_system.maximum_contract_years_new_club", "salary_system.playoff_salary_cap_applies", "transaction_rules.paper_transactions_restricted"]
+    }
+  ]
+}
