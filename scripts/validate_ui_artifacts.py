@@ -48,7 +48,14 @@ def validate_svg(path: Path) -> list[str]:
     if desc is None or desc.get("id") != "desc" or not (desc.text or "").strip():
         errors.append(f"{path}: accessible description is missing or invalid")
 
-    visible_text = " ".join((node.text or "").strip() for node in root.iter(f"{SVG_NS}text"))
+    # SVG text can be split across nested tspans, so inspect all descendant text
+    # rather than only each <text> element's direct .text value.
+    visible_text = " ".join(
+        fragment.strip()
+        for node in root.iter(f"{SVG_NS}text")
+        for fragment in node.itertext()
+        if fragment.strip()
+    )
     for marker in REQUIRED_TEXT.get(path.name, ()):
         if marker not in visible_text:
             errors.append(f"{path}: required state label missing: {marker!r}")
