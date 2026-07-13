@@ -18,6 +18,8 @@ jobs:
           python-version: "3.12"
       - name: Compile backend
         run: python -m compileall -q src
+      - name: Validate Stage 2 UI artifacts
+        run: python scripts/validate_ui_artifacts.py
       - name: Run backend and full-season tests
         run: |
           set +e
