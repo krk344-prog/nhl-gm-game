@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
+  <title id="title">New game roster pack selection Stage 1 wireframe</title>
+  <desc id="desc">Desktop wireframe with fictional team identity, roster source comparison, readiness status, data disclosure, and creation summary.</desc>
+  <rect width="1440" height="900" fill="#0b1220"/>
+  <rect x="48" y="36" width="1344" height="112" rx="18" fill="#142033" stroke="#37506f"/>
+  <circle cx="112" cy="92" r="38" fill="#254d73" stroke="#a9c7df" stroke-width="3"/>
+  <text x="112" y="99" text-anchor="middle" font-family="Arial" font-size="22" font-weight="700" fill="#ffffff">BH</text>
+  <text x="170" y="78" font-family="Arial" font-size="28" font-weight="700" fill="#ffffff">Buffalo Harbor Northstars</text>
+  <text x="170" y="112" font-family="Arial" font-size="16" fill="#b9c7d8">New Game Setup · 2025–26 · Affiliate: Rochester Forge</text>
+  <rect x="1120" y="67" width="224" height="48" rx="12" fill="#1d3047"/>
+  <text x="1232" y="97" text-anchor="middle" font-family="Arial" font-size="15" fill="#e8f1f8">Step 2 of 4 · Roster Source</text>
+
+  <text x="48" y="198" font-family="Arial" font-size="24" font-weight="700" fill="#ffffff">Choose the hockey world you want to manage</text>
+  <text x="48" y="228" font-family="Arial" font-size="15" fill="#9fb0c4">Compare completeness, provenance and simulation substitutions before creating the save.</text>
+
+  <rect x="48" y="260" width="418" height="310" rx="18" fill="#172438" stroke="#4b6686" stroke-width="2"/>
+  <text x="76" y="302" font-family="Arial" font-size="20" font-weight="700" fill="#ffffff">Fictional League</text>
+  <text x="76" y="329" font-family="Arial" font-size="14" fill="#b8c6d6">Original teams, players and contracts</text>
+  <rect x="76" y="358" width="116" height="32" rx="16" fill="#153b2e"/>
+  <text x="134" y="379" text-anchor="middle" font-family="Arial" font-size="13" fill="#d8f4e7">✓ Ready</text>
+  <text x="76" y="426" font-family="Arial" font-size="14" fill="#e5edf5">32 NHL-level clubs · 32 affiliates</text>
+  <text x="76" y="454" font-family="Arial" font-size="14" fill="#e5edf5">Complete ratings and contracts</text>
+  <text x="76" y="482" font-family="Arial" font-size="14" fill="#e5edf5">Best for uninterrupted testing</text>
+  <rect x="76" y="514" width="168" height="38" rx="10" fill="#315f8a"/>
+  <text x="160" y="538" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700" fill="#ffffff">Select Fictional</text>
+
+  <rect x="488" y="260" width="538" height="310" rx="18" fill="#1a2a40" stroke="#75a4ce" stroke-width="3"/>
+  <text x="516" y="302" font-family="Arial" font-size="20" font-weight="700" fill="#ffffff">Reviewed NHL/AHL Identity Pack</text>
+  <text x="516" y="329" font-family="Arial" font-size="14" fill="#b8c6d6">Real names and assignments · generated simulation values</text>
+  <rect x="516" y="358" width="160" height="32" rx="16" fill="#4a3415"/>
+  <text x="596" y="379" text-anchor="middle" font-family="Arial" font-size="13" fill="#ffe4a8">! Needs review</text>
+  <text x="516" y="426" font-family="Arial" font-size="14" fill="#e5edf5">NHL: 32 / 32 clubs</text>
+  <text x="516" y="454" font-family="Arial" font-size="14" fill="#e5edf5">AHL: 31 / 32 clubs · Rochester Forge roster empty</text>
+  <text x="516" y="482" font-family="Arial" font-size="14" fill="#e5edf5">Ratings: deterministic placeholders · Contracts: unknown</text>
+  <rect x="516" y="514" width="196" height="38" rx="10" fill="#26384d" stroke="#647b95"/>
+  <text x="614" y="538" text-anchor="middle" font-family="Arial" font-size="14" fill="#ffffff">Review blockers</text>
+  <rect x="728" y="514" width="188" height="38" rx="10" fill="#213044"/>
+  <text x="822" y="538" text-anchor="middle" font-family="Arial" font-size="14" fill="#9fb0c4">Selection blocked</text>
+
+  <rect x="1048" y="260" width="344" height="534" rx="18" fill="#142033" stroke="#37506f"/>
+  <text x="1076" y="302" font-family="Arial" font-size="19" font-weight="700" fill="#ffffff">Creation Summary</text>
+  <text x="1076" y="342" font-family="Arial" font-size="13" fill="#91a5bb">FRANCHISE</text>
+  <text x="1076" y="368" font-family="Arial" font-size="16" fill="#ffffff">Buffalo Harbor Northstars</text>
+  <text x="1076" y="408" font-family="Arial" font-size="13" fill="#91a5bb">AFFILIATE</text>
+  <text x="1076" y="434" font-family="Arial" font-size="16" fill="#ffffff">Rochester Forge</text>
+  <text x="1076" y="474" font-family="Arial" font-size="13" fill="#91a5bb">RULESET</text>
+  <text x="1076" y="500" font-family="Arial" font-size="16" fill="#ffffff">2025–26 Versioned Rules</text>
+  <text x="1076" y="540" font-family="Arial" font-size="13" fill="#91a5bb">SAVE BEHAVIOR</text>
+  <text x="1076" y="566" font-family="Arial" font-size="16" fill="#ffffff">Creates a new save</text>
+  <line x1="1076" y1="600" x2="1360" y2="600" stroke="#304760"/>
+  <text x="1076" y="636" font-family="Arial" font-size="14" font-weight="700" fill="#ffd58b">1 blocker must be resolved</text>
+  <text x="1076" y="664" font-family="Arial" font-size="13" fill="#b8c6d6">Active saves are never overwritten.</text>
+  <rect x="1076" y="716" width="284" height="50" rx="12" fill="#253447"/>
+  <text x="1218" y="747" text-anchor="middle" font-family="Arial" font-size="15" font-weight="700" fill="#8191a4">Create New Game</text>
+
+  <rect x="48" y="600" width="978" height="194" rx="18" fill="#121d2d" stroke="#304760"/>
+  <text x="76" y="638" font-family="Arial" font-size="18" font-weight="700" fill="#ffffff">What is real, and what is simulated?</text>
+  <text x="76" y="674" font-family="Arial" font-size="14" fill="#d8e2ec">Real identity fields</text>
+  <text x="252" y="674" font-family="Arial" font-size="14" fill="#9fb0c4">Player name · team assignment · position · birth date · jersey number · handedness</text>
+  <text x="76" y="710" font-family="Arial" font-size="14" fill="#d8e2ec">Simulation fields</text>
+  <text x="252" y="710" font-family="Arial" font-size="14" fill="#9fb0c4">Ratings are generated placeholders · contract values are not official</text>
+  <text x="76" y="746" font-family="Arial" font-size="14" fill="#d8e2ec">Source audit</text>
+  <text x="252" y="746" font-family="Arial" font-size="14" fill="#9fb0c4">Reviewed snapshot · imported July 13, 2026 · View provenance →</text>
+
+  <text x="48" y="850" font-family="Arial" font-size="13" fill="#7f93aa">Stage 1 direction wireframe · Original fictional branding · UI Review Pending</text>
+</svg>
