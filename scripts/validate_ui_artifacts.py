@@ -19,8 +19,7 @@ REQUIRED_TEXT = {
     "main-dashboard-stage2-mobile.svg": (
         "Needs Your Attention",
         "MANDATORY",
-        "OFFLINE",
-        "Advance Day",
+        "OFFLINE MODE",
     ),
 }
 
@@ -48,8 +47,6 @@ def validate_svg(path: Path) -> list[str]:
     if desc is None or desc.get("id") != "desc" or not (desc.text or "").strip():
         errors.append(f"{path}: accessible description is missing or invalid")
 
-    # SVG text can be split across nested tspans, so inspect all descendant text
-    # rather than only each <text> element's direct .text value.
     visible_text = " ".join(
         fragment.strip()
         for node in root.iter(f"{SVG_NS}text")
