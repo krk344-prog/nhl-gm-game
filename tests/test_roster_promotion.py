@@ -67,6 +67,44 @@ class RosterPromotionTests(unittest.TestCase):
             ["Roster pack requires source provenance before promotion."],
         )
 
+    def test_complete_32_nhl_32_ahl_catalog_is_ready(self):
+        teams = []
+        for league in ("NHL", "AHL"):
+            for index in range(32):
+                teams.append(
+                    {
+                        "league": league,
+                        "abbreviation": f"{league[0]}{index:02d}",
+                        "players": [
+                            {
+                                "source_player_id": f"{league.lower()}-{index}",
+                                "name": f"{league} Test Player {index}",
+                                "position": "C",
+                            }
+                        ],
+                    }
+                )
+
+        snapshot = {
+            "schema_version": 1,
+            "season_id": "2025-2026",
+            "created_at": "2026-07-14T00:00:00+00:00",
+            "sources": [
+                {"league": "NHL", "name": "reviewed NHL test source"},
+                {"league": "AHL", "name": "reviewed AHL test source"},
+            ],
+            "teams": teams,
+        }
+
+        result = validate_promotion_readiness(snapshot)
+
+        self.assertTrue(result["ready"])
+        self.assertEqual(result["team_counts"], {"NHL": 32, "AHL": 32})
+        self.assertEqual(result["empty_teams"], [])
+        self.assertEqual(result["count_mismatches"], {})
+        self.assertTrue(result["source_provenance_present"])
+        self.assertEqual(result["blockers"], [])
+
 
 if __name__ == "__main__":
     unittest.main()
