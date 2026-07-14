@@ -36,6 +36,37 @@ class RosterPromotionTests(unittest.TestCase):
         self.assertIn("Every promoted team requires at least one player.", result["blockers"])
         self.assertTrue(result["source_provenance_present"])
 
+    def test_complete_catalog_without_provenance_is_blocked(self):
+        player = {
+            "source_player_id": "1",
+            "name": "Test Player",
+            "position": "C",
+        }
+        snapshot = {
+            "schema_version": 1,
+            "season_id": "2025-2026",
+            "created_at": "2026-07-13T00:00:00+00:00",
+            "sources": [],
+            "teams": [
+                {"league": "NHL", "abbreviation": "BUF", "players": [player]},
+                {"league": "AHL", "abbreviation": "ROC", "players": [player]},
+            ],
+        }
+
+        result = validate_promotion_readiness(
+            snapshot,
+            expected_team_counts={"NHL": 1, "AHL": 1},
+        )
+
+        self.assertFalse(result["ready"])
+        self.assertFalse(result["source_provenance_present"])
+        self.assertEqual(result["empty_teams"], [])
+        self.assertEqual(result["count_mismatches"], {})
+        self.assertEqual(
+            result["blockers"],
+            ["Roster pack requires source provenance before promotion."],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
