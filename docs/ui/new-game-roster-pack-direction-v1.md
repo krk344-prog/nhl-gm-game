@@ -20,6 +20,14 @@ A roster pack may be offered as a complete NHL/AHL new-game seed only when:
 
 This is deliberately separate from active-roster and game-day lineup limits. Imported identity data describes organizational assignment; the simulation rules registry remains authoritative for active roster, injured reserve, waivers, salary-cap and dressed-lineup compliance.
 
+### Assignment/waiver edge case
+
+An imported AHL assignment is historical roster identity, not proof that a player has cleared waivers. When a promoted save later moves a player from the NHL roster to an AHL affiliate, the transaction service must evaluate the active season's waiver eligibility and exemption state before completing the assignment. A roster snapshot must never bypass that transaction check.
+
+**Testable requirement:** loading a player under an AHL team may establish the player's starting organization, but changing an NHL-rostered player to AHL after game creation must produce either `assignment_completed` or a structured `waiver_required` result from the season-aware transaction rules. The importer itself cannot mark a player waiver-cleared.
+
+Rules basis: NHL/NHLPA CBA Article 13 governs waivers; implementation must remain season-versioned because the current agreement has been extended through 2029-30 and future transition terms may alter operational details.
+
 ## Competing games — clean-room pattern translation
 
 Sports-management games commonly let users choose roster databases or starting worlds before beginning a career. The useful pattern is **pre-start configuration with visible consequences**. The original requirement for this game is a comparison-first roster-pack selector that shows data provenance, season, completeness, simulation substitutions and save compatibility before the user commits.
@@ -30,6 +38,8 @@ Sports-management games commonly let users choose roster databases or starting w
 - Run a readiness check inline and expose blockers without requiring a failed game creation.
 - Preserve the fictional league as a first-class, fully supported option rather than treating it as a fallback error state.
 - Show NHL and AHL organizational coverage together because affiliate control is part of the GM role.
+- Group preflight results into **blocking**, **review recommended**, and **informational** sections so one missing source or affiliate is not visually mixed with harmless metadata.
+- Keep the primary comparison visible while opening provenance and compatibility detail in a side drawer on desktop or a full-height sheet on mobile.
 
 No proprietary layouts, text, assets, databases or implementation details are used.
 
@@ -53,6 +63,7 @@ No proprietary layouts, text, assets, databases or implementation details are us
 
 - Desktop: two-column source comparison with a persistent creation summary.
 - Mobile: source cards become a single vertical decision flow; readiness and disclosure appear before the final action.
+- Desktop provenance uses a side drawer that preserves comparison context; mobile uses a dismissible full-height sheet with a persistent title and close control.
 - Minimum touch target: 44 by 44 CSS pixels.
 - No horizontal scrolling for primary content at 320 CSS pixels.
 
@@ -61,11 +72,15 @@ No proprietary layouts, text, assets, databases or implementation details are us
 - The user can identify the selected team, affiliate, season and roster source in the first viewport.
 - Real identity data and generated simulation data are visually and textually distinguished.
 - A blocked pack names the exact incomplete club or count mismatch.
+- Blocking issues appear before review recommendations and informational notices.
+- The disabled create action is paired with a nearby explanation and corrective link; hover is never required to understand the blocker.
 - Status includes icon plus text and never relies on color alone.
 - Keyboard focus follows source selection, disclosure, summary and create action.
+- Opening and closing the disclosure drawer/sheet returns focus to the invoking control.
 - Dense provenance details are progressively disclosed rather than always expanded.
 - Missing crests fall back to readable initials without layout shift.
+- Controlled-team and affiliate marks remain legible at compact sizes in both light and dark themes.
 
 ## Implementation boundary
 
-This cycle adds only the readiness guard and Stage 1 direction. It does not wire the selector into the running UI, seed a new game, change active saves or approve copyrighted league/team assets.
+This cycle adds only the readiness guard, focused validation and Stage 1 direction refinements. It does not wire the selector into the running UI, seed a new game, change active saves or approve copyrighted league/team assets.
