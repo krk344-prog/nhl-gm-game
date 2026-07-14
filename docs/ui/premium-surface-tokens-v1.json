@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "status": "UI Review Pending",
+  "foundation": {
+    "canvas": "#000000",
+    "surface_primary": "#0D0F13",
+    "surface_elevated": "#171A20",
+    "border_subtle": "#303640",
+    "text_primary": "#F5F7FA",
+    "text_secondary": "#9FA8B4"
+  },
+  "franchise_accent": {
+    "primary": "#5BB8FF",
+    "soft": "#15395B",
+    "usage": [
+      "selected state",
+      "primary action",
+      "franchise identity",
+      "focus indicator"
+    ]
+  },
+  "elevation": {
+    "panel_radius_px": 22,
+    "control_radius_px": 12,
+    "shadow_y_px": 18,
+    "shadow_blur_px": 24,
+    "shadow_opacity": 0.55
+  },
+  "accessibility": {
+    "minimum_touch_target_px": 44,
+    "minimum_body_text_px": 14,
+    "focus_ring_px": 2,
+    "status_requires_text_or_icon": true,
+    "logo_fallback_initials": true
+  },
+  "density": {
+    "card_primary_action_limit": 1,
+    "visible_consequence_limit": 3,
+    "details_pattern_desktop": "drawer",
+    "details_pattern_mobile": "bottom-sheet"
+  }
+}
