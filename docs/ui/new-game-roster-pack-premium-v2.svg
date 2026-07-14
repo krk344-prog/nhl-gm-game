@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
+  <title id="title">Premium new game roster pack selection Stage 1 direction</title>
+  <desc id="desc">A premium black hockey management interface with fictional franchise identity, elevated roster source cards, realistic dense data, explicit uncertainty, and a blocked non-ideal state.</desc>
+  <defs>
+    <radialGradient id="ambient" cx="22%" cy="0%" r="90%"><stop offset="0" stop-color="#15395b" stop-opacity=".45"/><stop offset=".42" stop-color="#07111d" stop-opacity=".18"/><stop offset="1" stop-color="#000000" stop-opacity="0"/></radialGradient>
+    <linearGradient id="hero" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#16191e"/><stop offset=".55" stop-color="#0d1014"/><stop offset="1" stop-color="#080a0d"/></linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#171a20"/><stop offset="1" stop-color="#0d0f13"/></linearGradient>
+    <linearGradient id="selected" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#142a3d"/><stop offset=".6" stop-color="#10171f"/><stop offset="1" stop-color="#0d0f13"/></linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#5bb8ff"/><stop offset="1" stop-color="#9bd5ff"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#000" flood-opacity=".55"/></filter>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="12" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <pattern id="iceLines" width="96" height="96" patternUnits="userSpaceOnUse" patternTransform="rotate(18)"><path d="M0 0H96" stroke="#ffffff" stroke-opacity=".025"/></pattern>
+  </defs>
+  <rect width="1440" height="900" fill="#000000"/>
+  <rect width="1440" height="900" fill="url(#ambient)"/>
+  <rect width="1440" height="900" fill="url(#iceLines)"/>
+
+  <g filter="url(#shadow)">
+    <rect x="42" y="30" width="1356" height="132" rx="24" fill="url(#hero)" stroke="#2d333c"/>
+  </g>
+  <rect x="42" y="30" width="6" height="132" rx="3" fill="url(#accent)"/>
+  <circle cx="112" cy="96" r="46" fill="#0b1118" stroke="#74c4ff" stroke-width="2" filter="url(#glow)"/>
+  <path d="M88 104L112 61l24 43-24 18z" fill="#5bb8ff" opacity=".22"/>
+  <text x="112" y="104" text-anchor="middle" font-family="Arial, sans-serif" font-size="25" font-weight="800" fill="#f7fbff">BH</text>
+  <text x="178" y="77" font-family="Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="2.4" fill="#78c7ff">FRANCHISE SETUP</text>
+  <text x="178" y="110" font-family="Arial, sans-serif" font-size="30" font-weight="750" fill="#f5f7fa">Buffalo Harbor Northstars</text>
+  <text x="178" y="137" font-family="Arial, sans-serif" font-size="15" fill="#9fa8b4">2025–26 · Rochester Forge affiliate · Harbor Center Arena</text>
+  <rect x="1123" y="70" width="226" height="52" rx="14" fill="#11161c" stroke="#343b45"/>
+  <text x="1236" y="91" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" letter-spacing="1.5" fill="#8693a2">NEW GAME</text>
+  <text x="1236" y="111" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" font-weight="700" fill="#eef3f7">Step 2 of 4 · Roster Source</text>
+
+  <text x="54" y="211" font-family="Arial, sans-serif" font-size="26" font-weight="750" fill="#f5f7fa">Choose the hockey world you will manage</text>
+  <text x="54" y="239" font-family="Arial, sans-serif" font-size="15" fill="#8f99a6">Compare authenticity, completeness and simulation consequences before creating the save.</text>
+
+  <g filter="url(#shadow)">
+    <rect x="54" y="274" width="520" height="468" rx="22" fill="url(#card)" stroke="#303640"/>
+    <rect x="596" y="274" width="520" height="468" rx="22" fill="url(#selected)" stroke="#65bfff" stroke-width="2"/>
+    <rect x="1138" y="274" width="248" height="468" rx="22" fill="url(#card)" stroke="#303640"/>
+  </g>
+
+  <rect x="76" y="294" width="112" height="30" rx="15" fill="#20252c"/><text x="132" y="314" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700" fill="#c9d0d8">FULLY READY</text>
+  <circle cx="112" cy="367" r="31" fill="#1b222b" stroke="#7c8795"/><text x="112" y="374" text-anchor="middle" font-family="Arial" font-size="18" font-weight="800" fill="#e8edf2">FL</text>
+  <text x="158" y="360" font-family="Arial" font-size="20" font-weight="750" fill="#f2f5f8">Fictional League</text>
+  <text x="158" y="384" font-family="Arial" font-size="14" fill="#929ca8">Original teams · complete simulation data</text>
+  <line x1="76" y1="412" x2="552" y2="412" stroke="#2a3038"/>
+  <text x="76" y="447" font-family="Arial" font-size="12" letter-spacing="1.4" fill="#77818e">COVERAGE</text>
+  <text x="76" y="482" font-family="Arial" font-size="28" font-weight="750" fill="#f5f7fa">32</text><text x="118" y="482" font-family="Arial" font-size="13" fill="#949eaa">major clubs</text>
+  <text x="240" y="482" font-family="Arial" font-size="28" font-weight="750" fill="#f5f7fa">32</text><text x="282" y="482" font-family="Arial" font-size="13" fill="#949eaa">affiliates</text>
+  <text x="405" y="482" font-family="Arial" font-size="28" font-weight="750" fill="#f5f7fa">100%</text><text x="470" y="482" font-family="Arial" font-size="13" fill="#949eaa">complete</text>
+  <rect x="76" y="514" width="476" height="92" rx="14" fill="#101318" stroke="#282e36"/>
+  <text x="94" y="541" font-family="Arial" font-size="13" font-weight="700" fill="#dfe5eb">Management consequences</text>
+  <text x="94" y="565" font-family="Arial" font-size="13" fill="#9aa4af">Contracts, ratings and prospect histories are simulation-native.</text>
+  <text x="94" y="587" font-family="Arial" font-size="13" fill="#9aa4af">Best for a complete, internally consistent long-term universe.</text>
+  <rect x="76" y="630" width="164" height="46" rx="12" fill="#20252c"/><text x="158" y="658" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700" fill="#e6ebef">View details</text>
+  <rect x="252" y="630" width="300" height="46" rx="12" fill="#f0f4f7"/><text x="402" y="658" text-anchor="middle" font-family="Arial" font-size="14" font-weight="750" fill="#0a0c0f">Select fictional league</text>
+
+  <rect x="618" y="294" width="130" height="30" rx="15" fill="#123651" stroke="#4faef2"/><text x="683" y="314" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700" fill="#bfe5ff">SELECTED</text>
+  <rect x="958" y="294" width="136" height="30" rx="15" fill="#3a2712" stroke="#c98a32"/><text x="1026" y="314" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700" fill="#ffd28d">NEEDS REVIEW</text>
+  <circle cx="654" cy="367" r="31" fill="#122231" stroke="#65bfff"/><text x="654" y="374" text-anchor="middle" font-family="Arial" font-size="18" font-weight="800" fill="#dff2ff">PA</text>
+  <text x="700" y="360" font-family="Arial" font-size="20" font-weight="750" fill="#f2f7fb">Reviewed Pro/Affiliate Pack</text>
+  <text x="700" y="384" font-family="Arial" font-size="14" fill="#9eb1c1">Real identity fields · generated simulation layers</text>
+  <line x1="618" y1="412" x2="1094" y2="412" stroke="#31506a"/>
+  <text x="618" y="447" font-family="Arial" font-size="12" letter-spacing="1.4" fill="#7fa8c6">DATA CONFIDENCE</text>
+  <text x="618" y="482" font-family="Arial" font-size="28" font-weight="750" fill="#f5f7fa">32/32</text><text x="700" y="482" font-family="Arial" font-size="13" fill="#9eabb6">pro clubs</text>
+  <text x="802" y="482" font-family="Arial" font-size="28" font-weight="750" fill="#f5f7fa">31/32</text><text x="884" y="482" font-family="Arial" font-size="13" fill="#9eabb6">affiliates</text>
+  <text x="988" y="482" font-family="Arial" font-size="28" font-weight="750" fill="#ffcc7a">1</text><text x="1010" y="482" font-family="Arial" font-size="13" fill="#9eabb6">blocker</text>
+  <rect x="618" y="514" width="476" height="92" rx="14" fill="#13100c" stroke="#6d4a20"/>
+  <path d="M642 541l10 18h-20z" fill="#ffbd5c"/><text x="666" y="547" font-family="Arial" font-size="13" font-weight="700" fill="#ffd28d">Selection blocked</text>
+  <text x="642" y="574" font-family="Arial" font-size="13" fill="#d9c3a4">Coastal City affiliate has no reviewed player snapshot.</text>
+  <text x="642" y="594" font-family="Arial" font-size="12" fill="#a99476">Resolve source provenance or choose the fictional league.</text>
+  <rect x="618" y="630" width="164" height="46" rx="12" fill="#202831" stroke="#354554"/><text x="700" y="658" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700" fill="#e8f2f8">View preflight</text>
+  <rect x="794" y="630" width="300" height="46" rx="12" fill="#16212a" stroke="#365064"/><text x="944" y="658" text-anchor="middle" font-family="Arial" font-size="14" font-weight="750" fill="#7d8d99">Resolve blocker to continue</text>
+  <text x="618" y="711" font-family="Arial" font-size="12" fill="#83929e">Real identity</text><circle cx="704" cy="707" r="4" fill="#69c3ff"/>
+  <text x="722" y="711" font-family="Arial" font-size="12" fill="#83929e">Generated ratings</text><rect x="828" y="703" width="8" height="8" fill="none" stroke="#a7b1bb"/>
+  <text x="852" y="711" font-family="Arial" font-size="12" fill="#83929e">Unknown contracts</text><path d="M976 703h8v8h-8z" fill="#ffbd5c"/>
+
+  <text x="1162" y="316" font-family="Arial" font-size="12" letter-spacing="1.5" fill="#788390">CREATION SUMMARY</text>
+  <text x="1162" y="353" font-family="Arial" font-size="18" font-weight="750" fill="#f4f7f9">Northstars</text>
+  <text x="1162" y="376" font-family="Arial" font-size="13" fill="#929ca8">Atlantic Division · Harbor Center</text>
+  <line x1="1162" y1="402" x2="1362" y2="402" stroke="#2a3038"/>
+  <text x="1162" y="432" font-family="Arial" font-size="12" fill="#788390">CAPTAIN</text><text x="1162" y="454" font-family="Arial" font-size="14" fill="#e6ebef">Marcus Vale · C</text>
+  <text x="1162" y="489" font-family="Arial" font-size="12" fill="#788390">STARTING GOALIE</text><text x="1162" y="511" font-family="Arial" font-size="14" fill="#e6ebef">Eli Mercer · 91 OVR*</text>
+  <text x="1162" y="546" font-family="Arial" font-size="12" fill="#788390">AFFILIATE</text><text x="1162" y="568" font-family="Arial" font-size="14" fill="#e6ebef">Rochester Forge</text>
+  <rect x="1162" y="600" width="200" height="72" rx="12" fill="#101318" stroke="#29313a"/>
+  <text x="1178" y="626" font-family="Arial" font-size="12" font-weight="700" fill="#cbd3db">Save integrity</text>
+  <text x="1178" y="648" font-family="Arial" font-size="12" fill="#8f99a5">New game only</text><text x="1178" y="666" font-family="Arial" font-size="12" fill="#8f99a5">Existing saves untouched</text>
+  <text x="1162" y="713" font-family="Arial" font-size="11" fill="#6f7985">* Generated simulation rating</text>
+
+  <rect x="54" y="770" width="1332" height="84" rx="18" fill="#0c0f13" stroke="#272d35"/>
+  <text x="78" y="802" font-family="Arial" font-size="13" font-weight="700" fill="#e1e6eb">Why this is premium, not decorative</text>
+  <text x="78" y="827" font-family="Arial" font-size="13" fill="#8f99a5">Layered neutral surfaces, restrained franchise light, aligned comparison rows and explicit uncertainty preserve focus while creating depth.</text>
+  <rect x="1187" y="789" width="175" height="46" rx="12" fill="#151a20" stroke="#3a424c"/><text x="1274" y="817" text-anchor="middle" font-family="Arial" font-size="13" font-weight="700" fill="#edf2f6">UI Review Pending</text>
+</svg>
