@@ -16,3 +16,15 @@ def test_premium_surface_tokens_are_accessible_and_bounded() -> None:
     assert tokens["density"]["visible_consequence_limit"] <= 3
     assert tokens["density"]["details_pattern_desktop"] == "drawer"
     assert tokens["density"]["details_pattern_mobile"] == "bottom-sheet"
+
+
+def test_premium_interaction_tokens_prevent_motion_and_state_regressions() -> None:
+    tokens_path = Path("docs/ui/premium-surface-tokens-v1.json")
+    tokens = json.loads(tokens_path.read_text(encoding="utf-8"))
+    interaction = tokens["interaction"]
+
+    assert 100 <= interaction["transition_min_ms"] <= interaction["transition_max_ms"] <= 200
+    assert interaction["hover_layout_shift_allowed"] is False
+    assert interaction["reduced_motion_removes_nonessential_animation"] is True
+    assert interaction["blocked_state_requires_reason"] is True
+    assert interaction["selected_state_requires_persistent_indicator"] is True
