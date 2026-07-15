@@ -28,3 +28,17 @@ def test_premium_interaction_tokens_prevent_motion_and_state_regressions() -> No
     assert interaction["reduced_motion_removes_nonessential_animation"] is True
     assert interaction["blocked_state_requires_reason"] is True
     assert interaction["selected_state_requires_persistent_indicator"] is True
+
+
+def test_premium_atmosphere_is_restrained_and_purposeful() -> None:
+    tokens_path = Path("docs/ui/premium-surface-tokens-v1.json")
+    tokens = json.loads(tokens_path.read_text(encoding="utf-8"))
+    atmosphere = tokens["atmosphere"]
+
+    assert atmosphere["ambient_gradient_allowed"] is True
+    assert 0 < atmosphere["ambient_gradient_max_opacity"] <= 0.20
+    assert 0 <= atmosphere["texture_max_opacity"] <= 0.05
+    assert atmosphere["glow_regions_max"] <= 2
+    assert atmosphere["glow_must_anchor_identity_or_action"] is True
+    assert atmosphere["decorative_motion_allowed"] is False
+    assert tokens["franchise_accent"]["maximum_visible_surface_ratio"] <= 0.15
