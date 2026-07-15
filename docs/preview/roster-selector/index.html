@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NHL GM — Roster Pack Preview</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --black:#020202;
+      --panel:#0b0c0f;
+      --panel-2:#111318;
+      --panel-3:#171a20;
+      --line:#2b2e35;
+      --line-soft:#1c1f25;
+      --text:#f5f2e9;
+      --muted:#a19e96;
+      --gold:#d6aa55;
+      --gold-2:#f0d28a;
+      --gold-soft:#3a2a11;
+      --green:#7fc79b;
+      --amber:#edb85b;
+      --red:#e78778;
+      --shadow:0 24px 80px rgba(0,0,0,.58);
+      --radius:22px;
+    }
+
+    * { box-sizing:border-box; }
+    html { background:#000; }
+    body {
+      margin:0;
+      min-height:100vh;
+      color:var(--text);
+      font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 72% -12%, rgba(214,170,85,.17), transparent 32%),
+        radial-gradient(circle at 8% 14%, rgba(132,151,170,.12), transparent 27%),
+        linear-gradient(180deg, rgba(255,255,255,.015), transparent 28%),
+        var(--black);
+      overflow-x:hidden;
+    }
+
+    body::before {
+      content:"";
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      opacity:.32;
+      background-image:
+        linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.012) 1px, transparent 1px);
+      background-size:72px 72px;
+      mask-image:linear-gradient(to bottom, #000 0%, transparent 76%);
+    }
+
+    button { font:inherit; }
+    button:focus-visible, [tabindex]:focus-visible { outline:2px solid var(--gold-2); outline-offset:3px; }
+
+    .app-shell {
+      min-height:100vh;
+      display:grid;
+      grid-template-columns:238px minmax(0,1fr);
+    }
+
+    .sidebar {
+      position:sticky;
+      top:0;
+      height:100vh;
+      padding:28px 22px;
+      border-right:1px solid var(--line-soft);
+      background:linear-gradient(180deg, rgba(13,14,17,.98), rgba(5,5,7,.96));
+      z-index:4;
+    }
+
+    .brand {
+      display:flex;
+      align-items:center;
+      gap:12px;
+      margin-bottom:42px;
+    }
+
+    .shield {
+      width:44px;
+      height:50px;
+      display:grid;
+      place-items:center;
+      border:1px solid rgba(240,210,138,.52);
+      clip-path:polygon(50% 0, 92% 18%, 84% 74%, 50% 100%, 16% 74%, 8% 18%);
+      background:linear-gradient(160deg, #33260f 0%, #111217 55%, #070708 100%);
+      color:var(--gold-2);
+      font-weight:900;
+      letter-spacing:.06em;
+      box-shadow:0 0 34px rgba(214,170,85,.16);
+    }
+
+    .brand-copy strong { display:block; font-size:15px; letter-spacing:.13em; }
+    .brand-copy span { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.18em; }
+
+    .eyebrow {
+      color:var(--gold-2);
+      text-transform:uppercase;
+      letter-spacing:.18em;
+      font-size:11px;
+      font-weight:800;
+    }
+
+    .steps { display:grid; gap:8px; }
+    .step {
+      display:grid;
+      grid-template-columns:34px 1fr;
+      gap:11px;
+      align-items:center;
+      min-height:58px;
+      padding:9px 10px;
+      border:1px solid transparent;
+      border-radius:15px;
+      color:#8d8d8c;
+    }
+    .step .number {
+      width:30px; height:30px; border-radius:50%;
+      display:grid; place-items:center;
+      border:1px solid #34363c;
+      font-size:12px; font-weight:800;
+    }
+    .step b { display:block; font-size:13px; color:inherit; }
+    .step small { display:block; margin-top:2px; font-size:11px; color:#707176; }
+    .step.done { color:#d7d6d1; }
+    .step.done .number { border-color:#637168; color:var(--green); }
+    .step.active {
+      color:var(--text);
+      border-color:rgba(214,170,85,.42);
+      background:linear-gradient(100deg, rgba(214,170,85,.14), rgba(214,170,85,.03));
+      box-shadow:inset 3px 0 0 var(--gold);
+    }
+    .step.active .number { background:var(--gold); border-color:var(--gold); color:#111; }
+
+    .sidebar-footer {
+      position:absolute;
+      left:22px; right:22px; bottom:24px;
+      padding-top:18px;
+      border-top:1px solid var(--line-soft);
+      color:#777a80;
+      font-size:11px;
+      line-height:1.55;
+    }
+
+    main { min-width:0; padding:24px 28px 40px; }
+
+    .topbar {
+      min-height:84px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:24px;
+      padding:14px 18px;
+      border:1px solid var(--line);
+      border-radius:20px;
+      background:
+        radial-gradient(circle at 18% 0, rgba(214,170,85,.11), transparent 40%),
+        linear-gradient(135deg, rgba(24,25,29,.96), rgba(8,9,11,.95));
+      box-shadow:var(--shadow);
+    }
+
+    .team-id { display:flex; align-items:center; gap:15px; min-width:0; }
+    .crest {
+      width:58px; height:64px;
+      flex:0 0 auto;
+      display:grid; place-items:center;
+      clip-path:polygon(50% 0, 94% 19%, 84% 76%, 50% 100%, 16% 76%, 6% 19%);
+      background:linear-gradient(160deg, #c99c44, #4f3a15 46%, #0e0f13 47%, #050506);
+      color:#fff7df;
+      font-weight:950;
+      font-size:20px;
+      text-shadow:0 2px 8px #000;
+      box-shadow:0 0 36px rgba(214,170,85,.24);
+    }
+    .team-copy { min-width:0; }
+    .team-copy h2 { margin:3px 0 4px; font-size:20px; letter-spacing:.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .team-copy p { margin:0; color:var(--muted); font-size:12px; }
+
+    .top-meta { display:flex; gap:18px; align-items:center; }
+    .metric { text-align:right; }
+    .metric strong { display:block; font-size:16px; }
+    .metric span { display:block; color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.12em; margin-top:3px; }
+    .phase {
+      padding:10px 13px;
+      border:1px solid rgba(214,170,85,.3);
+      border-radius:12px;
+      background:rgba(214,170,85,.07);
+      color:var(--gold-2);
+      font-weight:800;
+      font-size:12px;
+      white-space:nowrap;
+    }
+
+    .hero {
+      padding:38px 4px 22px;
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-end;
+      gap:28px;
+    }
+    .hero h1 { margin:7px 0 10px; max-width:760px; font-size:clamp(32px, 4vw, 54px); line-height:.98; letter-spacing:-.045em; }
+    .hero p { margin:0; max-width:720px; color:var(--muted); font-size:15px; line-height:1.6; }
+    .progress-copy { text-align:right; color:var(--muted); font-size:11px; white-space:nowrap; }
+    .progress-copy strong { display:block; color:var(--gold-2); font-size:18px; margin-bottom:2px; }
+
+    .workspace {
+      display:grid;
+      grid-template-columns:minmax(0,1fr) 288px;
+      gap:18px;
+      align-items:start;
+    }
+
+    .cards {
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0,1fr));
+      gap:14px;
+    }
+
+    .pack-card {
+      position:relative;
+      min-height:330px;
+      text-align:left;
+      padding:20px;
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      color:var(--text);
+      background:linear-gradient(160deg, rgba(23,25,30,.98), rgba(9,10,12,.98));
+      box-shadow:0 14px 40px rgba(0,0,0,.34);
+      cursor:pointer;
+      transition:transform .16s ease, border-color .16s ease, box-shadow .16s ease, background .16s ease;
+      overflow:hidden;
+    }
+    .pack-card::before {
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      opacity:0;
+      background:radial-gradient(circle at 76% 12%, rgba(214,170,85,.16), transparent 32%);
+      transition:opacity .16s ease;
+    }
+    .pack-card:hover { transform:translateY(-2px); border-color:#4a4d55; }
+    .pack-card[aria-pressed="true"] {
+      border-color:var(--gold);
+      background:linear-gradient(155deg, rgba(35,29,17,.92), rgba(13,14,17,.98) 47%);
+      box-shadow:0 0 0 1px rgba(214,170,85,.18), 0 20px 58px rgba(0,0,0,.5);
+    }
+    .pack-card[aria-pressed="true"]::before { opacity:1; }
+    .pack-card.blocked { opacity:.78; cursor:not-allowed; }
+    .pack-card.blocked:hover { transform:none; }
+
+    .card-top { position:relative; display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+    .pack-icon {
+      width:46px; height:46px;
+      display:grid; place-items:center;
+      border-radius:14px;
+      border:1px solid #3b3e45;
+      background:#0b0c0f;
+      color:var(--gold-2);
+      font-size:18px;
+      font-weight:900;
+    }
+    .badge {
+      min-height:26px;
+      display:inline-flex;
+      align-items:center;
+      padding:0 9px;
+      border-radius:999px;
+      border:1px solid #3b3d43;
+      color:#b5b5b2;
+      background:#15171b;
+      font-size:9px;
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:.11em;
+    }
+    .badge.gold { color:var(--gold-2); border-color:#7c602b; background:#2c210e; }
+    .badge.green { color:#bce9cb; border-color:#356148; background:#11251a; }
+    .badge.amber { color:#f2cc86; border-color:#715125; background:#2a1c0b; }
+
+    .pack-card h3 { position:relative; margin:18px 0 6px; font-size:21px; letter-spacing:-.015em; }
+    .pack-card .sub { position:relative; margin:0; min-height:38px; color:var(--muted); font-size:12px; line-height:1.55; }
+
+    .coverage {
+      position:relative;
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:8px;
+      margin:18px 0 15px;
+      padding:13px 0;
+      border-top:1px solid var(--line-soft);
+      border-bottom:1px solid var(--line-soft);
+    }
+    .coverage strong { display:block; font-size:17px; }
+    .coverage span { display:block; margin-top:3px; color:#787b81; font-size:9px; text-transform:uppercase; letter-spacing:.09em; }
+
+    .consequences { position:relative; display:grid; gap:8px; margin:0; padding:0; list-style:none; }
+    .consequences li { display:grid; grid-template-columns:17px 1fr; gap:8px; color:#c9c8c3; font-size:11px; line-height:1.45; }
+    .consequences li::before { content:"✓"; color:var(--gold); font-weight:900; }
+    .blocked .consequences li::before { content:"!"; color:var(--amber); }
+
+    .select-line {
+      position:relative;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      min-height:42px;
+      margin-top:16px;
+      padding-top:12px;
+      border-top:1px solid var(--line-soft);
+      color:var(--gold-2);
+      font-size:12px;
+      font-weight:850;
+    }
+
+    .summary-panel {
+      position:sticky;
+      top:24px;
+      padding:18px;
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      background:linear-gradient(165deg, rgba(20,21,25,.98), rgba(7,8,10,.98));
+      box-shadow:var(--shadow);
+    }
+    .summary-panel h3 { margin:7px 0 3px; font-size:20px; }
+    .summary-panel > p { margin:0; color:var(--muted); font-size:11px; line-height:1.5; }
+    .mini-team {
+      display:flex; gap:11px; align-items:center;
+      margin:18px 0;
+      padding:13px;
+      border:1px solid var(--line-soft);
+      border-radius:15px;
+      background:#0b0c0f;
+    }
+    .mini-crest {
+      width:42px; height:46px; flex:0 0 auto;
+      display:grid; place-items:center;
+      clip-path:polygon(50% 0, 94% 19%, 84% 76%, 50% 100%, 16% 76%, 6% 19%);
+      background:linear-gradient(160deg, #c99c44, #32240f 52%, #08090b 53%);
+      font-weight:900;
+      color:#fff5da;
+    }
+    .mini-team b { display:block; font-size:12px; }
+    .mini-team span { display:block; margin-top:3px; color:var(--muted); font-size:10px; }
+    .fact-list { display:grid; gap:0; margin-bottom:16px; }
+    .fact {
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      min-height:40px;
+      border-bottom:1px solid var(--line-soft);
+      font-size:11px;
+    }
+    .fact span { color:#787b80; }
+    .fact strong { text-align:right; font-size:11px; }
+    .info-box {
+      margin:14px 0;
+      padding:12px;
+      border:1px solid rgba(214,170,85,.28);
+      border-radius:13px;
+      background:rgba(214,170,85,.06);
+      color:#c9c2b0;
+      font-size:10px;
+      line-height:1.5;
+    }
+    .continue {
+      width:100%; min-height:48px;
+      border:1px solid var(--gold);
+      border-radius:13px;
+      color:#171105;
+      background:linear-gradient(180deg, #efd28f, #c69a43);
+      font-weight:900;
+      cursor:pointer;
+      box-shadow:0 12px 30px rgba(214,170,85,.16);
+    }
+    .continue:disabled { cursor:not-allowed; color:#6d6657; border-color:#4a4335; background:#211f1a; box-shadow:none; }
+    .estimate { margin-top:10px; text-align:center; color:#777a7f; font-size:10px; }
+
+    .review-note {
+      margin-top:16px;
+      padding:13px 15px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      border:1px dashed #34363c;
+      border-radius:14px;
+      color:#888b90;
+      font-size:11px;
+    }
+    .review-note strong { color:#d7d5ce; }
+
+    .drawer {
+      position:fixed;
+      inset:auto 0 0 238px;
+      z-index:10;
+      transform:translateY(105%);
+      transition:transform .2s ease;
+      padding:22px 28px 28px;
+      border-top:1px solid #454039;
+      background:rgba(8,8,9,.98);
+      box-shadow:0 -24px 70px rgba(0,0,0,.72);
+    }
+    .drawer.open { transform:translateY(0); }
+    .drawer-inner { max-width:1120px; margin:auto; display:grid; grid-template-columns:1fr auto; gap:22px; }
+    .drawer h3 { margin:4px 0 8px; }
+    .drawer p { margin:0; max-width:850px; color:var(--muted); font-size:12px; line-height:1.6; }
+    .drawer button { min-width:112px; height:42px; border:1px solid var(--line); border-radius:12px; color:var(--text); background:#16171b; cursor:pointer; }
+
+    .mobile-bottom { display:none; }
+
+    @media (max-width:1100px) {
+      .app-shell { grid-template-columns:204px minmax(0,1fr); }
+      .sidebar { padding-left:16px; padding-right:16px; }
+      .workspace { grid-template-columns:1fr; }
+      .summary-panel { position:relative; top:auto; display:grid; grid-template-columns:1fr 1fr; gap:14px 24px; }
+      .summary-panel .eyebrow, .summary-panel h3, .summary-panel > p { grid-column:1 / -1; }
+      .drawer { left:204px; }
+    }
+
+    @media (max-width:760px) {
+      body { padding-bottom:76px; }
+      .app-shell { display:block; }
+      .sidebar { display:none; }
+      main { padding:12px 12px 28px; }
+      .topbar { min-height:74px; border-radius:16px; padding:10px 12px; }
+      .crest { width:44px; height:50px; font-size:16px; }
+      .team-copy h2 { font-size:15px; }
+      .team-copy p { font-size:10px; }
+      .top-meta .metric { display:none; }
+      .phase { padding:8px 9px; font-size:10px; }
+      .hero { padding:24px 4px 18px; display:block; }
+      .hero h1 { font-size:34px; line-height:1.02; }
+      .hero p { font-size:13px; }
+      .progress-copy { margin-top:14px; text-align:left; }
+      .cards { grid-template-columns:1fr; }
+      .pack-card { min-height:0; padding:18px; border-radius:18px; }
+      .coverage { margin-top:15px; }
+      .summary-panel { display:block; border-radius:18px; margin-top:2px; }
+      .review-note { display:block; line-height:1.5; }
+      .review-note span { display:block; margin-top:5px; }
+      .drawer { left:0; padding:18px 16px 92px; }
+      .drawer-inner { display:block; }
+      .drawer button { width:100%; margin-top:16px; }
+      .mobile-bottom {
+        position:fixed;
+        z-index:20;
+        left:0; right:0; bottom:0;
+        height:66px;
+        display:grid;
+        grid-template-columns:repeat(4,1fr);
+        border-top:1px solid var(--line);
+        background:rgba(5,5,6,.97);
+        backdrop-filter:blur(20px);
+      }
+      .mobile-bottom button {
+        border:0;
+        color:#777a7f;
+        background:transparent;
+        font-size:9px;
+        text-transform:uppercase;
+        letter-spacing:.08em;
+      }
+      .mobile-bottom button.active { color:var(--gold-2); }
+    }
+
+    @media (prefers-reduced-motion:reduce) {
+      *, *::before, *::after { scroll-behavior:auto !important; transition:none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="New game setup progress">
+      <div class="brand">
+        <div class="shield" aria-label="Hockey Operations crest">HO</div>
+        <div class="brand-copy"><strong>FRONT OFFICE</strong><span>Hockey Operations</span></div>
+      </div>
+      <div class="eyebrow" style="margin:0 10px 12px">New game setup</div>
+      <nav class="steps">
+        <div class="step done"><div class="number">✓</div><div><b>League</b><small>North American Pro</small></div></div>
+        <div class="step active" aria-current="step"><div class="number">2</div><div><b>Roster source</b><small>Choose your data world</small></div></div>
+        <div class="step"><div class="number">3</div><div><b>Franchise</b><small>Identity and market</small></div></div>
+        <div class="step"><div class="number">4</div><div><b>GM profile</b><small>Experience and style</small></div></div>
+      </nav>
+      <div class="sidebar-footer">Stage 3 browser preview<br />Review-only build · no save is created</div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div class="team-id">
+          <div class="crest" role="img" aria-label="Granite City Summit fictional team crest">GS</div>
+          <div class="team-copy">
+            <div class="eyebrow">Controlled franchise</div>
+            <h2>Granite City Summit</h2>
+            <p>North Division · Highpoint Arena · Established 1994</p>
+          </div>
+        </div>
+        <div class="top-meta">
+          <div class="metric"><strong>47–24–11</strong><span>Last season</span></div>
+          <div class="metric"><strong>2nd</strong><span>Division</span></div>
+          <div class="phase">STEP 2 OF 4</div>
+        </div>
+      </header>
+
+      <section class="hero">
+        <div>
+          <div class="eyebrow">Build your hockey world</div>
+          <h1>Select a roster pack</h1>
+          <p>Choose the balance of authenticity, completeness and uncertainty that will shape contracts, scouting, player development and every front-office decision.</p>
+        </div>
+        <div class="progress-copy"><strong>4 options</strong>One recommendation · full details retained</div>
+      </section>
+
+      <div class="workspace">
+        <section class="cards" aria-label="Roster pack choices">
+          <button class="pack-card" data-pack="elite" aria-pressed="true">
+            <div class="card-top"><div class="pack-icon">★</div><span class="badge gold">Recommended</span></div>
+            <h3>Elite Pro Pack</h3>
+            <p class="sub">A curated, internally consistent hockey universe designed for realistic long-term management.</p>
+            <div class="coverage"><div><strong>32</strong><span>Pro clubs</span></div><div><strong>32</strong><span>Affiliates</span></div><div><strong>100%</strong><span>Ready</span></div></div>
+            <ul class="consequences"><li>Complete contracts, rights and cap structures</li><li>Deep prospect histories and development paths</li><li>Best balance of realism and save stability</li></ul>
+            <div class="select-line"><span>Selected roster source</span><span>✓</span></div>
+          </button>
+
+          <button class="pack-card" data-pack="hybrid" aria-pressed="false">
+            <div class="card-top"><div class="pack-icon">◇</div><span class="badge green">Available</span></div>
+            <h3>Global Hybrid Pack</h3>
+            <p class="sub">Broader international pipelines with generated supporting layers and moderate uncertainty.</p>
+            <div class="coverage"><div><strong>48</strong><span>Leagues</span></div><div><strong>9.4K</strong><span>Players</span></div><div><strong>92%</strong><span>Ready</span></div></div>
+            <ul class="consequences"><li>Expanded European and junior recruitment</li><li>Some contracts use simulation-generated terms</li><li>Higher scouting value across regions</li></ul>
+            <div class="select-line"><span>Select Global Hybrid</span><span>→</span></div>
+          </button>
+
+          <button class="pack-card blocked" data-pack="live" aria-pressed="false" aria-disabled="true">
+            <div class="card-top"><div class="pack-icon">LIVE</div><span class="badge amber">Needs review</span></div>
+            <h3>Reviewed Pro Snapshot</h3>
+            <p class="sub">Current player identities and assignments with generated ratings and unknown commercial data.</p>
+            <div class="coverage"><div><strong>32/32</strong><span>Pro clubs</span></div><div><strong>31/32</strong><span>Affiliates</span></div><div><strong>1</strong><span>Blocker</span></div></div>
+            <ul class="consequences"><li>Real identity fields with clear provenance labels</li><li>Ratings and contracts remain generated or unknown</li><li>One affiliate snapshot is incomplete</li></ul>
+            <div class="select-line"><span>Review blocker</span><span>!</span></div>
+          </button>
+
+          <button class="pack-card" data-pack="sandbox" aria-pressed="false">
+            <div class="card-top"><div class="pack-icon">∞</div><span class="badge">Advanced</span></div>
+            <h3>Custom Sandbox</h3>
+            <p class="sub">Start from a clean fictional foundation and tune league size, economics and development volatility.</p>
+            <div class="coverage"><div><strong>8–40</strong><span>Clubs</span></div><div><strong>Custom</strong><span>Rules</span></div><div><strong>6 min</strong><span>Setup</span></div></div>
+            <ul class="consequences"><li>Maximum control over league structure</li><li>Longer setup and more balancing decisions</li><li>Ideal for experiments and alternate histories</li></ul>
+            <div class="select-line"><span>Configure sandbox</span><span>→</span></div>
+          </button>
+        </section>
+
+        <aside class="summary-panel" aria-live="polite">
+          <div class="eyebrow">Creation summary</div>
+          <h3 id="summary-title">Elite Pro Pack</h3>
+          <p id="summary-sub">Recommended for the most complete training-grade experience.</p>
+
+          <div class="mini-team">
+            <div class="mini-crest" aria-hidden="true">GS</div>
+            <div><b>Granite City Summit</b><span>North Division · Highpoint Arena</span></div>
+          </div>
+
+          <div class="fact-list">
+            <div class="fact"><span>Captain</span><strong>Mason Hart · C</strong></div>
+            <div class="fact"><span>Top scorer</span><strong>Leo Mercer · 94 PTS</strong></div>
+            <div class="fact"><span>Starting goalie</span><strong>Evan Rook · .918</strong></div>
+            <div class="fact"><span>Affiliate</span><strong>Silver Peak Forge</strong></div>
+            <div class="fact"><span>Estimated setup</span><strong id="setup-time">2 minutes</strong></div>
+          </div>
+
+          <div class="info-box" id="info-box"><strong>Why this is recommended:</strong> every major roster, cap, contract and development layer is complete, so management outcomes remain coherent across long saves.</div>
+          <button class="continue" id="continue-button">Continue with Elite Pro Pack</button>
+          <div class="estimate">No save will be created from this preview.</div>
+        </aside>
+      </div>
+
+      <div class="review-note"><strong>Stage 3 review harness</strong><span>Responsive desktop/mobile composition · realistic dense state · selected, available and blocked conditions</span></div>
+    </main>
+  </div>
+
+  <div class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+    <div class="drawer-inner">
+      <div><div class="eyebrow">Roster source detail</div><h3 id="drawer-title">Elite Pro Pack</h3><p id="drawer-copy">This pack contains fully simulated contracts, rights, cap states, player histories and prospect pipelines. It is fictional by design, avoiding data licensing uncertainty while preserving a realistic general-manager workflow.</p></div>
+      <button id="close-drawer">Close details</button>
+    </div>
+  </div>
+
+  <nav class="mobile-bottom" aria-label="Mobile setup navigation">
+    <button>Back</button><button class="active">Roster</button><button id="mobile-details">Details</button><button id="mobile-next">Next</button>
+  </nav>
+
+  <script>
+    const packs = {
+      elite: {
+        title:'Elite Pro Pack',
+        sub:'Recommended for the most complete training-grade experience.',
+        time:'2 minutes',
+        info:'<strong>Why this is recommended:</strong> every major roster, cap, contract and development layer is complete, so management outcomes remain coherent across long saves.',
+        drawer:'This pack contains fully simulated contracts, rights, cap states, player histories and prospect pipelines. It is fictional by design, avoiding data licensing uncertainty while preserving a realistic general-manager workflow.'
+      },
+      hybrid: {
+        title:'Global Hybrid Pack',
+        sub:'Expanded leagues and player pipelines with clearly disclosed generated layers.',
+        time:'3 minutes',
+        info:'<strong>Best for global scouting:</strong> more leagues and regions increase discovery value, while generated contract layers keep the world playable.',
+        drawer:'The Global Hybrid pack expands the player pipeline across international, junior and development leagues. Provenance and generated fields remain visible so the user can judge uncertainty.'
+      },
+      sandbox: {
+        title:'Custom Sandbox',
+        sub:'Maximum control for alternate league structures and experiments.',
+        time:'6–10 minutes',
+        info:'<strong>Best for custom scenarios:</strong> control league size, economics, roster rules and development volatility before starting the save.',
+        drawer:'Custom Sandbox starts from a fictional base and exposes configuration controls for league scale, economics, roster rules and development volatility. It requires more setup decisions.'
+      },
+      live: {
+        title:'Reviewed Pro Snapshot',
+        sub:'Unavailable until the remaining affiliate source is reviewed.',
+        time:'Blocked',
+        info:'<strong>Activation blocker:</strong> one affiliate roster snapshot lacks reviewed provenance. Ratings and contracts would remain generated or unknown.',
+        drawer:'This snapshot includes current factual identity fields, but the source is incomplete. It cannot create a save until every required affiliate and provenance field passes review.'
+      }
+    };
+
+    const cards = [...document.querySelectorAll('.pack-card')];
+    const summaryTitle = document.getElementById('summary-title');
+    const summarySub = document.getElementById('summary-sub');
+    const setupTime = document.getElementById('setup-time');
+    const infoBox = document.getElementById('info-box');
+    const continueButton = document.getElementById('continue-button');
+    const drawer = document.getElementById('drawer');
+    const drawerTitle = document.getElementById('drawer-title');
+    const drawerCopy = document.getElementById('drawer-copy');
+    let selected = 'elite';
+
+    function render(packKey) {
+      const pack = packs[packKey];
+      selected = packKey;
+      cards.forEach(card => card.setAttribute('aria-pressed', String(card.dataset.pack === packKey)));
+      summaryTitle.textContent = pack.title;
+      summarySub.textContent = pack.sub;
+      setupTime.textContent = pack.time;
+      infoBox.innerHTML = pack.info;
+      const blocked = packKey === 'live';
+      continueButton.disabled = blocked;
+      continueButton.textContent = blocked ? 'Resolve blocker to continue' : `Continue with ${pack.title}`;
+    }
+
+    cards.forEach(card => {
+      card.addEventListener('click', () => {
+        const key = card.dataset.pack;
+        if (key === 'live') {
+          render(key);
+          openDrawer(key);
+          return;
+        }
+        render(key);
+      });
+    });
+
+    function openDrawer(key = selected) {
+      const pack = packs[key];
+      drawerTitle.textContent = pack.title;
+      drawerCopy.textContent = pack.drawer;
+      drawer.classList.add('open');
+      document.getElementById('close-drawer').focus();
+    }
+    function closeDrawer() { drawer.classList.remove('open'); }
+
+    document.getElementById('close-drawer').addEventListener('click', closeDrawer);
+    document.getElementById('mobile-details').addEventListener('click', () => openDrawer());
+    document.getElementById('mobile-next').addEventListener('click', () => continueButton.click());
+    continueButton.addEventListener('click', () => openDrawer(selected));
+    document.addEventListener('keydown', event => { if (event.key === 'Escape') closeDrawer(); });
+  </script>
+</body>
+</html>
