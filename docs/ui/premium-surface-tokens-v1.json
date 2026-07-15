@@ -9,9 +9,18 @@
     "text_primary": "#F5F7FA",
     "text_secondary": "#9FA8B4"
   },
+  "atmosphere": {
+    "ambient_gradient_allowed": true,
+    "ambient_gradient_max_opacity": 0.18,
+    "texture_max_opacity": 0.04,
+    "glow_regions_max": 2,
+    "glow_must_anchor_identity_or_action": true,
+    "decorative_motion_allowed": false
+  },
   "franchise_accent": {
     "primary": "#5BB8FF",
     "soft": "#15395B",
+    "maximum_visible_surface_ratio": 0.15,
     "usage": [
       "selected state",
       "primary action",
