@@ -26,6 +26,14 @@
     "shadow_blur_px": 24,
     "shadow_opacity": 0.55
   },
+  "interaction": {
+    "transition_min_ms": 120,
+    "transition_max_ms": 180,
+    "hover_layout_shift_allowed": false,
+    "reduced_motion_removes_nonessential_animation": true,
+    "blocked_state_requires_reason": true,
+    "selected_state_requires_persistent_indicator": true
+  },
   "accessibility": {
     "minimum_touch_target_px": 44,
     "minimum_body_text_px": 14,
