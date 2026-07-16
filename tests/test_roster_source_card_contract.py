@@ -51,6 +51,10 @@ class RosterSourceCardContractTests(unittest.TestCase):
         self.assertIn("!blocked ? <Text accessibilityElementsHidden", self.source)
         self.assertNotIn("Review blocker", self.source)
 
+    def test_blocked_reason_is_announced_when_it_changes(self):
+        self.assertIn("accessibilityRole=\"alert\"", self.source)
+        self.assertIn("accessibilityLiveRegion=\"polite\"", self.source)
+
 
 if __name__ == "__main__":
     unittest.main()
