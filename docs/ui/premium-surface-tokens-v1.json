@@ -1,0 +1,87 @@
+{
+  "schema_version": 2,
+  "status": "Stage 2 Approved; Stage 3 UI Review Pending",
+  "approved_screen": "New Game — Roster Pack Selection",
+  "foundation": {
+    "canvas": "#000000",
+    "surface_primary": "#0D0F13",
+    "surface_elevated": "#171A20",
+    "border_subtle": "#303640",
+    "text_primary": "#F5F7FA",
+    "text_secondary": "#9FA8B4"
+  },
+  "atmosphere": {
+    "arena_background_required": true,
+    "arena_scrim_min_opacity": 0.72,
+    "ambient_gradient_allowed": true,
+    "ambient_gradient_max_opacity": 0.18,
+    "texture_max_opacity": 0.04,
+    "glow_regions_max": 2,
+    "glow_must_anchor_identity_or_action": true,
+    "decorative_motion_allowed": false
+  },
+  "franchise_accent": {
+    "primary": "#D6A84B",
+    "soft": "#4A3818",
+    "maximum_visible_surface_ratio": 0.15,
+    "usage": [
+      "recommended state",
+      "primary action",
+      "franchise identity",
+      "focus indicator",
+      "progress navigation"
+    ]
+  },
+  "elevation": {
+    "panel_radius_px": 22,
+    "control_radius_px": 12,
+    "shadow_y_px": 18,
+    "shadow_blur_px": 24,
+    "shadow_opacity": 0.55
+  },
+  "interaction": {
+    "transition_min_ms": 120,
+    "transition_max_ms": 180,
+    "hover_layout_shift_allowed": false,
+    "reduced_motion_removes_nonessential_animation": true,
+    "blocked_state_requires_reason": true,
+    "selected_state_requires_persistent_indicator": true
+  },
+  "accessibility": {
+    "minimum_touch_target_px": 44,
+    "minimum_body_text_px": 14,
+    "focus_ring_px": 2,
+    "status_requires_text_or_icon": true,
+    "logo_fallback_initials": true,
+    "arena_image_is_decorative": true
+  },
+  "density": {
+    "roster_option_count": 4,
+    "card_primary_action_limit": 1,
+    "visible_consequence_limit": 3,
+    "details_pattern_desktop": "drawer",
+    "details_pattern_mobile": "bottom-sheet"
+  },
+  "layout_contract": {
+    "desktop": {
+      "setup_progress_rail_required": true,
+      "roster_cards_visible_without_horizontal_scroll": 4,
+      "franchise_summary_required": true,
+      "information_panel_required": true,
+      "estimated_setup_time_required": true
+    },
+    "mobile": {
+      "stacked_roster_cards_required": true,
+      "bottom_navigation_required": true,
+      "franchise_summary_compact": true,
+      "horizontal_page_scroll_allowed": false
+    }
+  },
+  "visual_review": {
+    "fixed_viewport_comparison_required": true,
+    "side_by_side_mockup_comparison_required": true,
+    "deviation_log_required": true,
+    "visual_regression_baseline_required_before_final_acceptance": true,
+    "major_ui_merge_requires_kyle_approval": true
+  }
+}
