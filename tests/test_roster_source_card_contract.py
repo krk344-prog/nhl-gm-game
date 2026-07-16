@@ -44,10 +44,12 @@ class RosterSourceCardContractTests(unittest.TestCase):
     def test_primary_action_meets_minimum_touch_target(self):
         self.assertRegex(self.source, re.compile(r"actionRow:\s*\{[^}]*minHeight:\s*44", re.DOTALL))
 
-    def test_blocked_source_requires_an_explanation(self):
+    def test_blocked_source_explains_why_without_false_action_affordance(self):
         self.assertIn("const blocked = Boolean(blockedReason)", self.source)
         self.assertIn("{blockedReason}", self.source)
-        self.assertIn("Review blocker", self.source)
+        self.assertIn("blocked ? 'Unavailable'", self.source)
+        self.assertIn("!blocked ? <Text accessibilityElementsHidden", self.source)
+        self.assertNotIn("Review blocker", self.source)
 
 
 if __name__ == "__main__":
