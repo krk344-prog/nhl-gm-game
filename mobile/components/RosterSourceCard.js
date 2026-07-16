@@ -72,7 +72,11 @@ export default function RosterSourceCard({
       </View>
 
       {blocked ? (
-        <View style={styles.blockedPanel} accessibilityRole="alert">
+        <View
+          style={styles.blockedPanel}
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
+        >
           <Text style={styles.blockedLabel}>BLOCKED</Text>
           <Text style={styles.blockedReason}>{blockedReason}</Text>
         </View>
