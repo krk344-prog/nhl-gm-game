@@ -29,7 +29,7 @@ export default function RosterSourceCard({
 }) {
   const blocked = Boolean(blockedReason);
   const stateLabel = blocked ? 'Unavailable' : selected ? 'Selected' : recommended ? 'Recommended' : 'Available';
-  const actionLabel = blocked ? 'Review blocker' : selected ? 'Selected' : 'Select roster source';
+  const actionLabel = blocked ? 'Unavailable' : selected ? 'Selected' : 'Select roster source';
 
   return (
     <Pressable
@@ -80,7 +80,7 @@ export default function RosterSourceCard({
 
       <View style={styles.actionRow}>
         <Text style={[styles.actionText, blocked && styles.actionTextBlocked]}>{actionLabel}</Text>
-        <Text accessibilityElementsHidden style={[styles.actionArrow, blocked && styles.actionTextBlocked]}>→</Text>
+        {!blocked ? <Text accessibilityElementsHidden style={styles.actionArrow}>→</Text> : null}
       </View>
     </Pressable>
   );
