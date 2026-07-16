@@ -23,7 +23,13 @@ class RosterSourceCardContractTests(unittest.TestCase):
         self.assertIn("consequences.slice(0, 3)", self.source)
 
     def test_selected_and_blocked_states_do_not_rely_on_color_alone(self):
-        self.assertIn("selected: selected", self.source)
+        self.assertRegex(
+            self.source,
+            re.compile(
+                r"accessibilityState=\{\{[^}]*disabled:\s*blocked[^}]*selected(?:\s*:\s*selected)?[^}]*\}\}",
+                re.DOTALL,
+            ),
+        )
         self.assertIn("blocked ? 'Unavailable'", self.source)
         self.assertIn("accessibilityRole=\"alert\"", self.source)
         self.assertIn(">BLOCKED<", self.source)
