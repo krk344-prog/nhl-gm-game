@@ -27,11 +27,11 @@
   },
   "sources": [
     {
-      "id": "nhl_cap_2025_2028_announcement",
+      "id": "nhl_cap_2026_27_announcement",
       "authority": "joint_league_union",
       "verification_status": "verified",
-      "title": "NHL and NHLPA announce team payroll ranges for 2025-26 through 2027-28",
-      "url": "https://www.nhl.com/news/nhl-nhlpa-team-payroll-ranges-for-next-3-seasons",
+      "title": "NHL and NHLPA announce team payroll range for 2026-27",
+      "url": "https://www.nhl.com/news/nhl-nhlpa-announce-team-payroll-range-for-2026-27-season",
       "supports": ["salary_system.upper_limit", "salary_system.lower_limit"]
     },
     {
