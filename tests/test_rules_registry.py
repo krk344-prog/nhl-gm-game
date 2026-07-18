@@ -25,6 +25,14 @@ class RulesRegistryTests(unittest.TestCase):
         self.assertEqual(rules.competition["regular_season_games"], 84)
         self.assertTrue(rules.salary_system["playoff_salary_cap_applies"])
 
+    def test_2025_26_playoff_cap_rule_is_enabled_and_verified(self):
+        rules = self.registry.load("2025-26")
+        self.assertTrue(rules.salary_system["playoff_salary_cap_applies"])
+        sources = rules.source_for("salary_system.playoff_salary_cap_applies")
+        self.assertEqual(len(sources), 2)
+        self.assertTrue(any(source.verification_status == "verified" for source in sources))
+        rules.require_verified(["salary_system.playoff_salary_cap_applies"])
+
     def test_resolves_rules_by_date(self):
         rules = self.registry.for_date(date(2026, 7, 11))
         self.assertEqual(rules.season_id, "2026-27")
