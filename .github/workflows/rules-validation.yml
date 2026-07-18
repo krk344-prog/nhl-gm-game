@@ -1,0 +1,42 @@
+name: Rules validation
+
+on:
+  pull_request:
+    paths:
+      - "config/rules/**"
+      - "src/rules_registry.py"
+      - "src/nhl_gm_core.py"
+      - "src/front_office_research_agent.py"
+      - "tests/test_rules_registry.py"
+      - "tests/test_season_integration.py"
+      - "tests/test_front_office_research_agent.py"
+      - ".github/workflows/rules-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused-rules-suite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install test dependency
+        run: python -m pip install --upgrade pytest
+
+      - name: Run focused rules and research tests
+        run: >-
+          python -m pytest -q
+          tests/test_rules_registry.py
+          tests/test_season_integration.py
+          tests/test_front_office_research_agent.py
