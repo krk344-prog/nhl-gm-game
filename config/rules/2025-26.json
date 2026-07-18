@@ -19,7 +19,7 @@
     "reserve_list_limit": 90,
     "maximum_contract_years_re_signing": 8,
     "maximum_contract_years_new_club": 7,
-    "playoff_salary_cap_applies": false
+    "playoff_salary_cap_applies": true
   },
   "transaction_rules": {
     "waiver_period_hours": 24,
@@ -33,6 +33,14 @@
       "title": "NHL and NHLPA announce team payroll ranges for 2025-26 through 2027-28",
       "url": "https://www.nhl.com/news/nhl-nhlpa-team-payroll-ranges-for-next-3-seasons",
       "supports": ["salary_system.upper_limit", "salary_system.lower_limit"]
+    },
+    {
+      "id": "nhl_2025_26_playoff_cap_implementation",
+      "authority": "league_official",
+      "verification_status": "verified",
+      "title": "NHL teams must be within salary cap during Stanley Cup Playoffs",
+      "url": "https://www.nhl.com/news/nhl-to-have-salary-cap-for-playoffs-starting-this-season",
+      "supports": ["salary_system.playoff_salary_cap_applies"]
     },
     {
       "id": "nhl_2013_cba_and_2020_mou",
