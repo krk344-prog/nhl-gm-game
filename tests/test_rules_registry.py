@@ -58,6 +58,27 @@ class RulesRegistryTests(unittest.TestCase):
             ):
                 registry.for_date(date(2026, 7, 11))
 
+    def test_for_date_rejects_gap_between_rulesets(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            rules_dir = Path(temp_dir)
+            first = json.loads(
+                (Path("config/rules/2025-26.json")).read_text(encoding="utf-8")
+            )
+            second = json.loads(
+                (Path("config/rules/2026-27.json")).read_text(encoding="utf-8")
+            )
+            first["effective_through"] = "2026-06-30"
+            second["effective_from"] = "2026-07-02"
+            (rules_dir / "2025-26.json").write_text(json.dumps(first), encoding="utf-8")
+            (rules_dir / "2026-27.json").write_text(json.dumps(second), encoding="utf-8")
+
+            registry = RulesRegistry(rules_dir)
+            with self.assertRaisesRegex(
+                UnknownSeasonError,
+                "Expected exactly one ruleset for 2026-07-01, found 0",
+            ):
+                registry.for_date(date(2026, 7, 1))
+
     def test_daily_charge_requires_schedule_derived_days(self):
         rules = self.registry.load("2026-27")
         with self.assertRaises(RulesValidationError):
