@@ -53,6 +53,50 @@ def test_legacy_save_migrates_existing_max_days(tmp_path):
     assert context["season_id"] == "2025-26"
 
 
+def test_alpha_save_metadata_survives_rules_migration(tmp_path):
+    """PR #2 must enrich an Alpha save without erasing its save identity."""
+    db = tmp_path / "alpha.db"
+    with sqlite3.connect(db) as conn:
+        conn.execute("""
+            CREATE TABLE league_calendar (
+                id INTEGER PRIMARY KEY,
+                current_day INTEGER,
+                max_days INTEGER,
+                salary_cap_ceiling REAL,
+                accrued_margin REAL
+            )
+        """)
+        conn.execute(
+            "INSERT INTO league_calendar VALUES (1, 47, 186, 92000000, 250000)"
+        )
+        conn.execute("""
+            CREATE TABLE game_settings (
+                id INTEGER PRIMARY KEY,
+                user_team_id INTEGER NOT NULL,
+                save_name TEXT NOT NULL,
+                seed INTEGER NOT NULL,
+                schema_version INTEGER NOT NULL
+            )
+        """)
+        conn.execute(
+            "INSERT INTO game_settings VALUES (1, 4, 'Kyle Closed Alpha', 7, 2)"
+        )
+
+    init_database(db, season_id="2025-26")
+
+    with sqlite3.connect(db) as conn:
+        saved = conn.execute(
+            "SELECT user_team_id, save_name, seed, schema_version FROM game_settings WHERE id = 1"
+        ).fetchone()
+        current_day = conn.execute(
+            "SELECT current_day FROM league_calendar WHERE id = 1"
+        ).fetchone()[0]
+
+    assert saved == (4, "Kyle Closed Alpha", 7, 2)
+    assert current_day == 47
+    assert get_season_context(db)["season_id"] == "2025-26"
+
+
 def test_save_cannot_silently_change_seasons(tmp_path):
     db = tmp_path / "save.db"
     init_database(db, season_id="2025-26", accrual_days=192)
