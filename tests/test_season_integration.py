@@ -165,6 +165,69 @@ def test_alpha_trade_history_survives_rules_migration(tmp_path):
     assert get_season_context(db)["current_day"] == 61
 
 
+def test_alpha_completed_schedule_survives_rules_migration(tmp_path):
+    """Rules migration must preserve a completed Alpha game and its result log."""
+    db = tmp_path / "alpha-schedule.db"
+    with sqlite3.connect(db) as conn:
+        conn.execute("""
+            CREATE TABLE league_calendar (
+                id INTEGER PRIMARY KEY,
+                current_day INTEGER,
+                max_days INTEGER,
+                salary_cap_ceiling REAL,
+                accrued_margin REAL
+            )
+        """)
+        conn.execute(
+            "INSERT INTO league_calendar VALUES (1, 62, 186, 92000000, 500000)"
+        )
+        conn.execute("""
+            CREATE TABLE schedule (
+                id INTEGER PRIMARY KEY,
+                day INTEGER NOT NULL,
+                home_team_id INTEGER NOT NULL,
+                away_team_id INTEGER NOT NULL,
+                status TEXT NOT NULL,
+                home_score INTEGER,
+                away_score INTEGER,
+                overtime INTEGER NOT NULL,
+                result_log TEXT
+            )
+        """)
+        conn.execute(
+            """
+            INSERT INTO schedule VALUES (
+                9, 60, 1, 3, 'completed', 4, 3, 1,
+                'Buffalo won 4-3 in overtime'
+            )
+            """
+        )
+
+    init_database(db, season_id="2025-26")
+
+    with sqlite3.connect(db) as conn:
+        game = conn.execute(
+            """
+            SELECT day, home_team_id, away_team_id, status,
+                   home_score, away_score, overtime, result_log
+              FROM schedule
+             WHERE id = 9
+            """
+        ).fetchone()
+
+    assert game == (
+        60,
+        1,
+        3,
+        "completed",
+        4,
+        3,
+        1,
+        "Buffalo won 4-3 in overtime",
+    )
+    assert get_season_context(db)["current_day"] == 62
+
+
 def test_save_cannot_silently_change_seasons(tmp_path):
     db = tmp_path / "save.db"
     init_database(db, season_id="2025-26", accrual_days=192)
