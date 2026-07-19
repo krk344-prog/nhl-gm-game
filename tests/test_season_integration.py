@@ -182,22 +182,43 @@ def test_alpha_completed_schedule_survives_rules_migration(tmp_path):
             "INSERT INTO league_calendar VALUES (1, 62, 186, 92000000, 500000)"
         )
         conn.execute("""
+            CREATE TABLE teams (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE,
+                city TEXT,
+                tier TEXT,
+                cash_balance REAL DEFAULT 25000000.0,
+                gm_trust_score REAL DEFAULT 70.0,
+                franchise_mandate TEXT DEFAULT 'Moneyball Auditor',
+                relationship_score REAL DEFAULT 50.0
+            )
+        """)
+        conn.executemany(
+            "INSERT INTO teams (id, name, city, tier) VALUES (?, ?, ?, 'NHL')",
+            ((1, "Blizzards", "Buffalo"), (2, "Titans", "New York")),
+        )
+        conn.execute("""
             CREATE TABLE schedule (
-                id INTEGER PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 day INTEGER NOT NULL,
                 home_team_id INTEGER NOT NULL,
                 away_team_id INTEGER NOT NULL,
-                status TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'scheduled'
+                    CHECK(status IN ('scheduled', 'in_progress', 'completed')),
                 home_score INTEGER,
                 away_score INTEGER,
-                overtime INTEGER NOT NULL,
-                result_log TEXT
+                overtime INTEGER NOT NULL DEFAULT 0,
+                result_log TEXT,
+                UNIQUE(day, home_team_id, away_team_id),
+                CHECK(home_team_id != away_team_id),
+                FOREIGN KEY(home_team_id) REFERENCES teams(id),
+                FOREIGN KEY(away_team_id) REFERENCES teams(id)
             )
         """)
         conn.execute(
             """
             INSERT INTO schedule VALUES (
-                9, 60, 1, 3, 'completed', 4, 3, 1,
+                9, 60, 1, 2, 'completed', 4, 3, 1,
                 'Buffalo won 4-3 in overtime'
             )
             """
@@ -218,7 +239,7 @@ def test_alpha_completed_schedule_survives_rules_migration(tmp_path):
     assert game == (
         60,
         1,
-        3,
+        2,
         "completed",
         4,
         3,
