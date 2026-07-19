@@ -35,6 +35,14 @@
       "supports": ["salary_system.upper_limit", "salary_system.lower_limit"]
     },
     {
+      "id": "nhlpa_active_roster_limit_faq",
+      "authority": "players_association",
+      "verification_status": "verified",
+      "title": "NHLPA Frequently Asked Questions — active player roster limit",
+      "url": "https://www.nhlpa.com/faqs/",
+      "supports": ["salary_system.active_roster_maximum"]
+    },
+    {
       "id": "nhl_nhlpa_2026_2030_mou",
       "authority": "collective_bargaining_agreement",
       "verification_status": "verified_summary_pending_full_rule_mapping",
