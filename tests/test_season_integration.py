@@ -97,6 +97,74 @@ def test_alpha_save_metadata_survives_rules_migration(tmp_path):
     assert get_season_context(db)["season_id"] == "2025-26"
 
 
+def test_alpha_trade_history_survives_rules_migration(tmp_path):
+    """Rules migration must not erase a completed Alpha transaction ledger."""
+    db = tmp_path / "alpha-trade.db"
+    with sqlite3.connect(db) as conn:
+        conn.execute("""
+            CREATE TABLE league_calendar (
+                id INTEGER PRIMARY KEY,
+                current_day INTEGER,
+                max_days INTEGER,
+                salary_cap_ceiling REAL,
+                accrued_margin REAL
+            )
+        """)
+        conn.execute(
+            "INSERT INTO league_calendar VALUES (1, 61, 186, 92000000, 500000)"
+        )
+        conn.execute("""
+            CREATE TABLE trade_history (
+                id INTEGER PRIMARY KEY,
+                day INTEGER NOT NULL,
+                user_team_id INTEGER NOT NULL,
+                target_team_id INTEGER NOT NULL,
+                offered_player_id INTEGER NOT NULL,
+                target_player_id INTEGER NOT NULL,
+                offered_value REAL NOT NULL,
+                target_value REAL NOT NULL,
+                required_value REAL NOT NULL,
+                relationship_score REAL NOT NULL,
+                status TEXT NOT NULL,
+                reason TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+        """)
+        conn.execute(
+            """
+            INSERT INTO trade_history VALUES (
+                1, 44, 1, 3, 11, 72, 83.5, 81.0, 80.0, 55.0,
+                'approved', 'Accepted after value and relationship review',
+                '2026-07-12 12:00:00'
+            )
+            """
+        )
+
+    init_database(db, season_id="2025-26")
+
+    with sqlite3.connect(db) as conn:
+        trade = conn.execute(
+            """
+            SELECT day, user_team_id, target_team_id, offered_player_id,
+                   target_player_id, status, reason, created_at
+              FROM trade_history
+             WHERE id = 1
+            """
+        ).fetchone()
+
+    assert trade == (
+        44,
+        1,
+        3,
+        11,
+        72,
+        "approved",
+        "Accepted after value and relationship review",
+        "2026-07-12 12:00:00",
+    )
+    assert get_season_context(db)["current_day"] == 61
+
+
 def test_save_cannot_silently_change_seasons(tmp_path):
     db = tmp_path / "save.db"
     init_database(db, season_id="2025-26", accrual_days=192)
