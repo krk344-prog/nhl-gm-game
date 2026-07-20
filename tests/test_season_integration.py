@@ -284,6 +284,8 @@ def test_daily_accrual_uses_saved_schedule_denominator(tmp_path):
 def test_compliance_gate_uses_registry_roster_limit(tmp_path):
     db = tmp_path / "save.db"
     init_database(db, season_id="2025-26", accrual_days=192)
+    with sqlite3.connect(db) as conn:
+        conn.execute("UPDATE players SET aav = 1000000 WHERE team_id = 1")
     legal, errors = ComplianceGate.verify_roster_legality(1, db)
     assert legal is True
     assert errors == []
