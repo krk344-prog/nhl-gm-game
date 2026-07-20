@@ -4,17 +4,18 @@ from src.nhl_gm_core import get_season_context, init_database
 
 
 def test_alpha_franchise_catalog_survives_rules_migration(tmp_path):
-    """Season-rules migration must not replace the playable Alpha's franchises."""
+    """Season-rules migration must preserve NHL clubs and the Alpha AHL affiliate."""
     db = tmp_path / "alpha-franchises.db"
     franchises = (
-        (1, "Blizzards", "Buffalo"),
-        (2, "Titans", "New York"),
-        (3, "Auditors", "Detroit"),
-        (4, "Harbors", "Boston"),
-        (5, "Towers", "Toronto"),
-        (6, "Voyageurs", "Montreal"),
-        (7, "Forge", "Chicago"),
-        (8, "Orcas", "Seattle"),
+        (1, "Blizzards", "Buffalo", "NHL"),
+        (2, "Titans", "New York", "NHL"),
+        (3, "Auditors", "Detroit", "NHL"),
+        (4, "Harbors", "Boston", "NHL"),
+        (5, "Towers", "Toronto", "NHL"),
+        (6, "Voyageurs", "Montreal", "NHL"),
+        (7, "Forge", "Chicago", "NHL"),
+        (8, "Orcas", "Seattle", "NHL"),
+        (9, "Northstars", "Rochester", "AHL"),
     )
 
     with sqlite3.connect(db) as conn:
@@ -47,7 +48,7 @@ def test_alpha_franchise_catalog_survives_rules_migration(tmp_path):
             """
         )
         conn.executemany(
-            "INSERT INTO teams (id, name, city, tier) VALUES (?, ?, ?, 'NHL')",
+            "INSERT INTO teams (id, name, city, tier) VALUES (?, ?, ?, ?)",
             franchises,
         )
 
@@ -55,12 +56,18 @@ def test_alpha_franchise_catalog_survives_rules_migration(tmp_path):
 
     with sqlite3.connect(db) as conn:
         saved = conn.execute(
-            "SELECT id, name, city FROM teams WHERE tier = 'NHL' ORDER BY id"
+            "SELECT id, name, city, tier FROM teams ORDER BY id"
         ).fetchall()
-        all_team_count = conn.execute("SELECT COUNT(*) FROM teams").fetchone()[0]
+        nhl_team_count = conn.execute(
+            "SELECT COUNT(*) FROM teams WHERE tier = 'NHL'"
+        ).fetchone()[0]
+        ahl_team_count = conn.execute(
+            "SELECT COUNT(*) FROM teams WHERE tier = 'AHL'"
+        ).fetchone()[0]
 
     assert saved == list(franchises)
-    assert all_team_count == 8
+    assert nhl_team_count == 8
+    assert ahl_team_count == 1
     assert get_season_context(db)["current_day"] == 71
 
 
