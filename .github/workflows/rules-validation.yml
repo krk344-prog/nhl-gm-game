@@ -1,0 +1,38 @@
+name: Rules validation
+
+on:
+  pull_request:
+    paths:
+      - "config/rules/**"
+      - "src/rules_registry.py"
+      - "src/nhl_gm_core.py"
+      - "src/front_office_research_agent.py"
+      - "tests/**"
+      - ".github/workflows/rules-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python-compatibility-suite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependency
+        run: python -m pip install --upgrade pytest
+
+      - name: Compile Python sources
+        run: python -m compileall -q src tests
+
+      - name: Run complete Python test suite
+        run: python -m pytest -q
