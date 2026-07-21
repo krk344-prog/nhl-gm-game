@@ -148,3 +148,92 @@ def test_alpha_standings_survive_rules_migration(tmp_path):
 
     assert saved == list(standings)
     assert get_season_context(db)["current_day"] == 103
+
+
+def test_alpha_player_roster_survives_rules_migration(tmp_path):
+    """Rules migration must not rewrite playable Alpha player or contract state."""
+    db = tmp_path / "alpha-roster.db"
+    players = (
+        (101, 1, "Casey Mercer", 25, "F", "Two-Way Forward", 78, 82, 80, 35, 86, 74, 3_250_000, 3, 12.5, 0, 4),
+        (102, 1, "Jordan Vale", 29, "D", "Defensive D-Man", 62, 76, 91, 38, 79, 92, 4_100_000, 2, 7.0, 1, 9),
+        (103, 2, "Alex Rowan", 27, "G", "Butterfly Goalie", 35, 58, 93, 95, 76, 34, 5_000_000, 4, 18.0, 1, 6),
+    )
+
+    with sqlite3.connect(db) as conn:
+        conn.execute(
+            """
+            CREATE TABLE league_calendar (
+                id INTEGER PRIMARY KEY,
+                current_day INTEGER,
+                max_days INTEGER,
+                salary_cap_ceiling REAL,
+                accrued_margin REAL
+            )
+            """
+        )
+        conn.execute(
+            "INSERT INTO league_calendar VALUES (1, 88, 186, 92000000, 810000)"
+        )
+        conn.execute(
+            """
+            CREATE TABLE teams (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE,
+                city TEXT,
+                tier TEXT,
+                cash_balance REAL DEFAULT 25000000.0,
+                gm_trust_score REAL DEFAULT 70.0,
+                franchise_mandate TEXT DEFAULT 'Moneyball Auditor',
+                relationship_score REAL DEFAULT 50.0
+            )
+            """
+        )
+        conn.executemany(
+            "INSERT INTO teams (id, name, city, tier) VALUES (?, ?, ?, 'NHL')",
+            ((1, "Blizzards", "Buffalo"), (2, "Titans", "New York")),
+        )
+        conn.execute(
+            """
+            CREATE TABLE players (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                team_id INTEGER,
+                name TEXT,
+                age INTEGER,
+                position TEXT,
+                archetype TEXT,
+                shooting INTEGER,
+                passing INTEGER,
+                positioning INTEGER,
+                reflexes INTEGER,
+                speed INTEGER,
+                checking INTEGER,
+                aav REAL,
+                contract_years INTEGER,
+                fatigue REAL DEFAULT 0.0,
+                back_to_back_started INTEGER DEFAULT 0,
+                scout_observations INTEGER DEFAULT 0,
+                FOREIGN KEY(team_id) REFERENCES teams(id)
+            )
+            """
+        )
+        conn.executemany(
+            "INSERT INTO players VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            players,
+        )
+
+    init_database(db, season_id="2025-26")
+
+    with sqlite3.connect(db) as conn:
+        saved = conn.execute(
+            """
+            SELECT id, team_id, name, age, position, archetype, shooting,
+                   passing, positioning, reflexes, speed, checking, aav,
+                   contract_years, fatigue, back_to_back_started,
+                   scout_observations
+            FROM players
+            ORDER BY id
+            """
+        ).fetchall()
+
+    assert saved == list(players)
+    assert get_season_context(db)["current_day"] == 88
