@@ -1,20 +1,26 @@
-"""Reversible API handler that mounts the read-only season-context route.
+"""Executable Alpha API handler with the read-only season-context route.
 
-The existing Alpha ``ApiHandler`` remains unchanged. This subclass provides the
-smallest executable integration seam for validating the new route through real
-HTTP requests before the route is promoted into the default server.
+The handler subclasses the existing Alpha ``ApiHandler`` and intercepts only the
+season-context GET route. Every unrelated request is delegated to the existing
+implementation so legacy API behavior remains unchanged.
 """
 
 from __future__ import annotations
 
+import argparse
+import os
 from http.server import ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 try:
+    from .league_orchestrator import initialize_league
     from .nhl_gm_api import ApiHandler
+    from .nhl_gm_core import init_database
     from .season_context_route import resolve_season_context_route
 except ImportError:  # Support direct execution from the src directory.
+    from league_orchestrator import initialize_league
     from nhl_gm_api import ApiHandler
+    from nhl_gm_core import init_database
     from season_context_route import resolve_season_context_route
 
 
@@ -36,10 +42,36 @@ class SeasonContextApiHandler(ApiHandler):
 
 
 def create_season_context_server(host="127.0.0.1", port=0):
-    """Create an isolated server for HTTP contract validation.
-
-    Port ``0`` lets the operating system select an available port during tests.
-    No database or save initialization is performed by this factory.
-    """
+    """Create the integrated server without initializing or mutating save data."""
 
     return ThreadingHTTPServer((host, port), SeasonContextApiHandler)
+
+
+def main():
+    """Run the playable Alpha API with the additive season-context route."""
+
+    parser = argparse.ArgumentParser(description="Serve NHL GM game state as JSON")
+    parser.add_argument("--host", default="0.0.0.0")
+    parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument(
+        "--db",
+        help="SQLite database path (defaults to NHL_GM_DB_PATH or nhl_gm_core.db)",
+    )
+    args = parser.parse_args()
+
+    if args.db:
+        os.environ["NHL_GM_DB_PATH"] = args.db
+    init_database()
+    initialize_league()
+    server = create_season_context_server(args.host, args.port)
+    print(f"NHL GM API listening on http://{args.host}:{args.port}")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
+
+
+if __name__ == "__main__":
+    main()
