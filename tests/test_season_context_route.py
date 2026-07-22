@@ -20,7 +20,7 @@ class SeasonContextRouteTest(unittest.TestCase):
         context = payload["season_context"]
         self.assertEqual(context["season_id"], "2026-27")
         self.assertEqual(context["regular_season_games"], 84)
-        self.assertEqual(context["salary_cap_ceiling"], 104_000_000)
+        self.assertEqual(context["upper_limit"], 104_000_000)
         self.assertIn("source_ids", context)
 
     def test_trailing_slash_is_supported(self):
