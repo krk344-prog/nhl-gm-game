@@ -30,6 +30,11 @@ jobs:
           node-version: "20"
           cache: npm
           cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
       - name: Install mobile dependencies
         working-directory: mobile
         run: npm ci
@@ -38,17 +43,29 @@ jobs:
         env:
           EXPO_NO_TELEMETRY: "1"
         run: npx expo export --platform android --output-dir /tmp/nhl-gm-android
-      - name: Package Android export with portable integrity manifest
+      - name: Generate native Android project
+        working-directory: mobile
+        env:
+          EXPO_NO_TELEMETRY: "1"
+        run: npx expo prebuild --platform android --non-interactive --no-install
+      - name: Build installable Technical Alpha APK
+        working-directory: mobile/android
+        run: ./gradlew assembleDebug --no-daemon
+      - name: Package tester artifacts with portable integrity manifests
         working-directory: /tmp
         run: |
           tar -czf nhl-gm-android-export.tar.gz nhl-gm-android
+          cp "$GITHUB_WORKSPACE/mobile/android/app/build/outputs/apk/debug/app-debug.apk" nhl-gm-technical-alpha.apk
           sha256sum nhl-gm-android-export.tar.gz > nhl-gm-android-export.sha256
-      - name: Upload Technical Alpha Android export
+          sha256sum nhl-gm-technical-alpha.apk > nhl-gm-technical-alpha.apk.sha256
+      - name: Upload Technical Alpha Android artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: nhl-gm-technical-alpha-android-export-${{ github.event.pull_request.head.sha || github.sha }}
+          name: nhl-gm-technical-alpha-android-${{ github.event.pull_request.head.sha || github.sha }}
           path: |
             /tmp/nhl-gm-android-export.tar.gz
             /tmp/nhl-gm-android-export.sha256
+            /tmp/nhl-gm-technical-alpha.apk
+            /tmp/nhl-gm-technical-alpha.apk.sha256
           if-no-files-found: error
           retention-days: 14
