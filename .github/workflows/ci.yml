@@ -4,6 +4,12 @@ on:
   push:
     branches: [main, "codex/**"]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      api_base_url:
+        description: "Python API base URL embedded in the tester APK (for example http://192.168.1.25:8000/api/v1)"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -23,6 +29,8 @@ jobs:
 
   android-bundle:
     runs-on: ubuntu-latest
+    env:
+      TECHNICAL_ALPHA_API_URL: ${{ inputs.api_base_url || 'http://127.0.0.1:8000/api/v1' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -34,6 +42,12 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+      - name: Validate configured Alpha API URL
+        run: |
+          case "$TECHNICAL_ALPHA_API_URL" in
+            http://*|https://*) ;;
+            *) echo "api_base_url must begin with http:// or https://" >&2; exit 1 ;;
+          esac
       - name: Install mobile dependencies
         working-directory: mobile
         run: npm ci
@@ -41,14 +55,18 @@ jobs:
         working-directory: mobile
         env:
           EXPO_NO_TELEMETRY: "1"
+          EXPO_PUBLIC_API_URL: ${{ env.TECHNICAL_ALPHA_API_URL }}
         run: npx expo export --platform android --output-dir /tmp/nhl-gm-android
       - name: Generate native Android project
         working-directory: mobile
         env:
           EXPO_NO_TELEMETRY: "1"
+          EXPO_PUBLIC_API_URL: ${{ env.TECHNICAL_ALPHA_API_URL }}
         run: npx expo prebuild --platform android --non-interactive --no-install
       - name: Build installable Technical Alpha APK
         working-directory: mobile/android
+        env:
+          EXPO_PUBLIC_API_URL: ${{ env.TECHNICAL_ALPHA_API_URL }}
         run: ./gradlew assembleDebug --no-daemon
       - name: Package tester artifacts with portable integrity manifests
         working-directory: /tmp
@@ -57,6 +75,8 @@ jobs:
           cp "$GITHUB_WORKSPACE/mobile/android/app/build/outputs/apk/debug/app-debug.apk" nhl-gm-technical-alpha.apk
           sha256sum nhl-gm-android-export.tar.gz > nhl-gm-android-export.sha256
           sha256sum nhl-gm-technical-alpha.apk > nhl-gm-technical-alpha.apk.sha256
+          printf 'commit=%s\napi_base_url=%s\nbuild_type=debug-apk\n' \
+            "$GITHUB_SHA" "$TECHNICAL_ALPHA_API_URL" > technical-alpha-build.txt
       - name: Upload Technical Alpha Android artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -66,5 +86,6 @@ jobs:
             /tmp/nhl-gm-android-export.sha256
             /tmp/nhl-gm-technical-alpha.apk
             /tmp/nhl-gm-technical-alpha.apk.sha256
+            /tmp/technical-alpha-build.txt
           if-no-files-found: error
           retention-days: 14
