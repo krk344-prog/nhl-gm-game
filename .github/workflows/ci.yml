@@ -38,10 +38,11 @@ jobs:
         env:
           EXPO_NO_TELEMETRY: "1"
         run: npx expo export --platform android --output-dir /tmp/nhl-gm-android
-      - name: Package Android export with integrity manifest
+      - name: Package Android export with portable integrity manifest
+        working-directory: /tmp
         run: |
-          tar -C /tmp -czf /tmp/nhl-gm-android-export.tar.gz nhl-gm-android
-          sha256sum /tmp/nhl-gm-android-export.tar.gz > /tmp/nhl-gm-android-export.sha256
+          tar -czf nhl-gm-android-export.tar.gz nhl-gm-android
+          sha256sum nhl-gm-android-export.tar.gz > nhl-gm-android-export.sha256
       - name: Upload Technical Alpha Android export
         uses: actions/upload-artifact@v4
         with:
