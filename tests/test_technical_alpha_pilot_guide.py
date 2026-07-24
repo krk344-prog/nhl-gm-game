@@ -6,6 +6,7 @@ class TechnicalAlphaPilotGuideTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.guide = Path("docs/technical_alpha_pilot_guide.md").read_text(encoding="utf-8")
+        cls.workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
 
     def test_required_pilot_sections_are_present(self) -> None:
         required_sections = (
@@ -59,6 +60,17 @@ class TechnicalAlphaPilotGuideTests(unittest.TestCase):
         for term in required_terms:
             with self.subTest(term=term):
                 self.assertIn(term, self.guide)
+
+    def test_manual_tester_build_rejects_loopback_endpoints(self) -> None:
+        required_terms = (
+            'EVENT_NAME: ${{ github.event_name }}',
+            'if [ "$EVENT_NAME" = "workflow_dispatch" ]',
+            "localhost|127.*|0.0.0.0|::1",
+            "Manual tester builds require a non-loopback API endpoint",
+        )
+        for term in required_terms:
+            with self.subTest(term=term):
+                self.assertIn(term, self.workflow)
 
 
 if __name__ == "__main__":
