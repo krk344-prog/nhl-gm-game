@@ -61,6 +61,18 @@ class TechnicalAlphaPilotGuideTests(unittest.TestCase):
             with self.subTest(term=term):
                 self.assertIn(term, self.guide)
 
+    def test_release_procedure_requires_exact_artifact_verifier(self) -> None:
+        required_terms = (
+            "python scripts/verify_alpha_artifact.py <ARTIFACT_DIR> --expected-commit <COMMIT_SHA> --expected-api-base-url <URL>",
+            '"status": "pass"',
+            "both portable checksum files",
+            "expected `debug-apk` build type",
+            "artifact verification",
+        )
+        for term in required_terms:
+            with self.subTest(term=term):
+                self.assertIn(term, self.guide)
+
     def test_manual_tester_build_rejects_loopback_endpoints(self) -> None:
         required_terms = (
             'EVENT_NAME: ${{ github.event_name }}',
