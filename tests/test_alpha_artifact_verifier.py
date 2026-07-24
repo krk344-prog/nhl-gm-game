@@ -11,13 +11,19 @@ class AlphaArtifactVerifierTests(unittest.TestCase):
         commit = "abc123def456"
         api_url = "http://192.168.1.25:8000/api/v1"
         files = {
-            "nhl-gm-technical-alpha.apk": b"apk-bytes",
-            "nhl-gm-android-export.tar.gz": b"export-bytes",
+            "nhl-gm-technical-alpha.apk": (
+                b"apk-bytes",
+                "nhl-gm-technical-alpha.apk.sha256",
+            ),
+            "nhl-gm-android-export.tar.gz": (
+                b"export-bytes",
+                "nhl-gm-android-export.sha256",
+            ),
         }
-        for name, payload in files.items():
+        for name, (payload, checksum_name) in files.items():
             (directory / name).write_bytes(payload)
             digest = hashlib.sha256(payload).hexdigest()
-            (directory / f"{name}.sha256").write_text(
+            (directory / checksum_name).write_text(
                 f"{digest}  {name}\n", encoding="utf-8"
             )
         (directory / "technical-alpha-build.txt").write_text(
