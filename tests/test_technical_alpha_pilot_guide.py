@@ -11,6 +11,7 @@ class TechnicalAlphaPilotGuideTests(unittest.TestCase):
         required_sections = (
             "## Required disclosure",
             "## Facilitator readiness check",
+            "## Configured APK release procedure",
             "## Guided test route",
             "## Stop conditions",
             "## Bug report format",
@@ -43,6 +44,21 @@ class TechnicalAlphaPilotGuideTests(unittest.TestCase):
             with self.subTest(term=term):
                 self.assertIn(term, lowered)
         self.assertIn(required_terms[-1], self.guide)
+
+    def test_configured_apk_procedure_binds_preflight_build_and_device_test(self) -> None:
+        required_terms = (
+            "python scripts/check_alpha_backend.py --api-base-url <URL> --season-id 2026-27",
+            "api_base_url",
+            "nhl-gm-technical-alpha.apk.sha256",
+            "technical-alpha-build.txt",
+            "Do not substitute a locally rebuilt or earlier APK",
+            "exact-package smoke test passes",
+            "127.0.0.1",
+            "localhost",
+        )
+        for term in required_terms:
+            with self.subTest(term=term):
+                self.assertIn(term, self.guide)
 
 
 if __name__ == "__main__":
