@@ -23,6 +23,25 @@ Do not distribute the build until all of the following are true:
 5. Known limitations and issue-report instructions are included with the build.
 6. A private channel exists for any save file or personally identifying device information.
 
+## Configured APK release procedure
+
+Use this sequence for every physical-device pilot build. Do not distribute a pull-request APK that was built with `127.0.0.1`, `localhost`, or another endpoint the tester device cannot reach.
+
+1. Start the integrated backend from the repository root with `python scripts/start_dev.py`.
+2. Choose the exact tester-facing API base URL, including `/api/v1`, such as `http://192.168.1.25:8000/api/v1` on a trusted local network.
+3. Before building, run `python scripts/check_alpha_backend.py --api-base-url <URL> --season-id 2026-27` from a second terminal.
+4. Continue only when the preflight returns a successful health check, the expected season context, and a non-loopback endpoint.
+5. In GitHub Actions, manually run **Alpha validation** for the PR #13 head and supply the same URL as the required `api_base_url` input.
+6. Download the artifact named `nhl-gm-technical-alpha-android-<commit>` from that completed workflow run.
+7. Verify `nhl-gm-technical-alpha.apk` against `nhl-gm-technical-alpha.apk.sha256` before installation.
+8. Open `technical-alpha-build.txt` and confirm that its commit equals the tested PR #13 head and its `api_base_url` exactly matches the preflighted endpoint.
+9. Install that exact APK on the supported Android test device. Do not substitute a locally rebuilt or earlier APK.
+10. With the device on the approved network, confirm health, season context, franchise selection, day advancement, save/reload, trade history, debug report, and reset.
+11. Record the device model, Android version, commit, API endpoint class (`LAN` or approved hosted test endpoint), checksum result, and smoke-test outcome in the private test record.
+12. Distribute the APK to the 3–5 person pilot only after the exact-package smoke test passes.
+
+A changing local IP address invalidates the configured APK. Repeat preflight, workflow dispatch, checksum verification, installation, and smoke validation whenever the tester-facing API URL changes.
+
 ## Tester setup
 
 Use only the installation link or package supplied by the facilitator. Record the build version and commit SHA before beginning.
@@ -34,6 +53,13 @@ For a development-hosted Android session:
 3. The facilitator runs `python scripts/start_dev.py` from the repository root.
 4. Scan the provided Expo QR code.
 5. Do not expose the local API to the public internet.
+
+For an installed APK session:
+
+1. Install only the checksum-verified APK supplied by the facilitator.
+2. Keep the phone on the network specified by the facilitator.
+3. Confirm that the build identifier shown or supplied matches the recorded commit.
+4. Stop and report `Connection unavailable` rather than changing network or endpoint settings independently.
 
 ## Guided test route
 
