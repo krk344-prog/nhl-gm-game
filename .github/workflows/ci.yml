@@ -43,11 +43,25 @@ jobs:
           distribution: temurin
           java-version: "17"
       - name: Validate configured Alpha API URL
+        env:
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           case "$TECHNICAL_ALPHA_API_URL" in
             http://*|https://*) ;;
             *) echo "api_base_url must begin with http:// or https://" >&2; exit 1 ;;
           esac
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            endpoint_host="${TECHNICAL_ALPHA_API_URL#*://}"
+            endpoint_host="${endpoint_host%%/*}"
+            endpoint_host="${endpoint_host%%:*}"
+            case "$endpoint_host" in
+              localhost|127.*|0.0.0.0|::1)
+                echo "Manual tester builds require a non-loopback API endpoint reachable from the Android device." >&2
+                exit 1
+                ;;
+            esac
+          fi
       - name: Install mobile dependencies
         working-directory: mobile
         run: npm ci
