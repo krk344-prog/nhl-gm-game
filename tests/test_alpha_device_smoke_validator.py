@@ -1,0 +1,52 @@
+import importlib.util
+import unittest
+from pathlib import Path
+
+MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "validate_alpha_device_smoke.py"
+SPEC = importlib.util.spec_from_file_location("validate_alpha_device_smoke", MODULE_PATH)
+assert SPEC and SPEC.loader
+MODULE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(MODULE)
+
+
+class AlphaDeviceSmokeValidatorTests(unittest.TestCase):
+    def valid_record(self):
+        record = {
+            "commit_sha": "1709302f98d1ae8113ed643ee97b1566ad387fba",
+            "api_base_url": "http://192.168.1.25:8000/api/v1",
+            "device_model": "Pixel 9",
+            "android_version": "16",
+            "apk_sha256": "a" * 64,
+            "tested_at": "2026-07-24T23:50:00-04:00",
+            "blockers": [],
+        }
+        for field in MODULE.REQUIRED_TRUE_FIELDS:
+            record[field] = True
+        return record
+
+    def test_valid_exact_package_record_passes(self):
+        self.assertEqual([], MODULE.validate_record(self.valid_record()))
+
+    def test_loopback_endpoint_is_blocked(self):
+        record = self.valid_record()
+        record["api_base_url"] = "http://127.0.0.1:8000/api/v1"
+        self.assertIn("loopback:api_base_url", MODULE.validate_record(record))
+
+    def test_failed_save_reload_blocks_pilot(self):
+        record = self.valid_record()
+        record["save_reload_passed"] = False
+        self.assertIn("not_passed:save_reload_passed", MODULE.validate_record(record))
+
+    def test_tampered_digest_is_blocked(self):
+        record = self.valid_record()
+        record["apk_sha256"] = "not-a-digest"
+        self.assertIn("invalid:apk_sha256", MODULE.validate_record(record))
+
+    def test_declared_blocker_blocks_record(self):
+        record = self.valid_record()
+        record["blockers"] = ["trade history missing after restart"]
+        self.assertIn("blockers_present", MODULE.validate_record(record))
+
+
+if __name__ == "__main__":
+    unittest.main()
