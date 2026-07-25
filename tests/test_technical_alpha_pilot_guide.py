@@ -46,8 +46,12 @@ class TechnicalAlphaPilotGuideTests(unittest.TestCase):
                 self.assertIn(term, lowered)
         self.assertIn(required_terms[-1], self.guide)
 
-    def test_configured_apk_procedure_binds_preflight_build_and_device_test(self) -> None:
+    def test_configured_apk_procedure_binds_endpoint_selection_preflight_build_and_device_test(self) -> None:
         required_terms = (
+            "python scripts/select_alpha_api_endpoint.py",
+            "recommended_api_base_url",
+            '"ready": false',
+            "do not guess an address",
             "python scripts/check_alpha_backend.py --api-base-url <URL> --season-id 2026-27",
             "api_base_url",
             "nhl-gm-technical-alpha.apk.sha256",
@@ -68,6 +72,17 @@ class TechnicalAlphaPilotGuideTests(unittest.TestCase):
             "both portable checksum files",
             "expected `debug-apk` build type",
             "artifact verification",
+        )
+        for term in required_terms:
+            with self.subTest(term=term):
+                self.assertIn(term, self.guide)
+
+    def test_release_procedure_requires_private_validation_and_redacted_public_summary(self) -> None:
+        required_terms = (
+            "python scripts/validate_alpha_device_smoke.py <DEVICE_SMOKE_RECORD.json>",
+            "python scripts/summarize_alpha_device_smoke.py <DEVICE_SMOKE_RECORD.json>",
+            "Post only this redacted summary",
+            "Do not commit a completed device record",
         )
         for term in required_terms:
             with self.subTest(term=term):
