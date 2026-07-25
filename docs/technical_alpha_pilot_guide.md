@@ -34,11 +34,13 @@ Use this sequence for every physical-device pilot build. Do not distribute a pul
 5. In GitHub Actions, manually run **Alpha validation** for the PR #13 head and supply the same URL as the required `api_base_url` input.
 6. Download and extract the artifact named `nhl-gm-technical-alpha-android-<commit>` from that completed workflow run.
 7. From the repository root, run `python scripts/verify_alpha_artifact.py <ARTIFACT_DIR> --expected-commit <COMMIT_SHA> --expected-api-base-url <URL>`.
-8. Continue only when the verifier returns JSON with `"status": "pass"`; this single check validates `nhl-gm-technical-alpha.apk`, both portable checksum files, `technical-alpha-build.txt`, the exact commit, the exact non-loopback API URL, and the expected `debug-apk` build type.
+8. Continue only when the verifier returns JSON with `"status": "pass"`; this single check validates `nhl-gm-technical-alpha.apk`, `nhl-gm-technical-alpha.apk.sha256`, `nhl-gm-technical-alpha-android-export.zip.sha256`, both portable checksum files, `technical-alpha-build.txt`, the exact commit, the exact non-loopback API URL, and the expected `debug-apk` build type.
 9. Install that exact APK on the supported Android test device. Do not substitute a locally rebuilt or earlier APK.
 10. With the device on the approved network, confirm health, season context, franchise selection, day advancement, save/reload, trade history, debug report, and reset.
 11. Record the device model, Android version, commit, API endpoint class (`LAN` or approved hosted test endpoint), verifier result, checksum result, and smoke-test outcome in the private test record.
-12. Distribute the APK to the 3–5 person pilot only after the exact-package smoke test passes.
+12. Validate the completed record with `python scripts/validate_alpha_device_smoke.py <DEVICE_SMOKE_RECORD.json>`.
+13. Continue only when the device-smoke validator returns `"status": "pass"`; any missing route, failed persistence step, loopback endpoint, digest mismatch, or declared blocker stops distribution.
+14. Distribute the APK to the 3–5 person pilot only after the exact-package smoke test passes and both artifact verification and device-smoke validation pass.
 
 A changing local IP address invalidates the configured APK. Repeat preflight, workflow dispatch, artifact verification, installation, and smoke validation whenever the tester-facing API URL changes.
 
