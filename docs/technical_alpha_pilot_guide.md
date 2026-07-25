@@ -37,10 +37,11 @@ Use this sequence for every physical-device pilot build. Do not distribute a pul
 8. Continue only when the verifier returns JSON with `"status": "pass"`; this single check validates `nhl-gm-technical-alpha.apk`, `nhl-gm-technical-alpha.apk.sha256`, `nhl-gm-technical-alpha-android-export.zip.sha256`, both portable checksum files, `technical-alpha-build.txt`, the exact commit, the exact non-loopback API URL, and the expected `debug-apk` build type.
 9. Install that exact APK on the supported Android test device. Do not substitute a locally rebuilt or earlier APK.
 10. With the device on the approved network, confirm health, season context, franchise selection, day advancement, save/reload, trade history, debug report, and reset.
-11. Record the device model, Android version, commit, API endpoint class (`LAN` or approved hosted test endpoint), verifier result, checksum result, and smoke-test outcome in the private test record.
-12. Validate the completed record with `python scripts/validate_alpha_device_smoke.py <DEVICE_SMOKE_RECORD.json>`.
-13. Continue only when the device-smoke validator returns `"status": "pass"`; any missing route, failed persistence step, loopback endpoint, digest mismatch, or declared blocker stops distribution.
-14. Distribute the APK to the 3–5 person pilot only after the exact-package smoke test passes and both artifact verification and device-smoke validation pass.
+11. Copy `docs/technical_alpha_device_smoke_record.template.json` to a private working location. Replace every placeholder, set a check to `true` only after directly observing it pass on the exact installed APK, and leave any unresolved problem in `blockers`.
+12. Record the device model, Android version, commit, exact APK SHA-256, approved API base URL, test timestamp, artifact-verifier result, installation result, gameplay-route results, persistence result, reset result, and blockers in that private copy. Do not commit a completed device record containing local network or device details.
+13. Validate the completed private record with `python scripts/validate_alpha_device_smoke.py <DEVICE_SMOKE_RECORD.json>`.
+14. Continue only when the device-smoke validator returns `"status": "pass"`; any missing route, failed persistence step, loopback endpoint, digest mismatch, placeholder, or declared blocker stops distribution.
+15. Distribute the APK to the 3–5 person pilot only after the exact-package smoke test passes and both artifact verification and device-smoke validation pass.
 
 A changing local IP address invalidates the configured APK. Repeat preflight, workflow dispatch, artifact verification, installation, and smoke validation whenever the tester-facing API URL changes.
 
