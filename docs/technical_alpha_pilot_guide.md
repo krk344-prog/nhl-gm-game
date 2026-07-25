@@ -27,23 +27,26 @@ Do not distribute the build until all of the following are true:
 
 Use this sequence for every physical-device pilot build. Do not distribute a pull-request APK that was built with `127.0.0.1`, `localhost`, or another endpoint the tester device cannot reach.
 
-1. Start the integrated backend from the repository root with `python scripts/start_dev.py`.
-2. Choose the exact tester-facing API base URL, including `/api/v1`, such as `http://192.168.1.25:8000/api/v1` on a trusted local network.
-3. Before building, run `python scripts/check_alpha_backend.py --api-base-url <URL> --season-id 2026-27` from a second terminal.
-4. Continue only when the preflight returns a successful health check, the expected season context, and a non-loopback endpoint.
-5. In GitHub Actions, manually run **Alpha validation** for the PR #13 head and supply the same URL as the required `api_base_url` input.
-6. Download and extract the artifact named `nhl-gm-technical-alpha-android-<commit>` from that completed workflow run.
-7. From the repository root, run `python scripts/verify_alpha_artifact.py <ARTIFACT_DIR> --expected-commit <COMMIT_SHA> --expected-api-base-url <URL>`.
-8. Continue only when the verifier returns JSON with `"status": "pass"`; this single check validates `nhl-gm-technical-alpha.apk`, `nhl-gm-technical-alpha.apk.sha256`, `nhl-gm-technical-alpha-android-export.zip.sha256`, both portable checksum files, `technical-alpha-build.txt`, the exact commit, the exact non-loopback API URL, and the expected `debug-apk` build type.
-9. Install that exact APK on the supported Android test device. Do not substitute a locally rebuilt or earlier APK.
-10. With the device on the approved network, confirm health, season context, franchise selection, day advancement, save/reload, trade history, debug report, and reset.
-11. Copy `docs/technical_alpha_device_smoke_record.template.json` to a private working location. Replace every placeholder, set a check to `true` only after directly observing it pass on the exact installed APK, and leave any unresolved problem in `blockers`.
-12. Record the device model, Android version, commit, exact APK SHA-256, approved API base URL, test timestamp, artifact-verifier result, installation result, gameplay-route results, persistence result, reset result, and blockers in that private copy. Do not commit a completed device record containing local network or device details.
-13. Validate the completed private record with `python scripts/validate_alpha_device_smoke.py <DEVICE_SMOKE_RECORD.json>`.
-14. Continue only when the device-smoke validator returns `"status": "pass"`; any missing route, failed persistence step, loopback endpoint, digest mismatch, placeholder, or declared blocker stops distribution.
-15. Distribute the APK to the 3–5 person pilot only after the exact-package smoke test passes and both artifact verification and device-smoke validation pass.
+1. Connect the facilitator computer and supported Android device to the same trusted network.
+2. From the repository root, run `python scripts/select_alpha_api_endpoint.py` and copy `recommended_api_base_url` from the JSON output. Stop when the command returns `"ready": false`; do not guess an address.
+3. Start the integrated backend from the repository root with `python scripts/start_dev.py`.
+4. Use the selector's exact recommended URL, including `/api/v1`, as `<URL>`. Confirm the device can remain on that network for the full smoke test and pilot session.
+5. Before building, run `python scripts/check_alpha_backend.py --api-base-url <URL> --season-id 2026-27` from a second terminal.
+6. Continue only when the preflight returns a successful health check, the expected season context, and a non-loopback endpoint.
+7. In GitHub Actions, manually run **Alpha validation** for the PR #13 head and supply the same URL as the required `api_base_url` input.
+8. Download and extract the artifact named `nhl-gm-technical-alpha-android-<commit>` from that completed workflow run.
+9. From the repository root, run `python scripts/verify_alpha_artifact.py <ARTIFACT_DIR> --expected-commit <COMMIT_SHA> --expected-api-base-url <URL>`.
+10. Continue only when the verifier returns JSON with `"status": "pass"`; this single check validates `nhl-gm-technical-alpha.apk`, `nhl-gm-technical-alpha.apk.sha256`, `nhl-gm-technical-alpha-android-export.zip.sha256`, both portable checksum files, `technical-alpha-build.txt`, the exact commit, the exact non-loopback API URL, and the expected `debug-apk` build type.
+11. Install that exact APK on the supported Android test device. Do not substitute a locally rebuilt or earlier APK.
+12. With the device on the approved network, confirm health, season context, franchise selection, day advancement, save/reload, trade history, debug report, and reset.
+13. Copy `docs/technical_alpha_device_smoke_record.template.json` to a private working location. Replace every placeholder, set a check to `true` only after directly observing it pass on the exact installed APK, and leave any unresolved problem in `blockers`.
+14. Record the device model, Android version, commit, exact APK SHA-256, approved API base URL, test timestamp, artifact-verifier result, installation result, gameplay-route results, persistence result, reset result, and blockers in that private copy. Do not commit a completed device record containing local network or device details.
+15. Validate the completed private record with `python scripts/validate_alpha_device_smoke.py <DEVICE_SMOKE_RECORD.json>`.
+16. Continue only when the device-smoke validator returns `"status": "pass"`; any missing route, failed persistence step, loopback endpoint, digest mismatch, placeholder, or declared blocker stops distribution.
+17. Generate the privacy-safe approval summary with `python scripts/summarize_alpha_device_smoke.py <DEVICE_SMOKE_RECORD.json>`. Post only this redacted summary to the public coordination record.
+18. Distribute the APK to the 3–5 person pilot only after the exact-package smoke test passes and artifact verification, device-smoke validation, and the redacted approval summary all pass.
 
-A changing local IP address invalidates the configured APK. Repeat preflight, workflow dispatch, artifact verification, installation, and smoke validation whenever the tester-facing API URL changes.
+A changing local IP address invalidates the configured APK. Repeat endpoint selection, preflight, workflow dispatch, artifact verification, installation, and smoke validation whenever the tester-facing API URL changes.
 
 ## Tester setup
 
