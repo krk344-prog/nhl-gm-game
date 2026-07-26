@@ -77,6 +77,20 @@ class TechnicalAlphaPilotGuideTests(unittest.TestCase):
             with self.subTest(term=term):
                 self.assertIn(term, self.guide)
 
+    def test_release_guide_names_match_workflow_artifacts(self) -> None:
+        artifact_names = (
+            "nhl-gm-technical-alpha.apk",
+            "nhl-gm-technical-alpha.apk.sha256",
+            "nhl-gm-android-export.tar.gz",
+            "nhl-gm-android-export.sha256",
+            "technical-alpha-build.txt",
+        )
+        for name in artifact_names:
+            with self.subTest(name=name):
+                self.assertIn(name, self.workflow)
+                self.assertIn(name, self.guide)
+        self.assertNotIn("nhl-gm-technical-alpha-android-export.zip.sha256", self.guide)
+
     def test_release_procedure_requires_private_validation_and_redacted_public_summary(self) -> None:
         required_terms = (
             "python scripts/validate_alpha_device_smoke.py <DEVICE_SMOKE_RECORD.json>",
