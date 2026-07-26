@@ -113,6 +113,17 @@ class TechnicalAlphaPilotGuideTests(unittest.TestCase):
             with self.subTest(term=term):
                 self.assertIn(term, self.workflow)
 
+    def test_packaged_build_requires_authoritative_api_path(self) -> None:
+        required_terms = (
+            'normalized_api_url="${TECHNICAL_ALPHA_API_URL%/}"',
+            "*/api/v1) ;;",
+            "api_base_url must end with /api/v1",
+            "api_base_url must not contain a query string or fragment",
+        )
+        for term in required_terms:
+            with self.subTest(term=term):
+                self.assertIn(term, self.workflow)
+
 
 if __name__ == "__main__":
     unittest.main()
