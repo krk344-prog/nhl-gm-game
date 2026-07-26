@@ -46,14 +46,17 @@ class TechnicalAlphaPilotGuideTests(unittest.TestCase):
                 self.assertIn(term, lowered)
         self.assertIn(required_terms[-1], self.guide)
 
-    def test_configured_apk_procedure_binds_endpoint_selection_preflight_build_and_device_test(self) -> None:
+    def test_configured_apk_procedure_uses_verified_build_handoff(self) -> None:
         required_terms = (
-            "python scripts/select_alpha_api_endpoint.py",
-            "recommended_api_base_url",
+            "python scripts/prepare_alpha_build.py --season-id 2026-27",
+            "python scripts/prepare_alpha_build.py --api-base-url <URL> --season-id 2026-27",
+            '"ready": true',
             '"ready": false',
-            "do not guess an address",
-            "python scripts/check_alpha_backend.py --api-base-url <URL> --season-id 2026-27",
-            "api_base_url",
+            '"ref": "agent/alpha-rules-integration-v1"',
+            "dispatch_command",
+            "Run the returned `dispatch_command` exactly as emitted",
+            "Do not edit the URL, workflow, or branch",
+            "do not guess an address or manually assemble a workflow command",
             "nhl-gm-technical-alpha.apk.sha256",
             "technical-alpha-build.txt",
             "Do not substitute a locally rebuilt or earlier APK",
