@@ -51,6 +51,22 @@ jobs:
             *) echo "api_base_url must begin with http:// or https://" >&2; exit 1 ;;
           esac
 
+          case "$TECHNICAL_ALPHA_API_URL" in
+            *\?*|*\#*)
+              echo "api_base_url must not contain a query string or fragment." >&2
+              exit 1
+              ;;
+          esac
+
+          normalized_api_url="${TECHNICAL_ALPHA_API_URL%/}"
+          case "$normalized_api_url" in
+            */api/v1) ;;
+            *)
+              echo "api_base_url must end with /api/v1 so the packaged app reaches the authoritative API route." >&2
+              exit 1
+              ;;
+          esac
+
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             endpoint_host="${TECHNICAL_ALPHA_API_URL#*://}"
             endpoint_host="${endpoint_host%%/*}"
