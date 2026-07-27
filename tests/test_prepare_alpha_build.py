@@ -39,7 +39,9 @@ def test_explicit_endpoint_produces_exact_pr13_dispatch_command():
     assert payload["ready"] is True
     assert payload["endpoint_source"] == "explicit"
     assert payload["ref"] == "agent/alpha-rules-integration-v1"
-    assert payload["workflow"] == "alpha-validation.yml"
+    assert payload["workflow"] == "ci.yml"
+    assert (ROOT / ".github" / "workflows" / payload["workflow"]).is_file()
+    assert payload["dispatch_argv"][:4] == ["gh", "workflow", "run", "ci.yml"]
     assert payload["dispatch_argv"][-1] == (
         "api_base_url=http://192.168.1.20:8000/api/v1"
     )
