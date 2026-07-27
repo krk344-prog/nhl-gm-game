@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -33,6 +34,63 @@ def validate_api_base_url(value: str) -> str:
     return value
 
 
+def _major_version(output: str) -> int | None:
+    match = re.search(r"(?:version\s+\")?v?(\d+)(?:[.\"]|$)", output)
+    return int(match.group(1)) if match else None
+
+
+def _sdk_candidates(env: dict[str, str]) -> list[Path]:
+    candidates: list[Path] = []
+    for name in ("ANDROID_HOME", "ANDROID_SDK_ROOT"):
+        if env.get(name):
+            candidates.append(Path(env[name]).expanduser())
+    if env.get("LOCALAPPDATA"):
+        candidates.append(Path(env["LOCALAPPDATA"]) / "Android" / "Sdk")
+    home = Path.home()
+    candidates.extend((home / "Android" / "Sdk", home / "Library" / "Android" / "sdk"))
+    return candidates
+
+
+def inspect_build_environment(
+    *,
+    env: dict[str, str] | None = None,
+    which=shutil.which,
+    check_output=subprocess.check_output,
+) -> dict[str, object]:
+    env = dict(os.environ if env is None else env)
+    tools = {name: which(name) for name in ("node", "npm", "npx", "java")}
+    node_output = check_output(["node", "--version"], text=True).strip() if tools["node"] else ""
+    java_output = (
+        check_output(["java", "-version"], text=True, stderr=subprocess.STDOUT).strip()
+        if tools["java"]
+        else ""
+    )
+    sdk_path = next((path for path in _sdk_candidates(env) if path.is_dir()), None)
+    return {
+        "tools": tools,
+        "node_major": _major_version(node_output),
+        "java_major": _major_version(java_output),
+        "android_sdk": str(sdk_path) if sdk_path else None,
+    }
+
+
+def validate_build_environment(report: dict[str, object]) -> dict[str, object]:
+    tools = report.get("tools") or {}
+    missing = [name for name in ("node", "npm", "npx", "java") if not tools.get(name)]
+    errors: list[str] = []
+    if missing:
+        errors.append(f"missing required tools: {', '.join(missing)}")
+    if report.get("node_major") != 20:
+        errors.append(f"Node.js 20 is required; found {report.get('node_major') or 'unknown'}")
+    if report.get("java_major") != 17:
+        errors.append(f"Java 17 is required; found {report.get('java_major') or 'unknown'}")
+    if not report.get("android_sdk"):
+        errors.append("Android SDK was not found via ANDROID_HOME, ANDROID_SDK_ROOT, or a standard install path")
+    if errors:
+        raise RuntimeError("; ".join(errors))
+    return report
+
+
 def command_plan(api_base_url: str) -> list[list[str]]:
     gradle = "gradlew.bat" if os.name == "nt" else "./gradlew"
     return [
@@ -57,6 +115,7 @@ def _sha256(path: Path) -> str:
 
 def build(api_base_url: str) -> dict[str, str]:
     api_base_url = validate_api_base_url(api_base_url)
+    validate_build_environment(inspect_build_environment())
     branch = subprocess.check_output(
         ["git", "branch", "--show-current"], cwd=ROOT, text=True
     ).strip()
@@ -103,11 +162,15 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--api-base-url", required=True)
     parser.add_argument("--execute", action="store_true")
+    parser.add_argument("--check-environment", action="store_true")
     args = parser.parse_args(argv)
     try:
         endpoint = validate_api_base_url(args.api_base_url)
+        environment = None
+        if args.check_environment or args.execute:
+            environment = validate_build_environment(inspect_build_environment())
         if not args.execute:
-            print(json.dumps({"status": "ready", "api_base_url": endpoint, "commands": command_plan(endpoint)}, indent=2))
+            print(json.dumps({"status": "ready", "api_base_url": endpoint, "environment": environment, "commands": command_plan(endpoint)}, indent=2))
             return 0
         print(json.dumps(build(endpoint), indent=2))
         return 0
