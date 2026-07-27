@@ -106,7 +106,7 @@ def command_plan(api_base_url: str) -> list[list[str]]:
     return [
         ["npm", "ci"],
         ["npx", "expo", "export", "--platform", "android", "--output-dir", str(OUTPUT / "android-export")],
-        ["npx", "expo", "prebuild", "--platform", "android", "--non-interactive", "--no-install"],
+        ["npx", "expo", "prebuild", "--platform", "android", "--clean", "--non-interactive", "--no-install"],
         [gradle, "assembleDebug", "--no-daemon"],
     ]
 
