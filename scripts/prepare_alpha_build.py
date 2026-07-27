@@ -15,7 +15,7 @@ from select_alpha_api_endpoint import discover_private_ipv4_addresses, select_en
 
 
 PR_BRANCH = "agent/alpha-rules-integration-v1"
-WORKFLOW_FILE = "alpha-validation.yml"
+WORKFLOW_FILE = "ci.yml"
 
 
 def prepare_build_handoff(
