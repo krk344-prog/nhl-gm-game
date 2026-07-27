@@ -16,56 +16,42 @@ This is a controlled technical-alpha test for 3–5 invited participants. The go
 
 Do not distribute the build until all of the following are true:
 
-1. The exact package or controlled URL has a version identifier and commit SHA.
+1. The exact package has a version identifier and commit SHA.
 2. The API and application use the supported integrated launch path.
 3. A clean-install smoke test has passed on the same package testers will receive.
 4. New Game, franchise selection, advance day, roster, standings, trade, save, reload, debug report, and reset have passed.
 5. Known limitations and issue-report instructions are included with the build.
-6. A private channel exists for any save file or personally identifying device information.
+6. A private channel exists for save files or personally identifying device information.
 
 ## Configured APK release procedure
 
-Use this sequence for every physical-device pilot build. Do not distribute a pull-request APK that was built with `127.0.0.1`, `localhost`, or another endpoint the tester device cannot reach.
+Use this sequence for every physical-device pilot build. Do not distribute an APK built with `127.0.0.1`, `localhost`, or another endpoint the tester device cannot reach.
 
-1. Connect the facilitator computer and supported Android device to the same trusted network.
-2. Start the integrated backend from the repository root with `python scripts/start_dev.py`.
-3. From a second terminal at the repository root, run `python scripts/prepare_alpha_build.py --season-id 2026-27`.
-4. Continue only when the command returns JSON with `"ready": true`, a non-loopback `api_base_url`, the expected season context, `"ref": "agent/alpha-rules-integration-v1"`, and a `dispatch_command`.
-5. Run the returned `dispatch_command` exactly as emitted. Do not edit the URL, workflow, or branch. The command has already selected a tester-reachable endpoint, completed backend preflight, and locked that endpoint to PR #13's authoritative branch.
-6. When using a previously approved explicit endpoint instead of discovery, run `python scripts/prepare_alpha_build.py --api-base-url <URL> --season-id 2026-27` and apply the same pass criteria.
-7. Stop when the command returns `"ready": false`; do not guess an address or manually assemble a workflow command.
-8. Download and extract the artifact named `nhl-gm-technical-alpha-android-<commit>` from the completed workflow run.
-9. From the repository root, run `python scripts/verify_alpha_artifact.py <ARTIFACT_DIR> --expected-commit <COMMIT_SHA> --expected-api-base-url <URL>`.
-10. Continue only when the verifier returns JSON with `"status": "pass"`; this single check validates `nhl-gm-technical-alpha.apk`, `nhl-gm-technical-alpha.apk.sha256`, `nhl-gm-android-export.tar.gz`, `nhl-gm-android-export.sha256`, both portable checksum files, `technical-alpha-build.txt`, the exact commit, the exact non-loopback API URL, and the expected `debug-apk` build type.
-11. Install that exact APK on the supported Android test device. Do not substitute a locally rebuilt or earlier APK.
-12. With the device on the approved network, confirm health, season context, franchise selection, day advancement, save/reload, trade history, debug report, and reset.
-13. Copy `docs/technical_alpha_device_smoke_record.template.json` to a private working location. Replace every placeholder, set a check to `true` only after directly observing it pass on the exact installed APK, and leave any unresolved problem in `blockers`.
-14. Record the device model, Android version, commit, exact APK SHA-256, approved API base URL, test timestamp, artifact-verifier result, installation result, gameplay-route results, persistence result, reset result, and blockers in that private copy. Do not commit a completed device record containing local network or device details.
-15. Validate the completed private record with `python scripts/validate_alpha_device_smoke.py <DEVICE_SMOKE_RECORD.json>`.
-16. Continue only when the device-smoke validator returns `"status": "pass"`; any missing route, failed persistence step, loopback endpoint, digest mismatch, placeholder, or declared blocker stops distribution.
-17. Generate the privacy-safe approval summary with `python scripts/summarize_alpha_device_smoke.py <DEVICE_SMOKE_RECORD.json>`. Post only this redacted summary to the public coordination record.
-18. Distribute the APK to the 3–5 person pilot only after the exact-package smoke test passes and artifact verification, device-smoke validation, and the redacted approval summary all pass.
+1. Check out `agent/alpha-rules-integration-v1` and confirm the working tree is clean.
+2. Connect the facilitator computer and supported Android device to the same trusted network.
+3. Start the integrated backend from the repository root with `python scripts/start_dev.py`.
+4. From a second terminal at the repository root, run `python scripts/prepare_alpha_build.py --season-id 2026-27`.
+5. Continue only when the command returns JSON with `"ready": true`, a non-loopback `api_base_url`, the expected season context, `"ref": "agent/alpha-rules-integration-v1"`, and a `build_command` targeting `scripts/build_alpha_apk_local.py`.
+6. Run the returned `build_command` exactly as emitted. Do not edit the endpoint or branch. The command has already selected a tester-reachable endpoint and completed backend preflight.
+7. For a previously approved endpoint, run `python scripts/prepare_alpha_build.py --api-base-url <URL> --season-id 2026-27` and apply the same criteria.
+8. Stop when the command returns `"ready": false`; do not guess an address or manually assemble a build command.
+9. The local builder must produce `dist/technical-alpha/nhl-gm-technical-alpha.apk`, `nhl-gm-technical-alpha.apk.sha256`, `nhl-gm-android-export.tar.gz`, `nhl-gm-android-export.sha256`, and `technical-alpha-build.txt` from the exact PR #13 commit.
+10. Run `python scripts/verify_alpha_artifact.py dist/technical-alpha --expected-commit <COMMIT_SHA> --expected-api-base-url <URL>`.
+11. Continue only when the verifier returns JSON with `"status": "pass"`; it validates both portable checksum files, the exact commit, exact endpoint, and expected `debug-apk` build type.
+12. Install that exact checksum-verified APK on the supported Android device. Do not substitute an earlier APK.
+13. Confirm health, season context, franchise selection, day advancement, save/reload, trade history, debug report, and reset.
+14. Copy `docs/technical_alpha_device_smoke_record.template.json` to a private working location. Replace every placeholder and set checks to `true` only after direct observation.
+15. Record the device model, Android version, commit, exact APK SHA-256, approved API base URL, timestamp, installation and route results, and blockers. Do not commit a completed device record containing local network or device details.
+16. Validate it with `python scripts/validate_alpha_device_smoke.py <DEVICE_SMOKE_RECORD.json>`.
+17. Continue only when the device-smoke validator returns `"status": "pass"`.
+18. Generate the privacy-safe summary with `python scripts/summarize_alpha_device_smoke.py <DEVICE_SMOKE_RECORD.json>`. Post only this redacted summary publicly.
+19. Distribute the APK only after the exact-package smoke test passes and all verification steps pass.
 
-A changing local IP address invalidates the configured APK. Repeat verified build preparation, workflow dispatch, artifact verification, installation, and smoke validation whenever the tester-facing API URL changes.
+A changing local IP address invalidates the configured APK. Repeat preparation, local build, verification, installation, and smoke validation whenever the tester-facing URL changes.
 
 ## Tester setup
 
-Use only the installation link or package supplied by the facilitator. Record the build version and commit SHA before beginning.
-
-For a development-hosted Android session:
-
-1. Install Expo Go on the test phone.
-2. Keep the phone and development computer on the same trusted network.
-3. The facilitator runs `python scripts/start_dev.py` from the repository root.
-4. Scan the provided Expo QR code.
-5. Do not expose the local API to the public internet.
-
-For an installed APK session:
-
-1. Install only the checksum-verified APK supplied by the facilitator.
-2. Keep the phone on the network specified by the facilitator.
-3. Confirm that the build identifier shown or supplied matches the recorded commit.
-4. Stop and report `Connection unavailable` rather than changing network or endpoint settings independently.
+Use only the installation package supplied by the facilitator. Record its commit SHA before beginning. Keep the phone on the facilitator-approved network. Stop and report `Connection unavailable` rather than changing endpoint settings independently.
 
 ## Guided test route
 
@@ -79,57 +65,30 @@ Complete the route in order. Stop and report a blocker when a required step cann
 6. Filter the roster by forwards, defense, and goaltenders.
 7. Open Trade Center, choose a trade partner, and submit one likely accepted and one likely rejected proposal.
 8. Confirm both proposals appear in Trade History.
-9. Close the application and restart the API/application using the facilitator's instructions.
+9. Close the application and restart the API/application.
 10. Confirm the selected franchise, current day, results, standings, and trade history persist.
 11. Generate the debug report.
-12. Use New Game / Reset Save and confirm the game returns to Day 1 only after the confirmation step.
+12. Use New Game / Reset Save and confirm the game returns to Day 1 only after confirmation.
 
 ## Test feedback prompts
 
-After the route, answer:
-
-- What did you believe your next action should be at each step?
+- What did you believe your next action should be?
 - Which screen was hardest to understand?
 - Did any label, disabled control, or status appear misleading?
-- Did the franchise identity make the game world understandable without becoming distracting?
+- Did franchise identity make the game understandable without becoming distracting?
 - Which action felt most satisfying?
 - What single change would most improve a second session?
 
 ## Stop conditions
 
-Stop testing and report immediately when any of these occurs:
-
-- the application or API repeatedly crashes;
-- a save cannot be reopened;
-- the controlled franchise, game day, standings, results, or trade history changes unexpectedly after restart;
-- reset occurs without an explicit confirmation;
-- a trade creates missing or duplicated players;
-- the application exposes a local file path, secret, token, database content, or another tester's information;
-- the device becomes unusually hot, unstable, or consumes abnormal battery during ordinary navigation.
+Stop and report when the application repeatedly crashes; a save cannot reopen; franchise, day, standings, results, or trade history changes unexpectedly; reset occurs without confirmation; a trade duplicates or loses players; private data is exposed; or the device becomes unusually hot or unstable.
 
 ## Bug report format
 
-Include:
+Include a short title; severity; commit SHA; reproduction steps; expected and actual result; phone model and Android version; current game day and franchise; screenshot when possible; and privacy-reviewed JSON from `/api/v1/debug-report`.
 
-- short title;
-- severity: blocker, major, minor, or visual;
-- build version and commit SHA;
-- exact reproduction steps;
-- expected result and actual result;
-- phone model, Android version, and whether the session used Expo Go or an installed package;
-- current game day and controlled franchise;
-- screenshot or screen recording when possible;
-- JSON from `/api/v1/debug-report`, after checking that it contains no personal information.
-
-Do not post the SQLite database, authentication data, local network address, device identifier, or personal information in a public issue. Share save-level evidence only through the private channel designated by the facilitator.
+Do not post the SQLite database, authentication data, local network address, device identifier, or personal information in a public issue. Share save-level evidence only through the private facilitator channel.
 
 ## Pilot exit criteria
 
-The pilot may expand beyond five testers only after:
-
-- every blocker has a documented disposition;
-- save/reload succeeds across all completed test sessions;
-- installation succeeds on the supported device set;
-- the exact distributed package is reproducible from the recorded commit;
-- known limitations match the behavior testers actually observed;
-- Kyle explicitly approves the next testing stage.
+The pilot may expand beyond five testers only after every blocker has a disposition, save/reload succeeds across completed sessions, installation succeeds on the supported device set, the exact package is reproducible from the recorded commit, known limitations match observed behavior, and Kyle explicitly approves the next testing stage.
