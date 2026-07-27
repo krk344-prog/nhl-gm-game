@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare one verified GitHub Actions dispatch command for a Technical Alpha APK."""
+"""Prepare one verified local build command for a Technical Alpha APK."""
 
 from __future__ import annotations
 
@@ -7,15 +7,13 @@ import argparse
 import json
 import shlex
 import sys
-from dataclasses import asdict
 from typing import Callable, Iterable
 
 from check_alpha_backend import PreflightResult, run_preflight
 from select_alpha_api_endpoint import discover_private_ipv4_addresses, select_endpoint
 
-
 PR_BRANCH = "agent/alpha-rules-integration-v1"
-WORKFLOW_FILE = "ci.yml"
+BUILD_SCRIPT = "scripts/build_alpha_apk_local.py"
 
 
 def prepare_build_handoff(
@@ -26,14 +24,12 @@ def prepare_build_handoff(
     addresses: Iterable[str] | None = None,
     preflight: Callable[..., PreflightResult] = run_preflight,
 ) -> dict[str, object]:
-    """Select and preflight one endpoint, then return the exact dispatch command."""
+    """Select and preflight one endpoint, then return the exact local build command."""
 
     source = "explicit"
     if api_base_url is None:
         source = "discovered"
-        candidates = (
-            discover_private_ipv4_addresses() if addresses is None else tuple(addresses)
-        )
+        candidates = discover_private_ipv4_addresses() if addresses is None else tuple(addresses)
         api_base_url = select_endpoint(candidates).recommended_api_base_url
 
     result = preflight(
@@ -46,14 +42,11 @@ def prepare_build_handoff(
         raise RuntimeError("Backend preflight did not mark the endpoint ready")
 
     command = [
-        "gh",
-        "workflow",
-        "run",
-        WORKFLOW_FILE,
-        "--ref",
-        PR_BRANCH,
-        "-f",
-        f"api_base_url={result.api_base_url}",
+        sys.executable,
+        BUILD_SCRIPT,
+        "--api-base-url",
+        result.api_base_url,
+        "--execute",
     ]
     return {
         "ready": True,
@@ -61,11 +54,11 @@ def prepare_build_handoff(
         "api_base_url": result.api_base_url,
         "season_id": result.season_id,
         "regular_season_games": result.regular_season_games,
-        "workflow": WORKFLOW_FILE,
         "ref": PR_BRANCH,
-        "dispatch_argv": command,
-        "dispatch_command": shlex.join(command),
-        "next_action": "Run dispatch_command without editing the URL or branch.",
+        "build_script": BUILD_SCRIPT,
+        "build_argv": command,
+        "build_command": shlex.join(command),
+        "next_action": "Run build_command from PR #13 without editing the endpoint.",
     }
 
 
