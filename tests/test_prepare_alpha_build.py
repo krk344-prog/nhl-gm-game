@@ -117,6 +117,19 @@ class PrepareAlphaBuildTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "missing required tools: npm"):
             builder.validate_build_environment(report)
 
+    def test_configured_build_requires_pr13_and_clean_working_tree(self):
+        self.assertEqual(
+            builder.validate_repository_state("agent/alpha-rules-integration-v1", ""),
+            "agent/alpha-rules-integration-v1",
+        )
+        with self.assertRaisesRegex(RuntimeError, "build must run from"):
+            builder.validate_repository_state("main", "")
+        with self.assertRaisesRegex(RuntimeError, "clean working tree"):
+            builder.validate_repository_state(
+                "agent/alpha-rules-integration-v1",
+                " M mobile/App.js\n?? local-debug.txt\n",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
