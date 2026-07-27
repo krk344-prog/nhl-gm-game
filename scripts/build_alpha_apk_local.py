@@ -91,6 +91,16 @@ def validate_build_environment(report: dict[str, object]) -> dict[str, object]:
     return report
 
 
+def validate_repository_state(branch: str, porcelain_status: str) -> str:
+    if branch != PR_BRANCH:
+        raise RuntimeError(f"build must run from {PR_BRANCH}; current branch is {branch or 'detached'}")
+    if porcelain_status.strip():
+        raise RuntimeError(
+            "configured APK build requires a clean working tree so the recorded commit exactly identifies the package"
+        )
+    return branch
+
+
 def command_plan(api_base_url: str) -> list[list[str]]:
     gradle = "gradlew.bat" if os.name == "nt" else "./gradlew"
     return [
@@ -119,8 +129,10 @@ def build(api_base_url: str) -> dict[str, str]:
     branch = subprocess.check_output(
         ["git", "branch", "--show-current"], cwd=ROOT, text=True
     ).strip()
-    if branch != PR_BRANCH:
-        raise RuntimeError(f"build must run from {PR_BRANCH}; current branch is {branch or 'detached'}")
+    porcelain_status = subprocess.check_output(
+        ["git", "status", "--porcelain"], cwd=ROOT, text=True
+    )
+    validate_repository_state(branch, porcelain_status)
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
 
     if OUTPUT.exists():
