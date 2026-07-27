@@ -79,13 +79,16 @@ class PrepareAlphaBuildTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     builder.validate_api_base_url(endpoint)
 
-    def test_local_builder_plan_contains_export_prebuild_and_apk_steps(self):
+    def test_local_builder_plan_contains_clean_native_regeneration_and_apk_steps(self):
         plan = builder.command_plan("http://192.168.1.20:8000/api/v1")
         flattened = [item for command in plan for item in command]
         self.assertEqual(plan[0], ["npm", "ci"])
         self.assertIn("export", flattened)
         self.assertIn("prebuild", flattened)
         self.assertIn("assembleDebug", flattened)
+        prebuild = next(command for command in plan if "prebuild" in command)
+        self.assertIn("--clean", prebuild)
+        self.assertLess(prebuild.index("--clean"), prebuild.index("--no-install"))
 
     def test_build_environment_requires_ci_aligned_toolchain(self):
         passing = {
