@@ -41,15 +41,17 @@ Use this sequence for every physical-device pilot build. Do not distribute an AP
 11. Continue only when the verifier returns JSON with `"status": "pass"`; it validates both portable checksum files, the exact commit, exact endpoint, and expected `debug-apk` build type.
 12. Install and confirm that exact artifact with `python scripts/install_alpha_apk.py dist/technical-alpha --expected-commit <COMMIT_SHA> --expected-api-base-url <URL>`. Add `--serial <ADB_SERIAL>` only when the device preflight required it.
 13. Continue only when the installer returns `"status": "pass"`, `"installation_confirmed": true`, and `"android_package": "com.krk344.nhlgmgame"`. It re-runs artifact verification, uses the same authorized device selection rules, installs with `adb install -r`, and confirms the expected package through Android's package manager. Do not substitute an earlier APK or switch devices without repeating preflight and evidence capture.
-14. Confirm health, season context, franchise selection, day advancement, save/reload, trade history, debug report, and reset.
-15. Copy `docs/technical_alpha_device_smoke_record.template.json` to a private working location. Replace every placeholder and set checks to `true` only after direct observation.
-16. Record the device model, Android version, commit, exact APK SHA-256, approved API base URL, timestamp, installation and route results, and blockers. Do not commit a completed device record containing local network or device details.
-17. Validate it with `python scripts/validate_alpha_device_smoke.py <DEVICE_SMOKE_RECORD.json>`.
-18. Continue only when the device-smoke validator returns `"status": "pass"`.
-19. Generate the privacy-safe summary with `python scripts/summarize_alpha_device_smoke.py <DEVICE_SMOKE_RECORD.json>`. Post only this redacted summary publicly.
-20. Distribute the APK only after the exact-package smoke test passes and all verification steps pass.
+14. Run `python scripts/launch_alpha_app.py`. Add `--serial <ADB_SERIAL>` only when the device preflight required it.
+15. Continue only when the launcher returns `"status": "pass"`, `"installation_confirmed": true`, and `"launch_confirmed": true`. It confirms the installed package, starts the launcher activity, and verifies the application process on the same authorized device without publishing the device serial.
+16. Confirm health, season context, franchise selection, day advancement, save/reload, trade history, debug report, and reset.
+17. Copy `docs/technical_alpha_device_smoke_record.template.json` to a private working location. Replace every placeholder and set checks to `true` only after direct observation.
+18. Record the device model, Android version, commit, exact APK SHA-256, approved API base URL, timestamp, installation and route results, and blockers. Do not commit a completed device record containing local network or device details.
+19. Validate it with `python scripts/validate_alpha_device_smoke.py <DEVICE_SMOKE_RECORD.json>`.
+20. Continue only when the device-smoke validator returns `"status": "pass"`.
+21. Generate the privacy-safe summary with `python scripts/summarize_alpha_device_smoke.py <DEVICE_SMOKE_RECORD.json>`. Post only this redacted summary publicly.
+22. Distribute the APK only after the exact-package smoke test passes and all verification steps pass.
 
-A changing local IP address invalidates the configured APK. Repeat preparation, local build, verification, installation, and smoke validation whenever the tester-facing URL changes.
+A changing local IP address invalidates the configured APK. Repeat preparation, local build, verification, installation, launch confirmation, and smoke validation whenever the tester-facing URL changes.
 
 ## Tester setup
 
