@@ -35,7 +35,7 @@ def validate_api_base_url(value: str) -> str:
 
 
 def _major_version(output: str) -> int | None:
-    match = re.search(r"(?:version\s+\")?v?(\d+)(?:[.\"]|$)", output)
+    match = re.search(r'(?:version\s+")?v?(\d+)(?:[."]|$)', output)
     return int(match.group(1)) if match else None
 
 
@@ -107,7 +107,7 @@ def command_plan(api_base_url: str) -> list[list[str]]:
         ["npm", "ci"],
         ["npx", "expo", "export", "--platform", "android", "--output-dir", str(OUTPUT / "android-export")],
         ["npx", "expo", "prebuild", "--platform", "android", "--clean", "--non-interactive", "--no-install"],
-        [gradle, "assembleDebug", "--no-daemon"],
+        [gradle, "assembleRelease", "--no-daemon"],
     ]
 
 
@@ -148,7 +148,9 @@ def build(api_base_url: str) -> dict[str, str]:
     _run(plan[2], MOBILE, env)
     _run(plan[3], MOBILE / "android", env)
 
-    source_apk = MOBILE / "android" / "app" / "build" / "outputs" / "apk" / "debug" / "app-debug.apk"
+    source_apk = MOBILE / "android" / "app" / "build" / "outputs" / "apk" / "release" / "app-release.apk"
+    if not source_apk.is_file():
+        raise RuntimeError(f"standalone release APK was not produced at {source_apk}")
     apk = OUTPUT / "nhl-gm-technical-alpha.apk"
     shutil.copy2(source_apk, apk)
     export_archive = OUTPUT / "nhl-gm-android-export.tar.gz"
@@ -164,7 +166,7 @@ def build(api_base_url: str) -> dict[str, str]:
         f"{export_digest}  {export_archive.name}\n", encoding="utf-8"
     )
     (OUTPUT / "technical-alpha-build.txt").write_text(
-        f"commit={commit}\napi_base_url={api_base_url}\nbuild_type=debug-apk\n",
+        f"commit={commit}\napi_base_url={api_base_url}\nbuild_type=standalone-release-apk\n",
         encoding="utf-8",
     )
     return {"status": "pass", "output_dir": str(OUTPUT), "commit": commit, "api_base_url": api_base_url}
