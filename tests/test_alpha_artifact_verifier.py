@@ -2,6 +2,7 @@ import hashlib
 import tempfile
 import unittest
 from pathlib import Path
+from zipfile import ZipFile
 
 from scripts.verify_alpha_artifact import VerificationError, verify_artifact
 
@@ -10,29 +11,29 @@ class AlphaArtifactVerifierTests(unittest.TestCase):
     def _write_valid_artifact(self, directory: Path) -> tuple[str, str]:
         commit = "abc123def456"
         api_url = "http://192.168.1.25:8000/api/v1"
+        apk = directory / "nhl-gm-technical-alpha.apk"
+        with ZipFile(apk, "w") as archive:
+            archive.writestr("assets/index.android.bundle", b"standalone-js-bundle")
+            archive.writestr("classes.dex", b"dex")
+        export = directory / "nhl-gm-android-export.tar.gz"
+        export.write_bytes(b"export-bytes")
+
         files = {
-            "nhl-gm-technical-alpha.apk": (
-                b"apk-bytes",
-                "nhl-gm-technical-alpha.apk.sha256",
-            ),
-            "nhl-gm-android-export.tar.gz": (
-                b"export-bytes",
-                "nhl-gm-android-export.sha256",
-            ),
+            apk.name: (apk.read_bytes(), "nhl-gm-technical-alpha.apk.sha256"),
+            export.name: (export.read_bytes(), "nhl-gm-android-export.sha256"),
         }
         for name, (payload, checksum_name) in files.items():
-            (directory / name).write_bytes(payload)
             digest = hashlib.sha256(payload).hexdigest()
             (directory / checksum_name).write_text(
                 f"{digest}  {name}\n", encoding="utf-8"
             )
         (directory / "technical-alpha-build.txt").write_text(
-            f"commit={commit}\napi_base_url={api_url}\nbuild_type=debug-apk\n",
+            f"commit={commit}\napi_base_url={api_url}\nbuild_type=standalone-release-apk\n",
             encoding="utf-8",
         )
         return commit, api_url
 
-    def test_valid_artifact_matches_commit_endpoint_and_checksums(self):
+    def test_valid_artifact_matches_commit_endpoint_checksums_and_embedded_bundle(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             directory = Path(temp_dir)
             commit, api_url = self._write_valid_artifact(directory)
@@ -42,6 +43,7 @@ class AlphaArtifactVerifierTests(unittest.TestCase):
             self.assertEqual(result["status"], "pass")
             self.assertEqual(result["commit"], commit)
             self.assertEqual(result["api_base_url"], api_url)
+            self.assertGreater(result["embedded_bundle_bytes"], 0)
             self.assertEqual(
                 set(result["checksums"]),
                 {"nhl-gm-technical-alpha.apk", "nhl-gm-android-export.tar.gz"},
@@ -76,12 +78,40 @@ class AlphaArtifactVerifierTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             directory = Path(temp_dir)
             commit, api_url = self._write_valid_artifact(directory)
-            digest = hashlib.sha256(b"apk-bytes").hexdigest()
+            apk = directory / "nhl-gm-technical-alpha.apk"
+            digest = hashlib.sha256(apk.read_bytes()).hexdigest()
             (directory / "nhl-gm-technical-alpha.apk.sha256").write_text(
                 f"{digest}  /tmp/nhl-gm-technical-alpha.apk\n", encoding="utf-8"
             )
 
             with self.assertRaisesRegex(VerificationError, "portable filename"):
+                verify_artifact(directory, commit, api_url)
+
+    def test_rejects_debug_manifest(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            directory = Path(temp_dir)
+            commit, api_url = self._write_valid_artifact(directory)
+            (directory / "technical-alpha-build.txt").write_text(
+                f"commit={commit}\napi_base_url={api_url}\nbuild_type=debug-apk\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(VerificationError, "unsupported build type"):
+                verify_artifact(directory, commit, api_url)
+
+    def test_rejects_apk_without_embedded_javascript_bundle(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            directory = Path(temp_dir)
+            commit, api_url = self._write_valid_artifact(directory)
+            apk = directory / "nhl-gm-technical-alpha.apk"
+            with ZipFile(apk, "w") as archive:
+                archive.writestr("classes.dex", b"dex")
+            digest = hashlib.sha256(apk.read_bytes()).hexdigest()
+            (directory / "nhl-gm-technical-alpha.apk.sha256").write_text(
+                f"{digest}  {apk.name}\n", encoding="utf-8"
+            )
+
+            with self.assertRaisesRegex(VerificationError, "not standalone"):
                 verify_artifact(directory, commit, api_url)
 
 
