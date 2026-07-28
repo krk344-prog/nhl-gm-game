@@ -8,6 +8,7 @@ class TechnicalAlphaPilotGuideTests(unittest.TestCase):
         cls.guide = Path("docs/technical_alpha_pilot_guide.md").read_text(encoding="utf-8")
         cls.workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
         cls.builder = Path("scripts/build_alpha_apk_local.py").read_text(encoding="utf-8")
+        cls.verifier = Path("scripts/verify_alpha_artifact.py").read_text(encoding="utf-8")
 
     def test_required_pilot_sections_are_present(self) -> None:
         for section in (
@@ -48,10 +49,12 @@ class TechnicalAlphaPilotGuideTests(unittest.TestCase):
         self.assertNotIn("dispatch_command", self.guide)
         self.assertNotIn("gh workflow run", self.guide)
 
-    def test_release_procedure_requires_exact_artifact_verifier(self) -> None:
+    def test_release_procedure_requires_exact_standalone_artifact_verifier(self) -> None:
         for term in (
             "python scripts/verify_alpha_artifact.py dist/technical-alpha --expected-commit <COMMIT_SHA> --expected-api-base-url <URL>",
-            '"status": "pass"', "both portable checksum files", "expected `debug-apk` build type", "verification",
+            '"status": "pass"', "both portable checksum files",
+            "expected `standalone-release-apk` build type",
+            "assets/index.android.bundle", "verification",
         ):
             with self.subTest(term=term):
                 self.assertIn(term, self.guide)
@@ -76,10 +79,15 @@ class TechnicalAlphaPilotGuideTests(unittest.TestCase):
             with self.subTest(term=term):
                 self.assertIn(term, self.guide)
 
-    def test_packaged_build_requires_authoritative_api_path(self) -> None:
-        for term in ("/api/v1", "non-loopback endpoint", "EXPO_PUBLIC_API_URL", "assembleDebug"):
+    def test_packaged_build_requires_authoritative_api_path_and_embedded_bundle(self) -> None:
+        for term in ("/api/v1", "non-loopback endpoint", "EXPO_PUBLIC_API_URL", "assembleRelease"):
             with self.subTest(term=term):
                 self.assertIn(term, self.builder)
+        self.assertNotIn("assembleDebug", self.builder)
+        self.assertIn("assets/index.android.bundle", self.workflow)
+        self.assertIn("assets/index.android.bundle", self.verifier)
+        self.assertIn("standalone-release-apk", self.workflow)
+        self.assertIn("standalone-release-apk", self.verifier)
 
 
 if __name__ == "__main__":
