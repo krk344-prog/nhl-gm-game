@@ -87,25 +87,40 @@ jobs:
           EXPO_NO_TELEMETRY: "1"
           EXPO_PUBLIC_API_URL: ${{ env.TECHNICAL_ALPHA_API_URL }}
         run: npx expo export --platform android --output-dir /tmp/nhl-gm-android
-      - name: Generate native Android project
+      - name: Generate clean native Android project
         working-directory: mobile
         env:
           EXPO_NO_TELEMETRY: "1"
           EXPO_PUBLIC_API_URL: ${{ env.TECHNICAL_ALPHA_API_URL }}
-        run: npx expo prebuild --platform android --non-interactive --no-install
-      - name: Build installable Technical Alpha APK
+        run: npx expo prebuild --platform android --clean --non-interactive --no-install
+      - name: Build standalone Technical Alpha release APK
         working-directory: mobile/android
         env:
           EXPO_PUBLIC_API_URL: ${{ env.TECHNICAL_ALPHA_API_URL }}
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleRelease --no-daemon
+      - name: Verify embedded application bundle
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          apk = Path("mobile/android/app/build/outputs/apk/release/app-release.apk")
+          if not apk.is_file():
+              raise SystemExit(f"release APK missing: {apk}")
+          with ZipFile(apk) as archive:
+              info = archive.getinfo("assets/index.android.bundle")
+              if info.file_size <= 0:
+                  raise SystemExit("embedded JavaScript bundle is empty")
+          print(f"verified embedded bundle in {apk}")
+          PY
       - name: Package tester artifacts with portable integrity manifests
         working-directory: /tmp
         run: |
           tar -czf nhl-gm-android-export.tar.gz nhl-gm-android
-          cp "$GITHUB_WORKSPACE/mobile/android/app/build/outputs/apk/debug/app-debug.apk" nhl-gm-technical-alpha.apk
+          cp "$GITHUB_WORKSPACE/mobile/android/app/build/outputs/apk/release/app-release.apk" nhl-gm-technical-alpha.apk
           sha256sum nhl-gm-android-export.tar.gz > nhl-gm-android-export.sha256
           sha256sum nhl-gm-technical-alpha.apk > nhl-gm-technical-alpha.apk.sha256
-          printf 'commit=%s\napi_base_url=%s\nbuild_type=debug-apk\n' \
+          printf 'commit=%s\napi_base_url=%s\nbuild_type=standalone-release-apk\n' \
             "$GITHUB_SHA" "$TECHNICAL_ALPHA_API_URL" > technical-alpha-build.txt
       - name: Upload Technical Alpha Android artifacts
         uses: actions/upload-artifact@v4
