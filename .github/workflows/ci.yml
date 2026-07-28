@@ -31,6 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TECHNICAL_ALPHA_API_URL: ${{ inputs.api_base_url || 'http://127.0.0.1:8000/api/v1' }}
+      TECHNICAL_ALPHA_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -121,7 +122,7 @@ jobs:
           sha256sum nhl-gm-android-export.tar.gz > nhl-gm-android-export.sha256
           sha256sum nhl-gm-technical-alpha.apk > nhl-gm-technical-alpha.apk.sha256
           printf 'commit=%s\napi_base_url=%s\nbuild_type=standalone-release-apk\n' \
-            "$GITHUB_SHA" "$TECHNICAL_ALPHA_API_URL" > technical-alpha-build.txt
+            "$TECHNICAL_ALPHA_SOURCE_SHA" "$TECHNICAL_ALPHA_API_URL" > technical-alpha-build.txt
       - name: Upload Technical Alpha Android artifacts
         uses: actions/upload-artifact@v4
         with:
