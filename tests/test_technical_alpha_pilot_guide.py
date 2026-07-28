@@ -70,6 +70,14 @@ class TechnicalAlphaPilotGuideTests(unittest.TestCase):
                 self.assertIn(name, self.builder)
                 self.assertIn(name, self.guide)
 
+    def test_workflow_manifest_records_the_packaged_pr_head(self) -> None:
+        self.assertIn(
+            "TECHNICAL_ALPHA_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}",
+            self.workflow,
+        )
+        self.assertIn('"$TECHNICAL_ALPHA_SOURCE_SHA" "$TECHNICAL_ALPHA_API_URL"', self.workflow)
+        self.assertNotIn('"$GITHUB_SHA" "$TECHNICAL_ALPHA_API_URL"', self.workflow)
+
     def test_release_procedure_requires_private_validation_and_redacted_summary(self) -> None:
         for term in (
             "python scripts/validate_alpha_device_smoke.py <DEVICE_SMOKE_RECORD.json>",
