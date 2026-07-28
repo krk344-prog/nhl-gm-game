@@ -14,6 +14,7 @@ import ipaddress
 import json
 from pathlib import Path
 from urllib.parse import urlparse
+from zipfile import BadZipFile, ZipFile
 
 
 REQUIRED_ARTIFACTS = {
@@ -21,6 +22,7 @@ REQUIRED_ARTIFACTS = {
     "nhl-gm-android-export.tar.gz": "nhl-gm-android-export.sha256",
 }
 BUILD_MANIFEST = "technical-alpha-build.txt"
+APK_BUNDLE_PATH = "assets/index.android.bundle"
 
 
 class VerificationError(ValueError):
@@ -90,6 +92,21 @@ def _verify_checksum(directory: Path, artifact_name: str, checksum_name: str) ->
     return actual_hash
 
 
+def _verify_embedded_bundle(apk: Path) -> int:
+    try:
+        with ZipFile(apk) as archive:
+            info = archive.getinfo(APK_BUNDLE_PATH)
+            if info.file_size <= 0:
+                raise VerificationError("embedded JavaScript application bundle is empty")
+            return info.file_size
+    except KeyError as exc:
+        raise VerificationError(
+            "APK is not standalone: embedded JavaScript application bundle is missing"
+        ) from exc
+    except BadZipFile as exc:
+        raise VerificationError("APK is not a valid ZIP package") from exc
+
+
 def verify_artifact(directory: Path, expected_commit: str, expected_api_base_url: str) -> dict[str, object]:
     directory = directory.resolve()
     if not directory.is_dir():
@@ -110,18 +127,20 @@ def verify_artifact(directory: Path, expected_commit: str, expected_api_base_url
         raise VerificationError(
             f"build API URL {embedded_url!r} does not match expected URL {expected_api_base_url!r}"
         )
-    if manifest["build_type"] != "debug-apk":
+    if manifest["build_type"] != "standalone-release-apk":
         raise VerificationError(f"unsupported build type: {manifest['build_type']!r}")
 
     checksums = {
         artifact: _verify_checksum(directory, artifact, checksum)
         for artifact, checksum in REQUIRED_ARTIFACTS.items()
     }
+    bundle_size = _verify_embedded_bundle(directory / "nhl-gm-technical-alpha.apk")
     return {
         "status": "pass",
         "commit": expected_commit,
         "api_base_url": expected_api_base_url,
         "build_type": manifest["build_type"],
+        "embedded_bundle_bytes": bundle_size,
         "checksums": checksums,
     }
 
