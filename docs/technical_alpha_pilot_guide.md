@@ -29,6 +29,7 @@ Use this sequence for every physical-device pilot build. Do not distribute an AP
 
 1. Check out `agent/alpha-rules-integration-v1` and confirm the working tree is clean.
 2. Connect the facilitator computer and supported Android device to the same trusted network.
+2a. Connect the Android device by USB, enable USB debugging, and run `python scripts/check_alpha_android_device.py`. Continue only when it returns `"status": "ready"`. When more than one authorized device is attached, rerun with `--serial <ADB_SERIAL>`. Keep the serial private; the command's public-ready output intentionally omits it.
 3. Start the integrated backend from the repository root with `python scripts/start_dev.py`.
 4. From a second terminal at the repository root, run `python scripts/prepare_alpha_build.py --season-id 2026-27`.
 5. Continue only when the command returns JSON with `"ready": true`, a non-loopback `api_base_url`, the expected season context, `"ref": "agent/alpha-rules-integration-v1"`, and a `build_command` targeting `scripts/build_alpha_apk_local.py`.
@@ -38,7 +39,7 @@ Use this sequence for every physical-device pilot build. Do not distribute an AP
 9. The local builder must produce `dist/technical-alpha/nhl-gm-technical-alpha.apk`, `nhl-gm-technical-alpha.apk.sha256`, `nhl-gm-android-export.tar.gz`, `nhl-gm-android-export.sha256`, and `technical-alpha-build.txt` from the exact PR #13 commit.
 10. Run `python scripts/verify_alpha_artifact.py dist/technical-alpha --expected-commit <COMMIT_SHA> --expected-api-base-url <URL>`.
 11. Continue only when the verifier returns JSON with `"status": "pass"`; it validates both portable checksum files, the exact commit, exact endpoint, and expected `debug-apk` build type.
-12. Install that exact checksum-verified APK on the supported Android device. Do not substitute an earlier APK.
+12. Install that exact checksum-verified APK on the same Android device that passed the device preflight. Do not substitute an earlier APK or switch devices without repeating the preflight and evidence record.
 13. Confirm health, season context, franchise selection, day advancement, save/reload, trade history, debug report, and reset.
 14. Copy `docs/technical_alpha_device_smoke_record.template.json` to a private working location. Replace every placeholder and set checks to `true` only after direct observation.
 15. Record the device model, Android version, commit, exact APK SHA-256, approved API base URL, timestamp, installation and route results, and blockers. Do not commit a completed device record containing local network or device details.
