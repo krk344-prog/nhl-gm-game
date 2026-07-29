@@ -114,6 +114,28 @@ jobs:
                   raise SystemExit("embedded JavaScript bundle is empty")
           print(f"verified embedded bundle in {apk}")
           PY
+      - name: Install and launch exact release APK in Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: |
+            set -euo pipefail
+            APK="$GITHUB_WORKSPACE/mobile/android/app/build/outputs/apk/release/app-release.apk"
+            adb install -r "$APK"
+            adb shell monkey -p com.krk344.nhlgmgame -c android.intent.category.LAUNCHER 1
+            for attempt in $(seq 1 20); do
+              if adb shell pidof com.krk344.nhlgmgame >/dev/null 2>&1; then
+                break
+              fi
+              sleep 1
+            done
+            adb shell pidof com.krk344.nhlgmgame
+            sleep 5
+            adb exec-out screencap -p > /tmp/technical-alpha-emulator-launch.png
+            test -s /tmp/technical-alpha-emulator-launch.png
       - name: Package tester artifacts with portable integrity manifests
         working-directory: /tmp
         run: |
@@ -133,5 +155,6 @@ jobs:
             /tmp/nhl-gm-technical-alpha.apk
             /tmp/nhl-gm-technical-alpha.apk.sha256
             /tmp/technical-alpha-build.txt
+            /tmp/technical-alpha-emulator-launch.png
           if-no-files-found: error
           retention-days: 14
