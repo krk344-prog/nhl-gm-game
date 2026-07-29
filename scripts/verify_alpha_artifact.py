@@ -24,6 +24,14 @@ REQUIRED_ARTIFACTS = {
 BUILD_MANIFEST = "technical-alpha-build.txt"
 APK_BUNDLE_PATH = "assets/index.android.bundle"
 APK_REQUIRED_MEMBERS = ("AndroidManifest.xml", "classes.dex")
+FORBIDDEN_BUNDLE_ENDPOINTS = (
+    b"http://localhost",
+    b"https://localhost",
+    b"http://127.",
+    b"https://127.",
+    b"http://0.0.0.0",
+    b"https://0.0.0.0",
+)
 
 
 class VerificationError(ValueError):
@@ -93,6 +101,15 @@ def _verify_checksum(directory: Path, artifact_name: str, checksum_name: str) ->
     return actual_hash
 
 
+def _reject_forbidden_bundle_endpoints(bundle: bytes) -> None:
+    lowered = bundle.lower()
+    for forbidden in FORBIDDEN_BUNDLE_ENDPOINTS:
+        if forbidden in lowered:
+            raise VerificationError(
+                "APK embedded application bundle contains a stale loopback or unspecified endpoint"
+            )
+
+
 def _verify_embedded_bundle(apk: Path, expected_api_base_url: str) -> tuple[int, dict[str, int]]:
     try:
         with ZipFile(apk) as archive:
@@ -120,6 +137,7 @@ def _verify_embedded_bundle(apk: Path, expected_api_base_url: str) -> tuple[int,
                 raise VerificationError(
                     "APK embedded application bundle does not contain the expected API endpoint"
                 )
+            _reject_forbidden_bundle_endpoints(bundle)
             return info.file_size, required_member_sizes
     except KeyError as exc:
         raise VerificationError(
@@ -166,6 +184,7 @@ def verify_artifact(directory: Path, expected_commit: str, expected_api_base_url
         "build_type": manifest["build_type"],
         "embedded_bundle_bytes": bundle_size,
         "embedded_endpoint_verified": True,
+        "forbidden_bundle_endpoints_absent": True,
         "apk_zip_integrity_verified": True,
         "apk_required_members_verified": required_member_sizes,
         "checksums": checksums,
