@@ -23,6 +23,7 @@ REQUIRED_ARTIFACTS = {
 }
 BUILD_MANIFEST = "technical-alpha-build.txt"
 APK_BUNDLE_PATH = "assets/index.android.bundle"
+APK_REQUIRED_MEMBERS = ("AndroidManifest.xml", "classes.dex")
 
 
 class VerificationError(ValueError):
@@ -92,7 +93,7 @@ def _verify_checksum(directory: Path, artifact_name: str, checksum_name: str) ->
     return actual_hash
 
 
-def _verify_embedded_bundle(apk: Path, expected_api_base_url: str) -> int:
+def _verify_embedded_bundle(apk: Path, expected_api_base_url: str) -> tuple[int, dict[str, int]]:
     try:
         with ZipFile(apk) as archive:
             corrupt_member = archive.testzip()
@@ -100,6 +101,17 @@ def _verify_embedded_bundle(apk: Path, expected_api_base_url: str) -> int:
                 raise VerificationError(
                     f"APK ZIP integrity check failed for member: {corrupt_member}"
                 )
+
+            required_member_sizes: dict[str, int] = {}
+            for member in APK_REQUIRED_MEMBERS:
+                try:
+                    member_info = archive.getinfo(member)
+                except KeyError as exc:
+                    raise VerificationError(f"APK is missing required Android member: {member}") from exc
+                if member_info.file_size <= 0:
+                    raise VerificationError(f"APK required Android member is empty: {member}")
+                required_member_sizes[member] = member_info.file_size
+
             info = archive.getinfo(APK_BUNDLE_PATH)
             if info.file_size <= 0:
                 raise VerificationError("embedded JavaScript application bundle is empty")
@@ -108,7 +120,7 @@ def _verify_embedded_bundle(apk: Path, expected_api_base_url: str) -> int:
                 raise VerificationError(
                     "APK embedded application bundle does not contain the expected API endpoint"
                 )
-            return info.file_size
+            return info.file_size, required_member_sizes
     except KeyError as exc:
         raise VerificationError(
             "APK is not standalone: embedded JavaScript application bundle is missing"
@@ -144,7 +156,7 @@ def verify_artifact(directory: Path, expected_commit: str, expected_api_base_url
         artifact: _verify_checksum(directory, artifact, checksum)
         for artifact, checksum in REQUIRED_ARTIFACTS.items()
     }
-    bundle_size = _verify_embedded_bundle(
+    bundle_size, required_member_sizes = _verify_embedded_bundle(
         directory / "nhl-gm-technical-alpha.apk", expected_api_base_url
     )
     return {
@@ -155,6 +167,7 @@ def verify_artifact(directory: Path, expected_commit: str, expected_api_base_url
         "embedded_bundle_bytes": bundle_size,
         "embedded_endpoint_verified": True,
         "apk_zip_integrity_verified": True,
+        "apk_required_members_verified": required_member_sizes,
         "checksums": checksums,
     }
 
