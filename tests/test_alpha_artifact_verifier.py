@@ -17,6 +17,7 @@ class AlphaArtifactVerifierTests(unittest.TestCase):
                 "assets/index.android.bundle",
                 f"standalone-js-bundle:{api_url}".encode("utf-8"),
             )
+            archive.writestr("AndroidManifest.xml", b"manifest")
             archive.writestr("classes.dex", b"dex")
         export = directory / "nhl-gm-android-export.tar.gz"
         export.write_bytes(b"export-bytes")
@@ -56,6 +57,10 @@ class AlphaArtifactVerifierTests(unittest.TestCase):
             self.assertGreater(result["embedded_bundle_bytes"], 0)
             self.assertTrue(result["embedded_endpoint_verified"])
             self.assertTrue(result["apk_zip_integrity_verified"])
+            self.assertEqual(
+                set(result["apk_required_members_verified"]),
+                {"AndroidManifest.xml", "classes.dex"},
+            )
             self.assertEqual(
                 set(result["checksums"]),
                 {"nhl-gm-technical-alpha.apk", "nhl-gm-android-export.tar.gz"},
@@ -117,10 +122,27 @@ class AlphaArtifactVerifierTests(unittest.TestCase):
             commit, api_url = self._write_valid_artifact(directory)
             apk = directory / "nhl-gm-technical-alpha.apk"
             with ZipFile(apk, "w") as archive:
+                archive.writestr("AndroidManifest.xml", b"manifest")
                 archive.writestr("classes.dex", b"dex")
             self._rewrite_apk_checksum(directory)
 
             with self.assertRaisesRegex(VerificationError, "not standalone"):
+                verify_artifact(directory, commit, api_url)
+
+    def test_rejects_apk_missing_required_android_member(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            directory = Path(temp_dir)
+            commit, api_url = self._write_valid_artifact(directory)
+            apk = directory / "nhl-gm-technical-alpha.apk"
+            with ZipFile(apk, "w") as archive:
+                archive.writestr(
+                    "assets/index.android.bundle",
+                    f"standalone-js-bundle:{api_url}".encode("utf-8"),
+                )
+                archive.writestr("classes.dex", b"dex")
+            self._rewrite_apk_checksum(directory)
+
+            with self.assertRaisesRegex(VerificationError, "missing required Android member: AndroidManifest.xml"):
                 verify_artifact(directory, commit, api_url)
 
     def test_rejects_bundle_without_manifest_endpoint(self):
@@ -133,6 +155,7 @@ class AlphaArtifactVerifierTests(unittest.TestCase):
                     "assets/index.android.bundle",
                     b"standalone-js-bundle:http://192.168.1.99:8000/api/v1",
                 )
+                archive.writestr("AndroidManifest.xml", b"manifest")
                 archive.writestr("classes.dex", b"dex")
             self._rewrite_apk_checksum(directory)
 
