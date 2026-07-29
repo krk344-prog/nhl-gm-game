@@ -20,6 +20,7 @@ from urllib.parse import urlparse
 REQUIRED_TRUE_FIELDS = (
     "artifact_verifier_passed",
     "apk_installed",
+    "launch_confirmed",
     "health_passed",
     "season_context_passed",
     "franchise_selection_passed",
