@@ -13,7 +13,10 @@ class AlphaArtifactVerifierTests(unittest.TestCase):
         api_url = "http://192.168.1.25:8000/api/v1"
         apk = directory / "nhl-gm-technical-alpha.apk"
         with ZipFile(apk, "w") as archive:
-            archive.writestr("assets/index.android.bundle", b"standalone-js-bundle")
+            archive.writestr(
+                "assets/index.android.bundle",
+                f"standalone-js-bundle:{api_url}".encode("utf-8"),
+            )
             archive.writestr("classes.dex", b"dex")
         export = directory / "nhl-gm-android-export.tar.gz"
         export.write_bytes(b"export-bytes")
@@ -33,6 +36,13 @@ class AlphaArtifactVerifierTests(unittest.TestCase):
         )
         return commit, api_url
 
+    def _rewrite_apk_checksum(self, directory: Path) -> None:
+        apk = directory / "nhl-gm-technical-alpha.apk"
+        digest = hashlib.sha256(apk.read_bytes()).hexdigest()
+        (directory / "nhl-gm-technical-alpha.apk.sha256").write_text(
+            f"{digest}  {apk.name}\n", encoding="utf-8"
+        )
+
     def test_valid_artifact_matches_commit_endpoint_checksums_and_embedded_bundle(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             directory = Path(temp_dir)
@@ -44,6 +54,7 @@ class AlphaArtifactVerifierTests(unittest.TestCase):
             self.assertEqual(result["commit"], commit)
             self.assertEqual(result["api_base_url"], api_url)
             self.assertGreater(result["embedded_bundle_bytes"], 0)
+            self.assertTrue(result["embedded_endpoint_verified"])
             self.assertEqual(
                 set(result["checksums"]),
                 {"nhl-gm-technical-alpha.apk", "nhl-gm-android-export.tar.gz"},
@@ -106,12 +117,25 @@ class AlphaArtifactVerifierTests(unittest.TestCase):
             apk = directory / "nhl-gm-technical-alpha.apk"
             with ZipFile(apk, "w") as archive:
                 archive.writestr("classes.dex", b"dex")
-            digest = hashlib.sha256(apk.read_bytes()).hexdigest()
-            (directory / "nhl-gm-technical-alpha.apk.sha256").write_text(
-                f"{digest}  {apk.name}\n", encoding="utf-8"
-            )
+            self._rewrite_apk_checksum(directory)
 
             with self.assertRaisesRegex(VerificationError, "not standalone"):
+                verify_artifact(directory, commit, api_url)
+
+    def test_rejects_bundle_without_manifest_endpoint(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            directory = Path(temp_dir)
+            commit, api_url = self._write_valid_artifact(directory)
+            apk = directory / "nhl-gm-technical-alpha.apk"
+            with ZipFile(apk, "w") as archive:
+                archive.writestr(
+                    "assets/index.android.bundle",
+                    b"standalone-js-bundle:http://192.168.1.99:8000/api/v1",
+                )
+                archive.writestr("classes.dex", b"dex")
+            self._rewrite_apk_checksum(directory)
+
+            with self.assertRaisesRegex(VerificationError, "does not contain the expected API endpoint"):
                 verify_artifact(directory, commit, api_url)
 
 
