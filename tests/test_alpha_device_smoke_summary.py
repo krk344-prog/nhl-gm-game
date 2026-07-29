@@ -22,6 +22,7 @@ def valid_record() -> dict[str, object]:
         "tested_at": "2026-07-25T09:30:00-04:00",
         "artifact_verifier_passed": True,
         "apk_installed": True,
+        "launch_confirmed": True,
         "health_passed": True,
         "season_context_passed": True,
         "franchise_selection_passed": True,
@@ -57,8 +58,8 @@ class AlphaDeviceSmokeSummaryTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(summary["status"], "pass")
         self.assertEqual(summary["commit"], "a" * 12)
-        self.assertEqual(summary["checks_passed"], 12)
-        self.assertEqual(summary["checks_required"], 12)
+        self.assertEqual(summary["checks_passed"], 13)
+        self.assertEqual(summary["checks_required"], 13)
         self.assertEqual(summary["endpoint_class"], "private-or-controlled-http")
 
         serialized = json.dumps(summary)
