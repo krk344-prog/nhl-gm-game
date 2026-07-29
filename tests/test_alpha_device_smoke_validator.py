@@ -37,6 +37,11 @@ class AlphaDeviceSmokeValidatorTests(unittest.TestCase):
         record["save_reload_passed"] = False
         self.assertIn("not_passed:save_reload_passed", MODULE.validate_record(record))
 
+    def test_unconfirmed_launch_blocks_pilot(self):
+        record = self.valid_record()
+        record["launch_confirmed"] = False
+        self.assertIn("not_passed:launch_confirmed", MODULE.validate_record(record))
+
     def test_tampered_digest_is_blocked(self):
         record = self.valid_record()
         record["apk_sha256"] = "not-a-digest"
