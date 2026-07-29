@@ -7,6 +7,7 @@
   "tested_at": "REPLACE_WITH_ISO_8601_TIMESTAMP",
   "artifact_verifier_passed": false,
   "apk_installed": false,
+  "launch_confirmed": false,
   "health_passed": false,
   "season_context_passed": false,
   "franchise_selection_passed": false,
