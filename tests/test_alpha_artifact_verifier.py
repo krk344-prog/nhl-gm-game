@@ -55,6 +55,7 @@ class AlphaArtifactVerifierTests(unittest.TestCase):
             self.assertEqual(result["api_base_url"], api_url)
             self.assertGreater(result["embedded_bundle_bytes"], 0)
             self.assertTrue(result["embedded_endpoint_verified"])
+            self.assertTrue(result["apk_zip_integrity_verified"])
             self.assertEqual(
                 set(result["checksums"]),
                 {"nhl-gm-technical-alpha.apk", "nhl-gm-android-export.tar.gz"},
@@ -136,6 +137,21 @@ class AlphaArtifactVerifierTests(unittest.TestCase):
             self._rewrite_apk_checksum(directory)
 
             with self.assertRaisesRegex(VerificationError, "does not contain the expected API endpoint"):
+                verify_artifact(directory, commit, api_url)
+
+    def test_rejects_checksum_valid_apk_with_corrupt_zip_member(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            directory = Path(temp_dir)
+            commit, api_url = self._write_valid_artifact(directory)
+            apk = directory / "nhl-gm-technical-alpha.apk"
+            payload = bytearray(apk.read_bytes())
+            marker = f"standalone-js-bundle:{api_url}".encode("utf-8")
+            marker_offset = payload.index(marker)
+            payload[marker_offset] ^= 0x01
+            apk.write_bytes(payload)
+            self._rewrite_apk_checksum(directory)
+
+            with self.assertRaisesRegex(VerificationError, "ZIP integrity check failed"):
                 verify_artifact(directory, commit, api_url)
 
 
