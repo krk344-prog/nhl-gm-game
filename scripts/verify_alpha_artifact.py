@@ -92,12 +92,17 @@ def _verify_checksum(directory: Path, artifact_name: str, checksum_name: str) ->
     return actual_hash
 
 
-def _verify_embedded_bundle(apk: Path) -> int:
+def _verify_embedded_bundle(apk: Path, expected_api_base_url: str) -> int:
     try:
         with ZipFile(apk) as archive:
             info = archive.getinfo(APK_BUNDLE_PATH)
             if info.file_size <= 0:
                 raise VerificationError("embedded JavaScript application bundle is empty")
+            bundle = archive.read(info)
+            if expected_api_base_url.encode("utf-8") not in bundle:
+                raise VerificationError(
+                    "APK embedded application bundle does not contain the expected API endpoint"
+                )
             return info.file_size
     except KeyError as exc:
         raise VerificationError(
@@ -134,13 +139,16 @@ def verify_artifact(directory: Path, expected_commit: str, expected_api_base_url
         artifact: _verify_checksum(directory, artifact, checksum)
         for artifact, checksum in REQUIRED_ARTIFACTS.items()
     }
-    bundle_size = _verify_embedded_bundle(directory / "nhl-gm-technical-alpha.apk")
+    bundle_size = _verify_embedded_bundle(
+        directory / "nhl-gm-technical-alpha.apk", expected_api_base_url
+    )
     return {
         "status": "pass",
         "commit": expected_commit,
         "api_base_url": expected_api_base_url,
         "build_type": manifest["build_type"],
         "embedded_bundle_bytes": bundle_size,
+        "embedded_endpoint_verified": True,
         "checksums": checksums,
     }
 
