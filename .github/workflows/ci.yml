@@ -122,7 +122,7 @@ jobs:
           profile: pixel_6
           disable-animations: false
           script: |
-            set -euo pipefail
+            set -eu
             APK="$GITHUB_WORKSPACE/mobile/android/app/build/outputs/apk/release/app-release.apk"
             adb wait-for-device
             adb install -r "$APK"
