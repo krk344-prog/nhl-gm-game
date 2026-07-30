@@ -12,9 +12,10 @@ class TechnicalAlphaPilotGuideTests(unittest.TestCase):
 
     def test_required_pilot_sections_are_present(self) -> None:
         for section in (
-            "## Required disclosure", "## Facilitator readiness check",
-            "## Configured APK release procedure", "## Guided test route",
-            "## Stop conditions", "## Bug report format", "## Pilot exit criteria",
+            "## Required disclosure", "## Tester launch handoff card",
+            "## Facilitator readiness check", "## Configured APK release procedure",
+            "## Guided test route", "## Stop conditions", "## Bug report format",
+            "## Pilot exit criteria",
         ):
             with self.subTest(section=section):
                 self.assertIn(section, self.guide)
@@ -23,6 +24,17 @@ class TechnicalAlphaPilotGuideTests(unittest.TestCase):
         self.assertIn("eight original fictional franchises", self.guide)
         self.assertIn("82-game test schedule", self.guide)
         self.assertIn("official 2026–27 NHL schedule uses 32 teams and 84 games", self.guide)
+
+    def test_launch_handoff_card_contains_pilot_critical_information(self) -> None:
+        for term in (
+            "exact build commit", "backend status", "Start Test",
+            "franchise selection", "advance day", "roster", "standings",
+            "trade", "save", "reload", "debug report", "reset",
+            "private bug-report destination", "360-pixel mobile viewport",
+            "UI Review Pending",
+        ):
+            with self.subTest(term=term):
+                self.assertIn(term, self.guide)
 
     def test_core_smoke_route_and_privacy_controls_are_documented(self) -> None:
         lowered = self.guide.lower()
