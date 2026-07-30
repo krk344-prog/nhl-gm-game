@@ -12,6 +12,19 @@ This is a controlled technical-alpha test for 3–5 invited participants. The go
 - Ratings, contracts, team marks, player identities, and outcomes in the fictional pack are simulation data, not official NHL data.
 - The build may reset or invalidate test saves before a later release.
 
+## Tester launch handoff card
+
+Before a tester starts, the facilitator must provide one compact launch handoff card beside the APK or browser link. It must show:
+
+- the exact build commit and package filename or URL;
+- backend status as `Ready`, `Unavailable`, or `Maintenance`, using text as well as any color;
+- the supported network requirement and a stop instruction when the backend is unavailable;
+- the required guided route: New Game, franchise selection, advance day, roster, standings, trade, save, reload, debug report, and reset;
+- the eight-team/82-game fictional-league disclosure and the most important known limitation;
+- the private bug-report destination and the information testers must not post publicly.
+
+The card must fit without horizontal scrolling at a 360-pixel mobile viewport, keep the primary `Start Test` action visible, and expose build identity before franchise selection. Implemented launch screens remain `UI Review Pending` until Kyle approves Stage 3 evidence.
+
 ## Facilitator readiness check
 
 Do not distribute the build until all of the following are true:
