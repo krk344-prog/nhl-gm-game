@@ -143,10 +143,9 @@ jobs:
           disable-animations: false
           script: |
             set -eu
-            APK="/tmp/technical-alpha/nhl-gm-technical-alpha.apk"
-            test -s "$APK"
+            test -s /tmp/technical-alpha/nhl-gm-technical-alpha.apk
             adb wait-for-device
-            adb install -r "$APK"
+            adb install -r /tmp/technical-alpha/nhl-gm-technical-alpha.apk
             adb shell monkey -p com.krk344.nhlgmgame -c android.intent.category.LAUNCHER 1
             for attempt in $(seq 1 30); do
               if adb shell pidof com.krk344.nhlgmgame >/dev/null 2>&1; then
