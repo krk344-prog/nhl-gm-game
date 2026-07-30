@@ -144,6 +144,7 @@ jobs:
           script: |
             test -s /tmp/technical-alpha/nhl-gm-technical-alpha.apk
             adb wait-for-device
+            adb logcat -c
             adb install -r /tmp/technical-alpha/nhl-gm-technical-alpha.apk
             adb shell monkey -p com.krk344.nhlgmgame -c android.intent.category.LAUNCHER 1
             sh -c 'attempt=0; until adb shell pidof com.krk344.nhlgmgame >/dev/null 2>&1; do attempt=$((attempt + 1)); if [ "$attempt" -ge 30 ]; then echo "application process did not remain active" >&2; exit 1; fi; sleep 1; done'
@@ -151,10 +152,19 @@ jobs:
             sleep 5
             adb exec-out screencap -p > /tmp/technical-alpha-emulator-launch.png
             test -s /tmp/technical-alpha-emulator-launch.png
+            adb logcat -d > /tmp/technical-alpha-emulator-logcat.txt
+      - name: Capture emulator diagnostics after failure
+        if: failure()
+        run: |
+          adb logcat -d > /tmp/technical-alpha-emulator-logcat.txt 2>&1 || true
+          adb exec-out screencap -p > /tmp/technical-alpha-emulator-launch.png 2>/dev/null || true
       - name: Upload emulator launch evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: nhl-gm-technical-alpha-emulator-smoke-${{ github.event.pull_request.head.sha || github.sha }}
-          path: /tmp/technical-alpha-emulator-launch.png
-          if-no-files-found: error
+          path: |
+            /tmp/technical-alpha-emulator-launch.png
+            /tmp/technical-alpha-emulator-logcat.txt
+          if-no-files-found: warn
           retention-days: 14
