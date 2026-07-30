@@ -29,6 +29,7 @@ jobs:
 
   android-bundle:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       TECHNICAL_ALPHA_API_URL: ${{ inputs.api_base_url || 'http://127.0.0.1:8000/api/v1' }}
       TECHNICAL_ALPHA_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -51,32 +52,20 @@ jobs:
             http://*|https://*) ;;
             *) echo "api_base_url must begin with http:// or https://" >&2; exit 1 ;;
           esac
-
           case "$TECHNICAL_ALPHA_API_URL" in
-            *\?*|*\#*)
-              echo "api_base_url must not contain a query string or fragment." >&2
-              exit 1
-              ;;
+            *\?*|*\#*) echo "api_base_url must not contain a query string or fragment." >&2; exit 1 ;;
           esac
-
           normalized_api_url="${TECHNICAL_ALPHA_API_URL%/}"
           case "$normalized_api_url" in
             */api/v1) ;;
-            *)
-              echo "api_base_url must end with /api/v1 so the packaged app reaches the authoritative API route." >&2
-              exit 1
-              ;;
+            *) echo "api_base_url must end with /api/v1 so the packaged app reaches the authoritative API route." >&2; exit 1 ;;
           esac
-
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             endpoint_host="${TECHNICAL_ALPHA_API_URL#*://}"
             endpoint_host="${endpoint_host%%/*}"
             endpoint_host="${endpoint_host%%:*}"
             case "$endpoint_host" in
-              localhost|127.*|0.0.0.0|::1)
-                echo "Manual tester builds require a non-loopback API endpoint reachable from the Android device." >&2
-                exit 1
-                ;;
+              localhost|127.*|0.0.0.0|::1) echo "Manual tester builds require a non-loopback API endpoint reachable from the Android device." >&2; exit 1 ;;
             esac
           fi
       - name: Install mobile dependencies
@@ -98,13 +87,12 @@ jobs:
         working-directory: mobile/android
         env:
           EXPO_PUBLIC_API_URL: ${{ env.TECHNICAL_ALPHA_API_URL }}
-        run: ./gradlew assembleRelease --no-daemon
+        run: ./gradlew assembleRelease --no-daemon --console=plain
       - name: Verify embedded application bundle
         run: |
           python - <<'PY'
           from pathlib import Path
           from zipfile import ZipFile
-
           apk = Path("mobile/android/app/build/outputs/apk/release/app-release.apk")
           if not apk.is_file():
               raise SystemExit(f"release APK missing: {apk}")
@@ -114,29 +102,6 @@ jobs:
                   raise SystemExit("embedded JavaScript bundle is empty")
           print(f"verified embedded bundle in {apk}")
           PY
-      - name: Install and launch exact release APK in Android emulator
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 34
-          arch: x86_64
-          profile: pixel_6
-          disable-animations: false
-          script: |
-            set -eu
-            APK="$GITHUB_WORKSPACE/mobile/android/app/build/outputs/apk/release/app-release.apk"
-            adb wait-for-device
-            adb install -r "$APK"
-            adb shell monkey -p com.krk344.nhlgmgame -c android.intent.category.LAUNCHER 1
-            for attempt in $(seq 1 30); do
-              if adb shell pidof com.krk344.nhlgmgame >/dev/null 2>&1; then
-                break
-              fi
-              sleep 1
-            done
-            adb shell pidof com.krk344.nhlgmgame
-            sleep 5
-            adb exec-out screencap -p > /tmp/technical-alpha-emulator-launch.png
-            test -s /tmp/technical-alpha-emulator-launch.png
       - name: Package tester artifacts with portable integrity manifests
         working-directory: /tmp
         run: |
@@ -156,6 +121,47 @@ jobs:
             /tmp/nhl-gm-technical-alpha.apk
             /tmp/nhl-gm-technical-alpha.apk.sha256
             /tmp/technical-alpha-build.txt
-            /tmp/technical-alpha-emulator-launch.png
+          if-no-files-found: error
+          retention-days: 14
+
+  android-emulator-smoke:
+    needs: android-bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Download exact release APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: nhl-gm-technical-alpha-android-${{ github.event.pull_request.head.sha || github.sha }}
+          path: /tmp/technical-alpha
+      - name: Install and launch exact release APK in Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: false
+          script: |
+            set -eu
+            APK="/tmp/technical-alpha/nhl-gm-technical-alpha.apk"
+            test -s "$APK"
+            adb wait-for-device
+            adb install -r "$APK"
+            adb shell monkey -p com.krk344.nhlgmgame -c android.intent.category.LAUNCHER 1
+            for attempt in $(seq 1 30); do
+              if adb shell pidof com.krk344.nhlgmgame >/dev/null 2>&1; then
+                break
+              fi
+              sleep 1
+            done
+            adb shell pidof com.krk344.nhlgmgame
+            sleep 5
+            adb exec-out screencap -p > /tmp/technical-alpha-emulator-launch.png
+            test -s /tmp/technical-alpha-emulator-launch.png
+      - name: Upload emulator launch evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: nhl-gm-technical-alpha-emulator-smoke-${{ github.event.pull_request.head.sha || github.sha }}
+          path: /tmp/technical-alpha-emulator-launch.png
           if-no-files-found: error
           retention-days: 14
