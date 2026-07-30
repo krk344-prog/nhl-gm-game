@@ -142,17 +142,11 @@ jobs:
           profile: pixel_6
           disable-animations: false
           script: |
-            set -eu
             test -s /tmp/technical-alpha/nhl-gm-technical-alpha.apk
             adb wait-for-device
             adb install -r /tmp/technical-alpha/nhl-gm-technical-alpha.apk
             adb shell monkey -p com.krk344.nhlgmgame -c android.intent.category.LAUNCHER 1
-            for attempt in $(seq 1 30); do
-              if adb shell pidof com.krk344.nhlgmgame >/dev/null 2>&1; then
-                break
-              fi
-              sleep 1
-            done
+            sh -c 'attempt=0; until adb shell pidof com.krk344.nhlgmgame >/dev/null 2>&1; do attempt=$((attempt + 1)); if [ "$attempt" -ge 30 ]; then echo "application process did not remain active" >&2; exit 1; fi; sleep 1; done'
             adb shell pidof com.krk344.nhlgmgame
             sleep 5
             adb exec-out screencap -p > /tmp/technical-alpha-emulator-launch.png
