@@ -14,7 +14,22 @@
 
 - **Backend:** `[Ready | Unavailable | Maintenance]`
 - **Supported network:** `[NETWORK_REQUIREMENT]`
+- **Backend verified from tester route:** `[DATE_TIME]`
 - **Stop instruction:** Do not begin or continue when the backend is not **Ready**. Do not change endpoint or network settings independently.
+
+## Preflight acknowledgement
+
+Before selecting **Start Test**, the tester and facilitator must confirm:
+
+- [ ] The tester is using the package or URL and commit shown above.
+- [ ] The backend was verified from the same device and network that will run the route.
+- [ ] The tester understands that reset permanently returns the Alpha save to Day 1.
+- [ ] The tester knows the private bug-report destination and anonymous tester ID.
+
+- **Facilitator initials:** `[INITIALS]`
+- **Tester acknowledgement:** `[ACKNOWLEDGED | NOT_ACKNOWLEDGED]`
+
+Do not start the route when any preflight item is incomplete.
 
 ## Start Test
 
