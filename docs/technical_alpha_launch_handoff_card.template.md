@@ -8,6 +8,7 @@
 - **Package or URL:** `[APK_FILENAME_OR_BROWSER_URL]`
 - **Package checksum (APK only):** `[SHA256]`
 - **Test window:** `[START_DATE_TIME]` to `[END_DATE_TIME]`
+- **Anonymous tester ID:** `[TESTER_ID]`
 
 ## Connection status
 
@@ -17,7 +18,7 @@
 
 ## Start Test
 
-Complete this route in order:
+Record the route start time, then complete this route in order:
 
 1. New Game
 2. Select one of the eight fictional franchises
@@ -28,6 +29,11 @@ Complete this route in order:
 7. Save, close, and reload
 8. Generate the debug report
 9. Reset the save and confirm return to Day 1
+10. Record the route end time and final game day
+
+- **Route started:** `[DATE_TIME]`
+- **Route ended:** `[DATE_TIME]`
+- **Final game day before reset:** `[GAME_DAY]`
 
 ## Required disclosure
 
@@ -38,7 +44,8 @@ This Technical Alpha uses eight original fictional franchises and an 82-game tes
 ## Report a problem privately
 
 - **Destination:** `[PRIVATE_BUG_REPORT_DESTINATION]`
-- Include: title, severity, commit, steps, expected result, actual result, phone model, Android version, game day, franchise, and a screenshot when possible.
+- Include: title, severity, anonymous tester ID, commit, route timestamp, steps, expected result, actual result, phone model, Android version, game day, franchise, and a screenshot when possible.
+- Severity: **Blocker** cannot continue the required route; **Major** route can continue only with a workaround or data is wrong; **Minor** cosmetic, wording, or low-impact usability issue.
 - Do **not** post a device identifier, local-network address, SQLite database, authentication data, personal information, or unreviewed save/debug files publicly.
 
 ## Facilitator release check
