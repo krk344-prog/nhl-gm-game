@@ -16,9 +16,21 @@
 
 - [ ] Exact package or URL matches the launch card.
 - [ ] Backend is reachable from the tester device and network.
+- [ ] Backend health check time and result were recorded below.
 - [ ] Clean install or clean browser session completed.
 - [ ] Tester understands reset returns the save permanently to Day 1.
 - [ ] Private bug-report destination is available.
+
+## Backend continuity evidence
+
+Record the same tester-visible endpoint before the route and immediately after save/reload. Do not copy a private LAN address into the public issue report.
+
+| Checkpoint | Time | Result | Private evidence or defect ID |
+|---|---|---|---|
+| Before New Game | `[DATE_TIME]` | `[PASS | FAIL]` | `[EVIDENCE]` |
+| After save, close, and reload | `[DATE_TIME]` | `[PASS | FAIL]` | `[EVIDENCE]` |
+
+A changed endpoint, failed post-reload health check, or backend restart that loses required state makes the session **FAIL** and must reference a private defect ID.
 
 ## Guided route evidence
 
@@ -49,7 +61,7 @@ Record **Pass**, **Fail**, or **Not run** for every step. A failed step must ref
 - **Private defect IDs:** `[IDS_OR_NONE]`
 - **Tester-accessible build confirmed:** `[YES | NO]`
 
-A session is **PASS** only when every guided route row is Pass, build identity is exact, and no Blocker or unresolved Major defect affects the required route.
+A session is **PASS** only when both backend-continuity checkpoints and every guided route row are Pass, build identity is exact, and no Blocker or unresolved Major defect affects the required route.
 
 ## Public-safe summary fields
 
@@ -62,6 +74,7 @@ Only these fields may be copied into issue #6 without additional review:
 - highest severity;
 - final game day;
 - redacted defect IDs;
+- confirmation that the backend passed both continuity checkpoints;
 - confirmation that exact-package install, launch, save/reload, and reset were exercised.
 
 Do not publish device identifiers, local-network addresses, authentication data, databases, save files, or unreviewed debug output.
