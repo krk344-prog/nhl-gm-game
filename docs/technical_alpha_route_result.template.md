@@ -54,6 +54,20 @@ Record **Pass**, **Fail**, or **Not run** for every step. A failed step must ref
 - **Post-reload franchise:** `[FRANCHISE]`
 - **Post-reload game day:** `[GAME_DAY]`
 
+## Interruption and recovery evidence
+
+Use this section whenever the tester loses connectivity, backgrounds the app, closes the browser, or the facilitator must restart the backend. Do not silently resume a disrupted route.
+
+- **Interruption occurred:** `[YES | NO]`
+- **Interruption time:** `[DATE_TIME_OR_NA]`
+- **Last confirmed completed route step:** `[STEP_OR_NA]`
+- **Tester-visible message or state:** `[PRIVATE_SUMMARY_OR_NA]`
+- **Recovery action:** `[RECONNECT | RELAUNCH | RELOAD_SAVE | RESTART_ROUTE | NOT_APPLICABLE]`
+- **Recovery result:** `[PASS | FAIL | NOT_APPLICABLE]`
+- **Private evidence or defect ID:** `[EVIDENCE_OR_NA]`
+
+A session with an interruption may pass only when the exact build remains installed, backend identity is unchanged, the saved franchise and game day reconcile after recovery, and the remaining guided route completes without an unresolved Major or Blocker. Otherwise mark the route **FAIL** or **INCOMPLETE** rather than restarting evidence mid-session.
+
 ## Outcome
 
 - **Overall route result:** `[PASS | FAIL | INCOMPLETE]`
@@ -61,7 +75,7 @@ Record **Pass**, **Fail**, or **Not run** for every step. A failed step must ref
 - **Private defect IDs:** `[IDS_OR_NONE]`
 - **Tester-accessible build confirmed:** `[YES | NO]`
 
-A session is **PASS** only when both backend-continuity checkpoints and every guided route row are Pass, build identity is exact, and no Blocker or unresolved Major defect affects the required route.
+A session is **PASS** only when both backend-continuity checkpoints and every guided route row are Pass, build identity is exact, any interruption satisfies the recovery contract, and no Blocker or unresolved Major defect affects the required route.
 
 ## Public-safe summary fields
 
@@ -75,7 +89,8 @@ Only these fields may be copied into issue #6 without additional review:
 - final game day;
 - redacted defect IDs;
 - confirmation that the backend passed both continuity checkpoints;
-- confirmation that exact-package install, launch, save/reload, and reset were exercised.
+- confirmation that exact-package install, launch, save/reload, and reset were exercised;
+- whether an interruption occurred and whether recovery passed, without private device or network details.
 
 Do not publish device identifiers, local-network addresses, authentication data, databases, save files, or unreviewed debug output.
 
