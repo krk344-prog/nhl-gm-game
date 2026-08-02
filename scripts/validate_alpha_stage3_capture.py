@@ -1,0 +1,161 @@
+#!/usr/bin/env python3
+"""Validate the machine-readable Technical Alpha Stage 3 capture record."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+REQUIRED_CAPTURE_IDS = tuple(f"S3-{index:02d}" for index in range(1, 10))
+REQUIRED_PRECONDITIONS = (
+    "artifact_identity_passed",
+    "backend_qualification_passed",
+    "guided_route_passed",
+    "save_reload_passed",
+    "reset_to_day_one_passed",
+    "device_smoke_passed",
+    "privacy_review_passed",
+)
+REQUIRED_UI_CHECKS = (
+    "primary_action_clear",
+    "non_color_status",
+    "text_readable_without_clipping",
+    "touch_targets_distinct",
+    "recovery_states_explicit",
+    "franchise_and_day_context_visible",
+    "dense_information_scannable",
+    "fictional_alpha_disclosure_clear",
+    "privacy_boundary_passed",
+)
+REQUIRED_SIGN_OFF = (
+    "capture_owner",
+    "ui_ux_reviewer",
+    "testing_reviewer",
+    "privacy_reviewer",
+    "release_reviewer",
+)
+REQUIRED_TEXT = (
+    "commit_sha",
+    "apk_sha256",
+    "application_package",
+    "build_type",
+    "endpoint_class",
+    "anonymous_tester_id",
+    "route_result_reference",
+    "captured_at",
+)
+
+
+def _blank(value: Any) -> bool:
+    return not isinstance(value, str) or not value.strip()
+
+
+def validate_record(record: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+
+    if record.get("schema_version") != 1:
+        errors.append("invalid:schema_version")
+
+    for field in REQUIRED_TEXT:
+        if _blank(record.get(field)):
+            errors.append(f"missing_or_blank:{field}")
+
+    commit_sha = record.get("commit_sha")
+    if isinstance(commit_sha, str) and commit_sha.strip():
+        normalized = commit_sha.strip().lower()
+        if len(normalized) < 7 or any(ch not in "0123456789abcdef" for ch in normalized):
+            errors.append("invalid:commit_sha")
+
+    apk_sha256 = record.get("apk_sha256")
+    if isinstance(apk_sha256, str) and apk_sha256.strip():
+        normalized = apk_sha256.strip().lower()
+        if len(normalized) != 64 or any(ch not in "0123456789abcdef" for ch in normalized):
+            errors.append("invalid:apk_sha256")
+
+    if record.get("application_package") != "com.krk344.nhlgmgame":
+        errors.append("invalid:application_package")
+    if record.get("build_type") != "standalone-release-apk":
+        errors.append("invalid:build_type")
+    if record.get("endpoint_class") not in {"private_lan", "approved_hosted_test"}:
+        errors.append("invalid:endpoint_class")
+
+    preconditions = record.get("preconditions")
+    if not isinstance(preconditions, dict):
+        errors.append("missing:preconditions")
+    else:
+        for field in REQUIRED_PRECONDITIONS:
+            if preconditions.get(field) is not True:
+                errors.append(f"not_passed:preconditions.{field}")
+
+    captures = record.get("captures")
+    if not isinstance(captures, dict):
+        errors.append("missing:captures")
+    else:
+        for capture_id in REQUIRED_CAPTURE_IDS:
+            capture = captures.get(capture_id)
+            if not isinstance(capture, dict):
+                errors.append(f"missing:capture.{capture_id}")
+                continue
+            if capture.get("result") != "PASS":
+                errors.append(f"not_passed:capture.{capture_id}")
+            if _blank(capture.get("private_reference")):
+                errors.append(f"missing_private_reference:capture.{capture_id}")
+
+    ui_checks = record.get("ui_checks")
+    if not isinstance(ui_checks, dict):
+        errors.append("missing:ui_checks")
+    else:
+        for field in REQUIRED_UI_CHECKS:
+            if ui_checks.get(field) is not True:
+                errors.append(f"not_passed:ui_checks.{field}")
+
+    if record.get("blockers") not in (None, []):
+        errors.append("blockers_present")
+    if record.get("open_major_defects") not in (None, []):
+        errors.append("major_defects_present")
+
+    sign_off = record.get("sign_off")
+    if not isinstance(sign_off, dict):
+        errors.append("missing:sign_off")
+    else:
+        for field in REQUIRED_SIGN_OFF:
+            if _blank(sign_off.get(field)):
+                errors.append(f"missing_or_blank:sign_off.{field}")
+
+    if record.get("stage3_decision") != "COMPLETE_UI_REVIEW_PENDING":
+        errors.append("invalid:stage3_decision")
+
+    return errors
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("record", type=Path)
+    args = parser.parse_args()
+
+    try:
+        payload = json.loads(args.record.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(json.dumps({"status": "block", "errors": [f"record_unreadable:{exc}"]}, indent=2))
+        return 2
+
+    if not isinstance(payload, dict):
+        print(json.dumps({"status": "block", "errors": ["record_must_be_object"]}, indent=2))
+        return 2
+
+    errors = validate_record(payload)
+    print(json.dumps({
+        "status": "pass" if not errors else "block",
+        "errors": errors,
+        "commit_sha": payload.get("commit_sha"),
+        "capture_count": len(payload.get("captures", {})) if isinstance(payload.get("captures"), dict) else 0,
+        "stage3_decision": payload.get("stage3_decision"),
+    }, indent=2, sort_keys=True))
+    return 0 if not errors else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
