@@ -28,6 +28,7 @@ class AlphaPilotSessionManifestValidatorTests(unittest.TestCase):
             apk_sha256="b" * 64,
             artifact_verification="pass",
             installed_package_reconciled=True,
+            launch_confirmation="pass",
         )
         manifest["session_scope"].update(
             tester_count=3,
@@ -43,6 +44,7 @@ class AlphaPilotSessionManifestValidatorTests(unittest.TestCase):
             "privacy_review",
         ):
             manifest["evidence"][key] = "pass"
+        manifest["evidence"]["endpoint_qualification_minutes"] = 15
         manifest["evidence"]["public_summary_reference"] = "issue-6-private-evidence-summary"
         manifest["defects"]["go_no_go"] = "go-for-kyle-approval"
         return manifest
@@ -74,6 +76,14 @@ class AlphaPilotSessionManifestValidatorTests(unittest.TestCase):
         manifest["pilot_authorization"]["kyle_approval_recorded"] = True
         errors = validate_manifest(manifest)
         self.assertIn("pilot approval must remain false before Kyle approves", errors)
+
+    def test_short_endpoint_qualification_and_missing_launch_block(self):
+        manifest = self.ready_manifest()
+        manifest["evidence"]["endpoint_qualification_minutes"] = 14.5
+        manifest["build_identity"]["launch_confirmation"] = "pending"
+        errors = validate_manifest(manifest)
+        self.assertIn("endpoint qualification must cover at least 15 uninterrupted minutes", errors)
+        self.assertIn("installed application launch must be confirmed", errors)
 
 
 if __name__ == "__main__":
