@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "status": "incomplete",
   "pilot_authorization": {
     "kyle_approval_recorded": false,
@@ -20,7 +20,8 @@
     "build_type": "release",
     "endpoint_class": "private-lan",
     "artifact_verification": "pending",
-    "installed_package_reconciled": false
+    "installed_package_reconciled": false,
+    "launch_confirmation": "pending"
   },
   "session_scope": {
     "tester_count": 0,
@@ -42,6 +43,7 @@
   },
   "evidence": {
     "endpoint_qualification": "pending",
+    "endpoint_qualification_minutes": 0,
     "physical_or_equivalent_device_smoke": "pending",
     "save_reload_reconciliation": "pending",
     "stage3_capture_validation": "pending",
@@ -60,7 +62,8 @@
   },
   "notes": [
     "This manifest is a facilitator control record, not pilot authorization.",
-    "The CI commit, built commit, APK checksum, installed package, route evidence, and Stage 3 captures must reconcile to one exact package.",
+    "The CI commit, built commit, APK checksum, installed package, confirmed launch, route evidence, and Stage 3 captures must reconcile to one exact package.",
+    "Endpoint qualification must cover at least 15 uninterrupted minutes before packaging.",
     "Do not begin the pilot or merge PR #13 without Kyle's explicit approval.",
     "The Technical Alpha uses eight fictional franchises and an 82-game test schedule; it is not official NHL data."
   ]
