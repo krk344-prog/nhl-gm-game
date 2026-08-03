@@ -30,6 +30,7 @@ REQUIRED_EVIDENCE = (
     "stage3_capture_validation",
     "privacy_review",
 )
+MIN_ENDPOINT_QUALIFICATION_MINUTES = 15
 
 
 def _require(condition: bool, message: str, errors: list[str]) -> None:
@@ -41,7 +42,7 @@ def validate_manifest(manifest: dict[str, Any]) -> list[str]:
     """Return validation errors. An empty list means ready for Kyle approval."""
     errors: list[str] = []
 
-    _require(manifest.get("schema_version") == 2, "schema_version must be 2", errors)
+    _require(manifest.get("schema_version") == 3, "schema_version must be 3", errors)
     _require(manifest.get("status") == "ready_for_kyle_approval", "status must be ready_for_kyle_approval", errors)
 
     authorization = manifest.get("pilot_authorization", {})
@@ -65,6 +66,7 @@ def validate_manifest(manifest: dict[str, Any]) -> list[str]:
     _require(build.get("endpoint_class") in {"private-lan", "tester-accessible-hosted"}, "endpoint_class must be tester accessible", errors)
     _require(build.get("artifact_verification") == "pass", "artifact verification must pass", errors)
     _require(build.get("installed_package_reconciled") is True, "installed package must reconcile to the verified artifact", errors)
+    _require(build.get("launch_confirmation") == "pass", "installed application launch must be confirmed", errors)
 
     scope = manifest.get("session_scope", {})
     tester_count = scope.get("tester_count")
@@ -79,6 +81,14 @@ def validate_manifest(manifest: dict[str, Any]) -> list[str]:
     evidence = manifest.get("evidence", {})
     for item in REQUIRED_EVIDENCE:
         _require(evidence.get(item) == "pass", f"evidence item {item} must pass", errors)
+    endpoint_minutes = evidence.get("endpoint_qualification_minutes")
+    _require(
+        isinstance(endpoint_minutes, (int, float))
+        and not isinstance(endpoint_minutes, bool)
+        and endpoint_minutes >= MIN_ENDPOINT_QUALIFICATION_MINUTES,
+        f"endpoint qualification must cover at least {MIN_ENDPOINT_QUALIFICATION_MINUTES} uninterrupted minutes",
+        errors,
+    )
     _require(bool(str(evidence.get("public_summary_reference", "")).strip()), "public_summary_reference is required", errors)
 
     defects = manifest.get("defects", {})
