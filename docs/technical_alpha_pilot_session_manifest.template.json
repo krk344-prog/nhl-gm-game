@@ -1,17 +1,26 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "status": "incomplete",
   "pilot_authorization": {
     "kyle_approval_recorded": false,
     "approval_reference": "",
     "merge_authorized": false
   },
+  "source_validation": {
+    "pr_number": 13,
+    "head_commit_sha": "",
+    "alpha_validation_run_id": "",
+    "alpha_validation_conclusion": "pending",
+    "working_tree_clean_at_build": false
+  },
   "build_identity": {
     "commit_sha": "",
     "apk_sha256": "",
     "android_package": "com.krk344.nhlgmgame",
     "build_type": "release",
-    "endpoint_class": "private-lan"
+    "endpoint_class": "private-lan",
+    "artifact_verification": "pending",
+    "installed_package_reconciled": false
   },
   "session_scope": {
     "tester_count": 0,
@@ -33,7 +42,6 @@
   },
   "evidence": {
     "endpoint_qualification": "pending",
-    "artifact_verification": "pending",
     "physical_or_equivalent_device_smoke": "pending",
     "save_reload_reconciliation": "pending",
     "stage3_capture_validation": "pending",
@@ -52,6 +60,7 @@
   },
   "notes": [
     "This manifest is a facilitator control record, not pilot authorization.",
+    "The CI commit, built commit, APK checksum, installed package, route evidence, and Stage 3 captures must reconcile to one exact package.",
     "Do not begin the pilot or merge PR #13 without Kyle's explicit approval.",
     "The Technical Alpha uses eight fictional franchises and an 82-game test schedule; it is not official NHL data."
   ]
