@@ -32,7 +32,7 @@ def complete_assignment():
                 "code": "T01",
                 "device_class": "Pixel-class Android phone",
                 "primary_routes": ["application_launch", "new_game", "franchise_selection", "advance_day"],
-                "backup_routes": ["roster", "standings"],
+                "backup_routes": ["roster", "standings", "reset"],
                 "disclosure_acknowledged": True,
                 "first_interpretation_recorded": True,
                 "highest_friction_moment_recorded": True,
@@ -52,7 +52,7 @@ def complete_assignment():
                 "code": "T03",
                 "device_class": "Android tablet",
                 "primary_routes": ["save", "reload", "reset"],
-                "backup_routes": ["application_launch", "new_game", "franchise_selection", "advance_day", "trade", "reset"],
+                "backup_routes": ["application_launch", "new_game", "franchise_selection", "advance_day", "trade"],
                 "disclosure_acknowledged": True,
                 "first_interpretation_recorded": True,
                 "highest_friction_moment_recorded": True,
@@ -77,7 +77,7 @@ class AlphaTesterAssignmentValidatorTests(unittest.TestCase):
 
     def test_missing_backup_blocks(self):
         assignment = complete_assignment()
-        assignment["testers"][2]["backup_routes"].remove("reset")
+        assignment["testers"][0]["backup_routes"].remove("reset")
         errors = MODULE.validate_assignment(assignment)
         self.assertIn("route reset must have at least one backup observer", errors)
 
