@@ -11,7 +11,10 @@ from tempfile import NamedTemporaryFile
 from urllib.parse import urlparse
 from zipfile import ZIP_DEFLATED, ZipFile
 
-from scripts.verify_alpha_artifact import VerificationError, verify_artifact
+try:
+    from scripts.verify_alpha_artifact import VerificationError, verify_artifact
+except ModuleNotFoundError:  # Direct execution from the scripts directory.
+    from verify_alpha_artifact import VerificationError, verify_artifact
 
 APK_NAME = "nhl-gm-technical-alpha.apk"
 APK_CHECKSUM_NAME = "nhl-gm-technical-alpha.apk.sha256"
