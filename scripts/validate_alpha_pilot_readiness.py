@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reconcile Technical Alpha device-smoke and Stage 3 evidence before pilot approval."""
+"""Reconcile Technical Alpha device, Stage 3, and first-session evidence before approval."""
 
 from __future__ import annotations
 
@@ -8,6 +8,8 @@ import json
 import sys
 from pathlib import Path
 from typing import Any
+
+from scripts.validate_alpha_first_session_observation import validate_observation
 
 DEVICE_PASSES = (
     "artifact_verifier_passed",
@@ -40,7 +42,11 @@ def _normalized(value: Any) -> str:
     return value.strip().lower() if isinstance(value, str) else ""
 
 
-def validate(device: dict[str, Any], stage3: dict[str, Any]) -> list[str]:
+def validate(
+    device: dict[str, Any],
+    stage3: dict[str, Any],
+    first_session: dict[str, Any],
+) -> list[str]:
     errors: list[str] = []
 
     for field in DEVICE_PASSES:
@@ -57,14 +63,29 @@ def validate(device: dict[str, Any], stage3: dict[str, Any]) -> list[str]:
     if stage3.get("open_major_defects") not in (None, []):
         errors.append("stage3_major_defects_present")
 
+    errors.extend(f"first_session:{error}" for error in validate_observation(first_session))
+
     device_commit = _normalized(device.get("commit_sha"))
     stage3_commit = _normalized(stage3.get("commit_sha"))
-    if not device_commit or not stage3_commit or device_commit != stage3_commit:
+    session_package = first_session.get("package_identity", {})
+    session_commit = _normalized(session_package.get("commit_sha"))
+    if (
+        not device_commit
+        or not stage3_commit
+        or not session_commit
+        or len({device_commit, stage3_commit, session_commit}) != 1
+    ):
         errors.append("identity_mismatch:commit_sha")
 
     device_apk = _normalized(device.get("apk_sha256"))
     stage3_apk = _normalized(stage3.get("apk_sha256"))
-    if not device_apk or not stage3_apk or device_apk != stage3_apk:
+    session_apk = _normalized(session_package.get("apk_sha256"))
+    if (
+        not device_apk
+        or not stage3_apk
+        or not session_apk
+        or len({device_apk, stage3_apk, session_apk}) != 1
+    ):
         errors.append("identity_mismatch:apk_sha256")
 
     if stage3.get("application_package") != "com.krk344.nhlgmgame":
@@ -79,13 +100,17 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("device_record", type=Path)
     parser.add_argument("stage3_record", type=Path)
+    parser.add_argument("first_session_record", type=Path)
     args = parser.parse_args()
 
     device, device_errors = _load(args.device_record, "device_record")
     stage3, stage3_errors = _load(args.stage3_record, "stage3_record")
-    errors = device_errors + stage3_errors
-    if device is not None and stage3 is not None:
-        errors.extend(validate(device, stage3))
+    first_session, first_session_errors = _load(
+        args.first_session_record, "first_session_record"
+    )
+    errors = device_errors + stage3_errors + first_session_errors
+    if device is not None and stage3 is not None and first_session is not None:
+        errors.extend(validate(device, stage3, first_session))
 
     status = "ready_for_kyle_approval" if not errors else "block"
     print(json.dumps({
@@ -93,6 +118,7 @@ def main() -> int:
         "errors": errors,
         "commit_sha": stage3.get("commit_sha") if stage3 else None,
         "apk_sha256": stage3.get("apk_sha256") if stage3 else None,
+        "first_session_evidence_required": True,
         "pilot_started": False,
         "merge_authorized": False,
     }, indent=2, sort_keys=True))
