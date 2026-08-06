@@ -23,6 +23,17 @@ def _package_fatal_exception(logcat: str, package: str) -> bool:
     return False
 
 
+def _package_anr(logcat: str, package: str) -> bool:
+    lines = logcat.splitlines()
+    for index, line in enumerate(lines):
+        if "ANR in" not in line and "Application Not Responding" not in line:
+            continue
+        block = "\n".join(lines[index : index + 20])
+        if package in block:
+            return True
+    return False
+
+
 def validate_emulator_launch(
     logcat_path: Path,
     activity_dump_path: Path,
@@ -40,6 +51,8 @@ def validate_emulator_launch(
         raise EmulatorLaunchError("Expo root component was not registered")
     if _package_fatal_exception(logcat, package):
         raise EmulatorLaunchError(f"fatal Android exception detected for {package}")
+    if _package_anr(logcat, package):
+        raise EmulatorLaunchError(f"Android application-not-responding event detected for {package}")
     if f"Process {package}" in logcat and "has died" in logcat:
         death_lines = [
             line
@@ -66,6 +79,7 @@ def validate_emulator_launch(
         "status": "pass",
         "package": package,
         "fatal_exception_absent": True,
+        "anr_absent": True,
         "process_death_absent": True,
         "root_component_registered": True,
         "foreground_confirmed": True,
