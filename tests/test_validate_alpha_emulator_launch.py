@@ -28,6 +28,7 @@ class ValidateAlphaEmulatorLaunchTests(unittest.TestCase):
             result = validate_emulator_launch(log, activities)
             self.assertEqual(result["status"], "pass")
             self.assertTrue(result["foreground_confirmed"])
+            self.assertTrue(result["anr_absent"])
 
     def test_rejects_unregistered_expo_root_component(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -47,6 +48,16 @@ class ValidateAlphaEmulatorLaunchTests(unittest.TestCase):
                 "mResumedActivity: com.krk344.nhlgmgame/.MainActivity\n",
             )
             with self.assertRaisesRegex(EmulatorLaunchError, "fatal Android"):
+                validate_emulator_launch(log, activities)
+
+    def test_rejects_anr_for_game_package(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log, activities = self._write(
+                Path(temp_dir),
+                "ActivityManager: ANR in com.krk344.nhlgmgame\nReason: Input dispatching timed out\n",
+                "mResumedActivity: com.krk344.nhlgmgame/.MainActivity\n",
+            )
+            with self.assertRaisesRegex(EmulatorLaunchError, "not-responding"):
                 validate_emulator_launch(log, activities)
 
     def test_ignores_other_process_crash(self):
