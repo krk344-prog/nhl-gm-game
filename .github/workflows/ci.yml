@@ -104,6 +104,8 @@ jobs:
           PY
       - name: Package tester artifacts with portable integrity manifests
         working-directory: /tmp
+        env:
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           tar -czf nhl-gm-android-export.tar.gz nhl-gm-android
           cp "$GITHUB_WORKSPACE/mobile/android/app/build/outputs/apk/release/app-release.apk" nhl-gm-technical-alpha.apk
@@ -111,6 +113,12 @@ jobs:
           sha256sum nhl-gm-technical-alpha.apk > nhl-gm-technical-alpha.apk.sha256
           printf 'commit=%s\napi_base_url=%s\nbuild_type=standalone-release-apk\n' \
             "$TECHNICAL_ALPHA_SOURCE_SHA" "$TECHNICAL_ALPHA_API_URL" > technical-alpha-build.txt
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            python "$GITHUB_WORKSPACE/scripts/create_alpha_tester_bundle.py" \
+              /tmp /tmp/nhl-gm-first-playable-tester.zip \
+              --expected-commit "$TECHNICAL_ALPHA_SOURCE_SHA" \
+              --expected-api-base-url "$TECHNICAL_ALPHA_API_URL"
+          fi
       - name: Upload Technical Alpha Android artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -121,6 +129,7 @@ jobs:
             /tmp/nhl-gm-technical-alpha.apk
             /tmp/nhl-gm-technical-alpha.apk.sha256
             /tmp/technical-alpha-build.txt
+            /tmp/nhl-gm-first-playable-tester.zip
           if-no-files-found: error
           retention-days: 14
 
@@ -129,12 +138,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - uses: actions/checkout@v4
       - name: Download exact release APK artifact
         uses: actions/download-artifact@v4
         with:
           name: nhl-gm-technical-alpha-android-${{ github.event.pull_request.head.sha || github.sha }}
           path: /tmp/technical-alpha
-      - name: Install and launch exact release APK in Android emulator
+      - name: Install and validate exact release APK in Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
@@ -142,21 +152,27 @@ jobs:
           profile: pixel_6
           disable-animations: false
           script: |
+            set -eu
             test -s /tmp/technical-alpha/nhl-gm-technical-alpha.apk
             adb wait-for-device
             adb logcat -c
             adb install -r /tmp/technical-alpha/nhl-gm-technical-alpha.apk
             adb shell monkey -p com.krk344.nhlgmgame -c android.intent.category.LAUNCHER 1
-            sh -c 'attempt=0; until adb shell pidof com.krk344.nhlgmgame >/dev/null 2>&1; do attempt=$((attempt + 1)); if [ "$attempt" -ge 30 ]; then echo "application process did not remain active" >&2; exit 1; fi; sleep 1; done'
-            adb shell pidof com.krk344.nhlgmgame
-            sleep 5
+            sh -c 'attempt=0; until adb shell pidof com.krk344.nhlgmgame >/dev/null 2>&1; do attempt=$((attempt + 1)); if [ "$attempt" -ge 60 ]; then echo "application process did not start" >&2; exit 1; fi; sleep 1; done'
+            sleep 30
+            adb logcat -d > /tmp/technical-alpha-emulator-logcat.txt
+            adb shell dumpsys activity activities > /tmp/technical-alpha-emulator-activities.txt
+            adb shell pidof com.krk344.nhlgmgame >/dev/null
+            python scripts/validate_alpha_emulator_launch.py \
+              /tmp/technical-alpha-emulator-logcat.txt \
+              /tmp/technical-alpha-emulator-activities.txt
             adb exec-out screencap -p > /tmp/technical-alpha-emulator-launch.png
             test -s /tmp/technical-alpha-emulator-launch.png
-            adb logcat -d > /tmp/technical-alpha-emulator-logcat.txt
       - name: Capture emulator diagnostics after failure
         if: failure()
         run: |
           adb logcat -d > /tmp/technical-alpha-emulator-logcat.txt 2>&1 || true
+          adb shell dumpsys activity activities > /tmp/technical-alpha-emulator-activities.txt 2>&1 || true
           adb exec-out screencap -p > /tmp/technical-alpha-emulator-launch.png 2>/dev/null || true
       - name: Upload emulator launch evidence
         if: always()
@@ -166,5 +182,6 @@ jobs:
           path: |
             /tmp/technical-alpha-emulator-launch.png
             /tmp/technical-alpha-emulator-logcat.txt
+            /tmp/technical-alpha-emulator-activities.txt
           if-no-files-found: warn
           retention-days: 14
