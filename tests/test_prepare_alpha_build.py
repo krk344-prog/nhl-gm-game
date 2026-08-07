@@ -59,6 +59,23 @@ class PrepareAlphaBuildTests(unittest.TestCase):
         self.assertEqual(payload["api_base_url"], "http://192.168.1.30:8000/api/v1")
         self.assertEqual(payload["build_argv"][-2], "http://192.168.1.30:8000/api/v1")
 
+    def test_preflight_cannot_substitute_a_different_packaged_endpoint(self):
+        def mismatched_preflight(api_base_url, *, season_id, timeout, allow_loopback):
+            return module.PreflightResult(
+                api_base_url="http://192.168.1.99:8000/api/v1",
+                health_status="ok",
+                api_version="alpha",
+                season_id=season_id,
+                regular_season_games=84,
+                ready=True,
+            )
+
+        with self.assertRaisesRegex(RuntimeError, "different endpoint"):
+            module.prepare_build_handoff(
+                api_base_url="http://192.168.1.20:8000/api/v1",
+                preflight=mismatched_preflight,
+            )
+
     def test_failed_preflight_blocks_build_output(self):
         def failed_preflight(*args, **kwargs):
             raise RuntimeError("backend unavailable")
