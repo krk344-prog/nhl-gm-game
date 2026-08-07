@@ -32,26 +32,31 @@ def prepare_build_handoff(
         candidates = discover_private_ipv4_addresses() if addresses is None else tuple(addresses)
         api_base_url = select_endpoint(candidates).recommended_api_base_url
 
+    selected_api_base_url = api_base_url.rstrip("/")
     result = preflight(
-        api_base_url,
+        selected_api_base_url,
         season_id=season_id,
         timeout=timeout,
         allow_loopback=False,
     )
     if not result.ready:
         raise RuntimeError("Backend preflight did not mark the endpoint ready")
+    if result.api_base_url.rstrip("/") != selected_api_base_url:
+        raise RuntimeError(
+            "Backend preflight returned a different endpoint; refusing to package an unqualified API target"
+        )
 
     command = [
         sys.executable,
         BUILD_SCRIPT,
         "--api-base-url",
-        result.api_base_url,
+        selected_api_base_url,
         "--execute",
     ]
     return {
         "ready": True,
         "endpoint_source": source,
-        "api_base_url": result.api_base_url,
+        "api_base_url": selected_api_base_url,
         "season_id": result.season_id,
         "regular_season_games": result.regular_season_games,
         "ref": PR_BRANCH,
