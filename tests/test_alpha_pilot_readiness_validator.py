@@ -68,6 +68,21 @@ class AlphaPilotReadinessValidatorTests(unittest.TestCase):
             validate(self._device(), self._stage3(), first_session),
         )
 
+    def test_matching_but_malformed_hashes_block(self):
+        device = self._device()
+        stage3 = self._stage3()
+        first_session = self._first_session()
+        for record in (device, stage3):
+            record["commit_sha"] = "not-a-commit"
+            record["apk_sha256"] = "not-a-sha256"
+        first_session["package_identity"]["commit_sha"] = "not-a-commit"
+        first_session["package_identity"]["apk_sha256"] = "not-a-sha256"
+        errors = validate(device, stage3, first_session)
+        self.assertIn("invalid_format:commit_sha", errors)
+        self.assertIn("invalid_format:apk_sha256", errors)
+        self.assertNotIn("identity_mismatch:commit_sha", errors)
+        self.assertNotIn("identity_mismatch:apk_sha256", errors)
+
     def test_incomplete_route_and_major_defect_block(self):
         device = self._device()
         device["trade_passed"] = False
