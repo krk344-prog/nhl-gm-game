@@ -27,6 +27,11 @@ class AlphaDeviceSmokeValidatorTests(unittest.TestCase):
     def test_valid_exact_package_record_passes(self):
         self.assertEqual([], MODULE.validate_record(self.valid_record()))
 
+    def test_abbreviated_commit_sha_is_blocked(self):
+        record = self.valid_record()
+        record["commit_sha"] = "1709302"
+        self.assertIn("invalid:commit_sha", MODULE.validate_record(record))
+
     def test_loopback_endpoint_is_blocked(self):
         record = self.valid_record()
         record["api_base_url"] = "http://127.0.0.1:8000/api/v1"
