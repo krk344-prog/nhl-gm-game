@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -26,6 +27,9 @@ DEVICE_PASSES = (
     "debug_report_passed",
     "reset_passed",
 )
+
+COMMIT_SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
+APK_SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
 def _load(path: Path, label: str) -> tuple[dict[str, Any] | None, list[str]]:
@@ -69,23 +73,19 @@ def validate(
     stage3_commit = _normalized(stage3.get("commit_sha"))
     session_package = first_session.get("package_identity", {})
     session_commit = _normalized(session_package.get("commit_sha"))
-    if (
-        not device_commit
-        or not stage3_commit
-        or not session_commit
-        or len({device_commit, stage3_commit, session_commit}) != 1
-    ):
+    commits = (device_commit, stage3_commit, session_commit)
+    if not all(COMMIT_SHA_PATTERN.fullmatch(value) for value in commits):
+        errors.append("invalid_format:commit_sha")
+    if not all(commits) or len(set(commits)) != 1:
         errors.append("identity_mismatch:commit_sha")
 
     device_apk = _normalized(device.get("apk_sha256"))
     stage3_apk = _normalized(stage3.get("apk_sha256"))
     session_apk = _normalized(session_package.get("apk_sha256"))
-    if (
-        not device_apk
-        or not stage3_apk
-        or not session_apk
-        or len({device_apk, stage3_apk, session_apk}) != 1
-    ):
+    apk_hashes = (device_apk, stage3_apk, session_apk)
+    if not all(APK_SHA256_PATTERN.fullmatch(value) for value in apk_hashes):
+        errors.append("invalid_format:apk_sha256")
+    if not all(apk_hashes) or len(set(apk_hashes)) != 1:
         errors.append("identity_mismatch:apk_sha256")
 
     if stage3.get("application_package") != "com.krk344.nhlgmgame":
