@@ -3,8 +3,8 @@
 
 The validator is dependency-free and intentionally conservative. It accepts a JSON
 record created by the facilitator after installing the checksum-verified APK and
-running the approved pilot route. Any missing, failed, or loopback-bound evidence
-blocks the record from being treated as pilot-ready.
+running the approved pilot route. Any missing, failed, loopback-bound, or weakly
+timestamped evidence blocks the record from being treated as pilot-ready.
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ import argparse
 import ipaddress
 import json
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -55,6 +56,17 @@ def _is_loopback_host(host: str | None) -> bool:
         return False
 
 
+def _has_timezone_aware_iso_timestamp(value: str) -> bool:
+    normalized = value.strip()
+    if normalized.endswith("Z"):
+        normalized = f"{normalized[:-1]}+00:00"
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        return False
+    return parsed.tzinfo is not None and parsed.utcoffset() is not None
+
+
 def validate_record(record: dict[str, Any]) -> list[str]:
     errors: list[str] = []
 
@@ -74,6 +86,10 @@ def validate_record(record: dict[str, Any]) -> list[str]:
         normalized_digest = apk_sha256.strip().lower()
         if len(normalized_digest) != 64 or any(ch not in "0123456789abcdef" for ch in normalized_digest):
             errors.append("invalid:apk_sha256")
+
+    tested_at = record.get("tested_at")
+    if isinstance(tested_at, str) and tested_at.strip() and not _has_timezone_aware_iso_timestamp(tested_at):
+        errors.append("invalid:tested_at")
 
     api_base_url = record.get("api_base_url")
     if isinstance(api_base_url, str) and api_base_url.strip():
