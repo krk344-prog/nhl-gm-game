@@ -78,7 +78,7 @@ def validate_record(record: dict[str, Any]) -> list[str]:
     commit_sha = record.get("commit_sha")
     if isinstance(commit_sha, str) and commit_sha.strip():
         normalized_commit = commit_sha.strip().lower()
-        if len(normalized_commit) < 7 or any(ch not in "0123456789abcdef" for ch in normalized_commit):
+        if len(normalized_commit) != 40 or any(ch not in "0123456789abcdef" for ch in normalized_commit):
             errors.append("invalid:commit_sha")
 
     apk_sha256 = record.get("apk_sha256")
