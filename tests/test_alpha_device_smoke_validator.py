@@ -47,6 +47,16 @@ class AlphaDeviceSmokeValidatorTests(unittest.TestCase):
         record["apk_sha256"] = "not-a-digest"
         self.assertIn("invalid:apk_sha256", MODULE.validate_record(record))
 
+    def test_timezone_less_timestamp_is_blocked(self):
+        record = self.valid_record()
+        record["tested_at"] = "2026-07-24T23:50:00"
+        self.assertIn("invalid:tested_at", MODULE.validate_record(record))
+
+    def test_malformed_timestamp_is_blocked(self):
+        record = self.valid_record()
+        record["tested_at"] = "last Friday evening"
+        self.assertIn("invalid:tested_at", MODULE.validate_record(record))
+
     def test_declared_blocker_blocks_record(self):
         record = self.valid_record()
         record["blockers"] = ["trade history missing after restart"]
