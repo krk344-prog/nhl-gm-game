@@ -101,6 +101,8 @@ def validate_record(record: dict[str, Any]) -> list[str]:
         else:
             if _is_loopback_host(parsed.hostname):
                 errors.append("loopback:api_base_url")
+            if parsed.port is None:
+                errors.append("missing_port:api_base_url")
             if parsed.path.rstrip("/") != "/api/v1":
                 errors.append("invalid_api_path:api_base_url")
             if parsed.username is not None or parsed.password is not None or parsed.query or parsed.fragment:
