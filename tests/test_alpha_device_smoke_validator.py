@@ -37,6 +37,11 @@ class AlphaDeviceSmokeValidatorTests(unittest.TestCase):
         record["api_base_url"] = "http://127.0.0.1:8000/api/v1"
         self.assertIn("loopback:api_base_url", MODULE.validate_record(record))
 
+    def test_localhost_subdomain_endpoint_is_blocked(self):
+        record = self.valid_record()
+        record["api_base_url"] = "http://alpha.localhost:8000/api/v1"
+        self.assertIn("loopback:api_base_url", MODULE.validate_record(record))
+
     def test_endpoint_with_credentials_is_blocked(self):
         record = self.valid_record()
         record["api_base_url"] = "http://tester:secret@192.168.1.25:8000/api/v1"
