@@ -62,6 +62,11 @@ class AlphaDeviceSmokeValidatorTests(unittest.TestCase):
         record["api_base_url"] = "http://192.168.1.25:8000/api/v1#device"
         self.assertIn("noncanonical:api_base_url", MODULE.validate_record(record))
 
+    def test_endpoint_without_explicit_port_is_blocked(self):
+        record = self.valid_record()
+        record["api_base_url"] = "http://192.168.1.25/api/v1"
+        self.assertIn("missing_port:api_base_url", MODULE.validate_record(record))
+
     def test_failed_save_reload_blocks_pilot(self):
         record = self.valid_record()
         record["save_reload_passed"] = False
