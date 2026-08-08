@@ -46,6 +46,15 @@ def _package_activity_launch_failure(logcat: str, package: str) -> bool:
     return False
 
 
+def _package_force_finished(logcat: str, package: str) -> bool:
+    """Detect Android force-finishing the exact game activity during launch."""
+    markers = ("Force finishing activity", "Force stopping")
+    return any(
+        package in line and any(marker in line for marker in markers)
+        for line in logcat.splitlines()
+    )
+
+
 def validate_emulator_launch(
     logcat_path: Path,
     activity_dump_path: Path,
@@ -67,6 +76,8 @@ def validate_emulator_launch(
         raise EmulatorLaunchError(f"Android application-not-responding event detected for {package}")
     if _package_activity_launch_failure(logcat, package):
         raise EmulatorLaunchError(f"Android activity launch failure detected for {package}")
+    if _package_force_finished(logcat, package):
+        raise EmulatorLaunchError(f"Android force-finish event detected for {package}")
     if f"Process {package}" in logcat and "has died" in logcat:
         death_lines = [
             line
@@ -95,6 +106,7 @@ def validate_emulator_launch(
         "fatal_exception_absent": True,
         "anr_absent": True,
         "activity_launch_failure_absent": True,
+        "force_finish_absent": True,
         "process_death_absent": True,
         "root_component_registered": True,
         "foreground_confirmed": True,
