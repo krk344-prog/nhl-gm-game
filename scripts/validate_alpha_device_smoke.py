@@ -101,6 +101,8 @@ def validate_record(record: dict[str, Any]) -> list[str]:
                 errors.append("loopback:api_base_url")
             if not parsed.path.rstrip("/").endswith("/api/v1"):
                 errors.append("invalid_api_path:api_base_url")
+            if parsed.username is not None or parsed.password is not None or parsed.query or parsed.fragment:
+                errors.append("noncanonical:api_base_url")
 
     for field in REQUIRED_TRUE_FIELDS:
         if record.get(field) is not True:
