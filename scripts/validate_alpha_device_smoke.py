@@ -110,7 +110,7 @@ def validate_record(record: dict[str, Any]) -> list[str]:
                     errors.append("missing_port:api_base_url")
             if parsed.path.rstrip("/") != "/api/v1":
                 errors.append("invalid_api_path:api_base_url")
-            if parsed.username is not None or parsed.password is not None or parsed.query or parsed.fragment:
+            if parsed.username is not None or parsed.password is not None or parsed.params or parsed.query or parsed.fragment:
                 errors.append("noncanonical:api_base_url")
 
     for field in REQUIRED_TRUE_FIELDS:
