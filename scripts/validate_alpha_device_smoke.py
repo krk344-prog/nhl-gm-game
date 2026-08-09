@@ -95,6 +95,8 @@ def validate_record(record: dict[str, Any]) -> list[str]:
 
     api_base_url = record.get("api_base_url")
     if isinstance(api_base_url, str) and api_base_url.strip():
+        if api_base_url != api_base_url.strip():
+            errors.append("noncanonical:api_base_url")
         parsed = urlparse(api_base_url.strip())
         if parsed.scheme not in {"http", "https"} or not parsed.hostname:
             errors.append("invalid:api_base_url")
