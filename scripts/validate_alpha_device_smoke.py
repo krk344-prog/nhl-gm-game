@@ -110,6 +110,8 @@ def validate_record(record: dict[str, Any]) -> list[str]:
             else:
                 if endpoint_port is None:
                     errors.append("missing_port:api_base_url")
+                elif endpoint_port == 0:
+                    errors.append("invalid_port:api_base_url")
             if parsed.path.rstrip("/") != "/api/v1":
                 errors.append("invalid_api_path:api_base_url")
             if parsed.username is not None or parsed.password is not None or parsed.params or parsed.query or parsed.fragment:
