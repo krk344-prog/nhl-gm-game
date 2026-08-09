@@ -77,6 +77,11 @@ class AlphaDeviceSmokeValidatorTests(unittest.TestCase):
         record["api_base_url"] = "http://192.168.1.25/api/v1"
         self.assertIn("missing_port:api_base_url", MODULE.validate_record(record))
 
+    def test_endpoint_with_zero_port_is_blocked(self):
+        record = self.valid_record()
+        record["api_base_url"] = "http://192.168.1.25:0/api/v1"
+        self.assertIn("invalid_port:api_base_url", MODULE.validate_record(record))
+
     def test_endpoint_with_malformed_port_is_blocked_without_crashing(self):
         record = self.valid_record()
         record["api_base_url"] = "http://192.168.1.25:notaport/api/v1"
