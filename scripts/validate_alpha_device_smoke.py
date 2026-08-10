@@ -43,6 +43,16 @@ REQUIRED_TEXT_FIELDS = (
     "tested_at",
 )
 
+DOCUMENTATION_NETWORKS = tuple(
+    ipaddress.ip_network(network)
+    for network in (
+        "192.0.2.0/24",
+        "198.51.100.0/24",
+        "203.0.113.0/24",
+        "2001:db8::/32",
+    )
+)
+
 
 def _is_loopback_host(host: str | None) -> bool:
     if not host:
@@ -95,6 +105,17 @@ def _is_broadcast_host(host: str | None) -> bool:
     return normalized == "255.255.255.255"
 
 
+def _is_documentation_host(host: str | None) -> bool:
+    if not host:
+        return False
+    normalized = host.strip().lower().rstrip(".")
+    try:
+        address = ipaddress.ip_address(normalized)
+    except ValueError:
+        return False
+    return any(address in network for network in DOCUMENTATION_NETWORKS if address.version == network.version)
+
+
 def _has_timezone_aware_iso_timestamp(value: str) -> bool:
     normalized = value.strip()
     if normalized.endswith("Z"):
@@ -145,6 +166,7 @@ def validate_record(record: dict[str, Any]) -> list[str]:
                 or _is_multicast_host(parsed.hostname)
                 or _is_link_local_host(parsed.hostname)
                 or _is_broadcast_host(parsed.hostname)
+                or _is_documentation_host(parsed.hostname)
             ):
                 errors.append("unreachable:api_base_url")
             try:
