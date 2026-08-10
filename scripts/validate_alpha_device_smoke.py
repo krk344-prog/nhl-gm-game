@@ -88,6 +88,13 @@ def _is_link_local_host(host: str | None) -> bool:
         return False
 
 
+def _is_broadcast_host(host: str | None) -> bool:
+    if not host:
+        return False
+    normalized = host.strip().lower().rstrip(".")
+    return normalized == "255.255.255.255"
+
+
 def _has_timezone_aware_iso_timestamp(value: str) -> bool:
     normalized = value.strip()
     if normalized.endswith("Z"):
@@ -137,6 +144,7 @@ def validate_record(record: dict[str, Any]) -> list[str]:
                 _is_unspecified_host(parsed.hostname)
                 or _is_multicast_host(parsed.hostname)
                 or _is_link_local_host(parsed.hostname)
+                or _is_broadcast_host(parsed.hostname)
             ):
                 errors.append("unreachable:api_base_url")
             try:
