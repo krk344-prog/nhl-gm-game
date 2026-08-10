@@ -68,6 +68,16 @@ def _is_unspecified_host(host: str | None) -> bool:
         return False
 
 
+def _is_multicast_host(host: str | None) -> bool:
+    if not host:
+        return False
+    normalized = host.strip().lower().rstrip(".")
+    try:
+        return ipaddress.ip_address(normalized).is_multicast
+    except ValueError:
+        return False
+
+
 def _has_timezone_aware_iso_timestamp(value: str) -> bool:
     normalized = value.strip()
     if normalized.endswith("Z"):
@@ -113,7 +123,7 @@ def validate_record(record: dict[str, Any]) -> list[str]:
         else:
             if _is_loopback_host(parsed.hostname):
                 errors.append("loopback:api_base_url")
-            elif _is_unspecified_host(parsed.hostname):
+            elif _is_unspecified_host(parsed.hostname) or _is_multicast_host(parsed.hostname):
                 errors.append("unreachable:api_base_url")
             try:
                 endpoint_port = parsed.port
