@@ -1,5 +1,6 @@
 import importlib.util
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "validate_alpha_device_smoke.py"
@@ -17,7 +18,7 @@ class AlphaDeviceSmokeValidatorTests(unittest.TestCase):
             "device_model": "Pixel 9",
             "android_version": "16",
             "apk_sha256": "a" * 64,
-            "tested_at": "2026-07-24T23:50:00-04:00",
+            "tested_at": datetime.now(timezone.utc).isoformat(),
             "blockers": [],
         }
         for field in MODULE.REQUIRED_TRUE_FIELDS:
@@ -153,6 +154,11 @@ class AlphaDeviceSmokeValidatorTests(unittest.TestCase):
         record = self.valid_record()
         record["tested_at"] = "2099-01-01T00:00:00+00:00"
         self.assertIn("future:tested_at", MODULE.validate_record(record))
+
+    def test_stale_timestamp_is_blocked(self):
+        record = self.valid_record()
+        record["tested_at"] = (datetime.now(timezone.utc) - timedelta(days=8)).isoformat()
+        self.assertIn("stale:tested_at", MODULE.validate_record(record))
 
     def test_declared_blocker_blocks_record(self):
         record = self.valid_record()
