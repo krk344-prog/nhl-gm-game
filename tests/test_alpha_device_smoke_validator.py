@@ -149,6 +149,11 @@ class AlphaDeviceSmokeValidatorTests(unittest.TestCase):
         record["tested_at"] = "last Friday evening"
         self.assertIn("invalid:tested_at", MODULE.validate_record(record))
 
+    def test_future_timestamp_is_blocked(self):
+        record = self.valid_record()
+        record["tested_at"] = "2099-01-01T00:00:00+00:00"
+        self.assertIn("future:tested_at", MODULE.validate_record(record))
+
     def test_declared_blocker_blocks_record(self):
         record = self.valid_record()
         record["blockers"] = ["trade history missing after restart"]
