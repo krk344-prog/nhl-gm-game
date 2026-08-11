@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -38,7 +39,7 @@ class AlphaDeviceSmokeTemplateTests(unittest.TestCase):
                 "device_model": "Pixel 9",
                 "android_version": "16",
                 "apk_sha256": "a" * 64,
-                "tested_at": "2026-07-25T04:30:00-04:00",
+                "tested_at": datetime.now(timezone.utc).isoformat(),
                 "blockers": [],
             }
         )
