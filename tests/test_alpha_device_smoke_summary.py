@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -19,7 +20,7 @@ def valid_record() -> dict[str, object]:
         "device_model": "PRIVATE DEVICE MODEL",
         "android_version": "PRIVATE ANDROID VERSION",
         "apk_sha256": "b" * 64,
-        "tested_at": "2026-07-25T09:30:00-04:00",
+        "tested_at": datetime.now(timezone.utc).isoformat(),
         "artifact_verifier_passed": True,
         "apk_installed": True,
         "launch_confirmed": True,
