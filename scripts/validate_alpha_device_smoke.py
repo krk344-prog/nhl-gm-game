@@ -3,8 +3,9 @@
 
 The validator is dependency-free and intentionally conservative. It accepts a JSON
 record created by the facilitator after installing the checksum-verified APK and
-running the approved pilot route. Any missing, failed, loopback-bound, future-dated,
-or weakly timestamped evidence blocks the record from being treated as pilot-ready.
+running the approved pilot route. Any missing, failed, loopback-bound, stale,
+future-dated, or weakly timestamped evidence blocks the record from being treated
+as pilot-ready.
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ import argparse
 import ipaddress
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -42,6 +43,8 @@ REQUIRED_TEXT_FIELDS = (
     "apk_sha256",
     "tested_at",
 )
+
+MAX_EVIDENCE_AGE = timedelta(days=7)
 
 DOCUMENTATION_NETWORKS = tuple(
     ipaddress.ip_network(network)
@@ -164,8 +167,13 @@ def validate_record(record: dict[str, Any]) -> list[str]:
         parsed_tested_at = _parse_timezone_aware_iso_timestamp(tested_at)
         if parsed_tested_at is None:
             errors.append("invalid:tested_at")
-        elif parsed_tested_at.astimezone(timezone.utc) > datetime.now(timezone.utc):
-            errors.append("future:tested_at")
+        else:
+            tested_at_utc = parsed_tested_at.astimezone(timezone.utc)
+            now_utc = datetime.now(timezone.utc)
+            if tested_at_utc > now_utc:
+                errors.append("future:tested_at")
+            elif now_utc - tested_at_utc > MAX_EVIDENCE_AGE:
+                errors.append("stale:tested_at")
 
     api_base_url = record.get("api_base_url")
     if isinstance(api_base_url, str) and api_base_url.strip():
