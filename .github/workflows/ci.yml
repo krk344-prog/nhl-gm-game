@@ -140,7 +140,7 @@ jobs:
   android-emulator-smoke:
     needs: android-bundle
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - name: Download exact release APK artifact
@@ -160,24 +160,33 @@ jobs:
             test -s /tmp/technical-alpha/nhl-gm-technical-alpha.apk
             adb wait-for-device
             adb logcat -c
+            adb logcat -v threadtime > /tmp/technical-alpha-emulator-logcat.txt 2>&1 &
+            logcat_pid=$!
+            stop_logcat() {
+              kill "$logcat_pid" >/dev/null 2>&1 || true
+              wait "$logcat_pid" 2>/dev/null || true
+            }
+            trap stop_logcat EXIT
             adb install -r /tmp/technical-alpha/nhl-gm-technical-alpha.apk
             adb shell monkey -p com.krk344.nhlgmgame -c android.intent.category.LAUNCHER 1
             sh -c 'attempt=0; until adb shell pidof com.krk344.nhlgmgame >/dev/null 2>&1; do attempt=$((attempt + 1)); if [ "$attempt" -ge 60 ]; then echo "application process did not start" >&2; exit 1; fi; sleep 1; done'
             sleep 30
-            adb logcat -d > /tmp/technical-alpha-emulator-logcat.txt
-            adb shell dumpsys activity activities > /tmp/technical-alpha-emulator-activities.txt
+            timeout 20s adb shell dumpsys activity activities > /tmp/technical-alpha-emulator-activities.txt
             adb shell pidof com.krk344.nhlgmgame >/dev/null
+            stop_logcat
+            trap - EXIT
+            test -s /tmp/technical-alpha-emulator-logcat.txt
             python scripts/validate_alpha_emulator_launch.py \
               /tmp/technical-alpha-emulator-logcat.txt \
               /tmp/technical-alpha-emulator-activities.txt
-            adb exec-out screencap -p > /tmp/technical-alpha-emulator-launch.png
+            timeout 20s adb exec-out screencap -p > /tmp/technical-alpha-emulator-launch.png
             test -s /tmp/technical-alpha-emulator-launch.png
       - name: Capture emulator diagnostics after failure
         if: failure()
         run: |
-          adb logcat -d > /tmp/technical-alpha-emulator-logcat.txt 2>&1 || true
-          adb shell dumpsys activity activities > /tmp/technical-alpha-emulator-activities.txt 2>&1 || true
-          adb exec-out screencap -p > /tmp/technical-alpha-emulator-launch.png 2>/dev/null || true
+          timeout 20s adb logcat -d > /tmp/technical-alpha-emulator-logcat.txt 2>&1 || true
+          timeout 20s adb shell dumpsys activity activities > /tmp/technical-alpha-emulator-activities.txt 2>&1 || true
+          timeout 20s adb exec-out screencap -p > /tmp/technical-alpha-emulator-launch.png 2>/dev/null || true
       - name: Upload emulator launch evidence
         if: always()
         uses: actions/upload-artifact@v4
