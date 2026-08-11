@@ -3,8 +3,8 @@
 
 The validator is dependency-free and intentionally conservative. It accepts a JSON
 record created by the facilitator after installing the checksum-verified APK and
-running the approved pilot route. Any missing, failed, loopback-bound, or weakly
-timestamped evidence blocks the record from being treated as pilot-ready.
+running the approved pilot route. Any missing, failed, loopback-bound, future-dated,
+or weakly timestamped evidence blocks the record from being treated as pilot-ready.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ import argparse
 import ipaddress
 import json
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -126,15 +126,17 @@ def _is_documentation_host(host: str | None) -> bool:
     return any(address in network for network in DOCUMENTATION_NETWORKS if address.version == network.version)
 
 
-def _has_timezone_aware_iso_timestamp(value: str) -> bool:
+def _parse_timezone_aware_iso_timestamp(value: str) -> datetime | None:
     normalized = value.strip()
     if normalized.endswith("Z"):
         normalized = f"{normalized[:-1]}+00:00"
     try:
         parsed = datetime.fromisoformat(normalized)
     except ValueError:
-        return False
-    return parsed.tzinfo is not None and parsed.utcoffset() is not None
+        return None
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        return None
+    return parsed
 
 
 def validate_record(record: dict[str, Any]) -> list[str]:
@@ -158,8 +160,12 @@ def validate_record(record: dict[str, Any]) -> list[str]:
             errors.append("invalid:apk_sha256")
 
     tested_at = record.get("tested_at")
-    if isinstance(tested_at, str) and tested_at.strip() and not _has_timezone_aware_iso_timestamp(tested_at):
-        errors.append("invalid:tested_at")
+    if isinstance(tested_at, str) and tested_at.strip():
+        parsed_tested_at = _parse_timezone_aware_iso_timestamp(tested_at)
+        if parsed_tested_at is None:
+            errors.append("invalid:tested_at")
+        elif parsed_tested_at.astimezone(timezone.utc) > datetime.now(timezone.utc):
+            errors.append("future:tested_at")
 
     api_base_url = record.get("api_base_url")
     if isinstance(api_base_url, str) and api_base_url.strip():
