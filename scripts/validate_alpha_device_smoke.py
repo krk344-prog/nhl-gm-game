@@ -98,6 +98,16 @@ def _is_link_local_host(host: str | None) -> bool:
         return False
 
 
+def _is_reserved_host(host: str | None) -> bool:
+    if not host:
+        return False
+    normalized = host.strip().lower().rstrip(".")
+    try:
+        return ipaddress.ip_address(normalized).is_reserved
+    except ValueError:
+        return False
+
+
 def _is_broadcast_host(host: str | None) -> bool:
     if not host:
         return False
@@ -165,6 +175,7 @@ def validate_record(record: dict[str, Any]) -> list[str]:
                 _is_unspecified_host(parsed.hostname)
                 or _is_multicast_host(parsed.hostname)
                 or _is_link_local_host(parsed.hostname)
+                or _is_reserved_host(parsed.hostname)
                 or _is_broadcast_host(parsed.hostname)
                 or _is_documentation_host(parsed.hostname)
             ):
