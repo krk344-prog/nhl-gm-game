@@ -55,6 +55,14 @@ def _package_force_finished(logcat: str, package: str) -> bool:
     )
 
 
+def _evidence_bytes(path: Path) -> int:
+    """Return evidence size without making diagnostic reporting itself fail."""
+    try:
+        return path.stat().st_size
+    except OSError:
+        return 0
+
+
 def validate_emulator_launch(
     logcat_path: Path,
     activity_dump_path: Path,
@@ -96,8 +104,9 @@ def validate_emulator_launch(
         )
     ]
     if not any(package in line for line in foreground_lines):
+        observed = foreground_lines[-3:] if foreground_lines else ["<no foreground markers captured>"]
         raise EmulatorLaunchError(
-            f"{package} was not the resumed foreground application"
+            f"{package} was not the resumed foreground application; observed={observed}"
         )
 
     return {
@@ -123,7 +132,17 @@ def main() -> int:
     try:
         result = validate_emulator_launch(args.logcat, args.activity_dump, args.package)
     except (OSError, EmulatorLaunchError) as exc:
-        print(json.dumps({"status": "fail", "error": str(exc)}, sort_keys=True))
+        print(
+            json.dumps(
+                {
+                    "status": "fail",
+                    "error": str(exc),
+                    "logcat_bytes": _evidence_bytes(args.logcat),
+                    "activity_dump_bytes": _evidence_bytes(args.activity_dump),
+                },
+                sort_keys=True,
+            )
+        )
         return 1
     print(json.dumps(result, sort_keys=True))
     return 0
