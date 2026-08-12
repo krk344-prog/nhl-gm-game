@@ -63,6 +63,18 @@ def _evidence_bytes(path: Path) -> int:
         return 0
 
 
+def _adb_evidence_disconnect(text: str) -> bool:
+    """Identify ADB transport loss so CI does not misclassify it as an app defect."""
+    markers = (
+        "adb: no devices/emulators found",
+        "error: no devices/emulators found",
+        "device offline",
+        "- waiting for device -",
+    )
+    lowered = text.lower()
+    return any(marker.lower() in lowered for marker in markers)
+
+
 def validate_emulator_launch(
     logcat_path: Path,
     activity_dump_path: Path,
@@ -76,6 +88,10 @@ def validate_emulator_launch(
     logcat = logcat_path.read_text(encoding="utf-8", errors="replace")
     activities = activity_dump_path.read_text(encoding="utf-8", errors="replace")
 
+    if _adb_evidence_disconnect(logcat) or _adb_evidence_disconnect(activities):
+        raise EmulatorLaunchError(
+            "ADB device connection was lost while capturing emulator launch evidence"
+        )
     if 'Invariant Violation: "main" has not been registered' in logcat:
         raise EmulatorLaunchError("Expo root component was not registered")
     if _package_fatal_exception(logcat, package):
