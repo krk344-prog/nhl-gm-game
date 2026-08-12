@@ -82,6 +82,16 @@ class ValidateAlphaEmulatorLaunchTests(unittest.TestCase):
             with self.assertRaisesRegex(EmulatorLaunchError, "force-finish"):
                 validate_emulator_launch(log, activities)
 
+    def test_rejects_adb_disconnect_as_evidence_failure(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log, activities = self._write(
+                Path(temp_dir),
+                "adb: no devices/emulators found\n- waiting for device -\n",
+                "",
+            )
+            with self.assertRaisesRegex(EmulatorLaunchError, "ADB device connection was lost"):
+                validate_emulator_launch(log, activities)
+
     def test_ignores_other_process_crash(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             log, activities = self._write(
