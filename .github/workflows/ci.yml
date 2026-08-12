@@ -184,9 +184,18 @@ jobs:
       - name: Capture emulator diagnostics after failure
         if: failure()
         run: |
-          timeout 20s adb logcat -d > /tmp/technical-alpha-emulator-logcat.txt 2>&1 || true
-          timeout 20s adb shell dumpsys activity activities > /tmp/technical-alpha-emulator-activities.txt 2>&1 || true
-          timeout 20s adb exec-out screencap -p > /tmp/technical-alpha-emulator-launch.png 2>/dev/null || true
+          # The emulator-runner tears the emulator down before this host step.
+          # Preserve any evidence captured inside the runner instead of replacing
+          # it with post-teardown "no devices/emulators found" output.
+          if [ ! -s /tmp/technical-alpha-emulator-logcat.txt ]; then
+            timeout 20s adb logcat -d > /tmp/technical-alpha-emulator-logcat.txt 2>&1 || true
+          fi
+          if [ ! -s /tmp/technical-alpha-emulator-activities.txt ]; then
+            timeout 20s adb shell dumpsys activity activities > /tmp/technical-alpha-emulator-activities.txt 2>&1 || true
+          fi
+          if [ ! -s /tmp/technical-alpha-emulator-launch.png ]; then
+            timeout 20s adb exec-out screencap -p > /tmp/technical-alpha-emulator-launch.png 2>/dev/null || true
+          fi
       - name: Upload emulator launch evidence
         if: always()
         uses: actions/upload-artifact@v4
