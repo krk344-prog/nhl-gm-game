@@ -82,6 +82,16 @@ class ValidateAlphaEmulatorLaunchTests(unittest.TestCase):
             with self.assertRaisesRegex(EmulatorLaunchError, "force-finish"):
                 validate_emulator_launch(log, activities)
 
+    def test_rejects_emulator_system_server_death_before_generic_adb_disconnect(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log, activities = self._write(
+                Path(temp_dir),
+                "Watchdog: *** GOODBYE!\nAndroidRuntime: DeadSystemException: The system died; earlier logs will point to the root cause\n",
+                "adb: device offline\n",
+            )
+            with self.assertRaisesRegex(EmulatorLaunchError, "system_server died"):
+                validate_emulator_launch(log, activities)
+
     def test_rejects_adb_disconnect_as_evidence_failure(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             log, activities = self._write(
