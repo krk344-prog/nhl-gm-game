@@ -75,6 +75,14 @@ def _adb_evidence_disconnect(text: str) -> bool:
     return any(marker.lower() in lowered for marker in markers)
 
 
+def _emulator_system_server_failure(logcat: str) -> bool:
+    """Detect Android framework death so infrastructure failure is explicit."""
+    return (
+        "Watchdog: *** GOODBYE!" in logcat
+        and "DeadSystemException: The system died" in logcat
+    )
+
+
 def validate_emulator_launch(
     logcat_path: Path,
     activity_dump_path: Path,
@@ -88,6 +96,10 @@ def validate_emulator_launch(
     logcat = logcat_path.read_text(encoding="utf-8", errors="replace")
     activities = activity_dump_path.read_text(encoding="utf-8", errors="replace")
 
+    if _emulator_system_server_failure(logcat):
+        raise EmulatorLaunchError(
+            "Android emulator system_server died during launch validation; treat as CI infrastructure failure, not an NHL GM app crash"
+        )
     if _adb_evidence_disconnect(logcat) or _adb_evidence_disconnect(activities):
         raise EmulatorLaunchError(
             "ADB device connection was lost while capturing emulator launch evidence"
