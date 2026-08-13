@@ -182,9 +182,7 @@ jobs:
             adb shell pidof com.krk344.nhlgmgame >/dev/null
             pkill -f '[a]db logcat -v threadtime' >/dev/null 2>&1 || true
             test -s /tmp/technical-alpha-emulator-logcat.txt
-            python scripts/validate_alpha_emulator_launch.py \
-              /tmp/technical-alpha-emulator-logcat.txt \
-              /tmp/technical-alpha-emulator-activities.txt
+            python scripts/validate_alpha_emulator_launch.py /tmp/technical-alpha-emulator-logcat.txt /tmp/technical-alpha-emulator-activities.txt
             sh -c 'attempt=0; rm -f /tmp/technical-alpha-emulator-launch.png; while [ "$attempt" -lt 3 ]; do attempt=$((attempt + 1)); if timeout 20s adb exec-out screencap -p > /tmp/technical-alpha-emulator-launch.png && [ -s /tmp/technical-alpha-emulator-launch.png ]; then exit 0; fi; rm -f /tmp/technical-alpha-emulator-launch.png; echo "screenshot capture attempt $attempt failed; retrying" >&2; sleep 5; done; echo "emulator screenshot capture failed after 3 bounded attempts" >&2; exit 1'
             python -c 'from pathlib import Path; data=Path("/tmp/technical-alpha-emulator-launch.png").read_bytes(); assert data.startswith(b"\x89PNG\r\n\x1a\n"), "emulator screenshot is not a valid PNG"'
       - name: Capture emulator diagnostics after failure
