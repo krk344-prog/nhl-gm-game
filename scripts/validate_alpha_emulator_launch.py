@@ -83,6 +83,16 @@ def _emulator_system_server_failure(logcat: str) -> bool:
     )
 
 
+def _system_anr_overlay(activities: str) -> bool:
+    """Reject evidence captured while an Android system ANR dialog owns focus."""
+    focus_markers = ("mCurrentFocus=", "mFocusedWindow=")
+    return any(
+        "Application Not Responding:" in line
+        and any(marker in line for marker in focus_markers)
+        for line in activities.splitlines()
+    )
+
+
 def validate_emulator_launch(
     logcat_path: Path,
     activity_dump_path: Path,
@@ -103,6 +113,10 @@ def validate_emulator_launch(
     if _adb_evidence_disconnect(logcat) or _adb_evidence_disconnect(activities):
         raise EmulatorLaunchError(
             "ADB device connection was lost while capturing emulator launch evidence"
+        )
+    if _system_anr_overlay(activities):
+        raise EmulatorLaunchError(
+            "Android emulator displayed a system ANR overlay during launch validation; packaged-build evidence is obscured"
         )
     if 'Invariant Violation: "main" has not been registered' in logcat:
         raise EmulatorLaunchError("Expo root component was not registered")
@@ -147,6 +161,7 @@ def validate_emulator_launch(
         "process_death_absent": True,
         "root_component_registered": True,
         "foreground_confirmed": True,
+        "system_anr_overlay_absent": True,
     }
 
 
