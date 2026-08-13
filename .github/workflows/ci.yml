@@ -167,7 +167,7 @@ jobs:
           api-level: 34
           arch: x86_64
           profile: pixel_6
-          disable-animations: false
+          disable-animations: true
           script: |
             set -eu
             test -s /tmp/technical-alpha/nhl-gm-technical-alpha.apk
