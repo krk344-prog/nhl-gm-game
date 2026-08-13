@@ -31,6 +31,7 @@ class ValidateAlphaEmulatorLaunchTests(unittest.TestCase):
             self.assertTrue(result["anr_absent"])
             self.assertTrue(result["activity_launch_failure_absent"])
             self.assertTrue(result["force_finish_absent"])
+            self.assertTrue(result["system_anr_overlay_absent"])
 
     def test_rejects_unregistered_expo_root_component(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -60,6 +61,17 @@ class ValidateAlphaEmulatorLaunchTests(unittest.TestCase):
                 "mResumedActivity: com.krk344.nhlgmgame/.MainActivity\n",
             )
             with self.assertRaisesRegex(EmulatorLaunchError, "not-responding"):
+                validate_emulator_launch(log, activities)
+
+    def test_rejects_system_anr_overlay_even_when_game_is_foreground(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log, activities = self._write(
+                Path(temp_dir),
+                "ActivityManager: Start proc 3120:com.krk344.nhlgmgame/u0a141\n",
+                "mCurrentFocus=Window{abc u0 Application Not Responding: system}\n"
+                "mFocusedApp=ActivityRecord{def u0 com.krk344.nhlgmgame/.MainActivity t8}\n",
+            )
+            with self.assertRaisesRegex(EmulatorLaunchError, "system ANR overlay"):
                 validate_emulator_launch(log, activities)
 
     def test_rejects_activity_launch_failure_for_game_package(self):
