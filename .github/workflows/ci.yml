@@ -91,7 +91,20 @@ jobs:
         working-directory: mobile/android
         env:
           EXPO_PUBLIC_API_URL: ${{ env.TECHNICAL_ALPHA_API_URL }}
-        run: ./gradlew assembleRelease --no-daemon --console=plain
+        run: |
+          attempt=1
+          while true; do
+            if ./gradlew assembleRelease --no-daemon --console=plain; then
+              break
+            fi
+            if [ "$attempt" -ge 3 ]; then
+              echo "Gradle release build failed after $attempt attempts." >&2
+              exit 1
+            fi
+            echo "Gradle release build attempt $attempt failed; retrying after a transient-download backoff." >&2
+            attempt=$((attempt + 1))
+            sleep 10
+          done
       - name: Verify embedded application bundle
         run: |
           python - <<'PY'
