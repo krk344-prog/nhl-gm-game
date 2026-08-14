@@ -52,6 +52,8 @@ class CreateAlphaTesterBundleTests(unittest.TestCase):
                 ).decode("utf-8")
                 self.assertIn("eight fictional franchises", start_here)
                 self.assertIn("Advance the day", start_here)
+                self.assertIn("Generate the debug report", start_here)
+                self.assertIn("privacy-reviewed output", start_here)
                 self.assertIn("returns to Day 1", start_here)
                 self.assertIn("endpoint_class=private-lan", build_info)
                 self.assertNotIn(api_url, start_here)
