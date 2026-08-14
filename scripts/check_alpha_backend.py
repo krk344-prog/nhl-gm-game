@@ -7,6 +7,7 @@ import argparse
 import ipaddress
 import json
 import sys
+import time
 from dataclasses import dataclass, asdict
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -99,11 +100,58 @@ def run_preflight(
     )
 
 
+def run_stability_preflight(
+    api_base_url: str,
+    *,
+    probes: int = 1,
+    probe_interval: float = 0.0,
+    season_id: str = "2026-27",
+    timeout: float = 5.0,
+    allow_loopback: bool = False,
+) -> PreflightResult:
+    """Require repeated identical backend identity before a tester build."""
+    if probes < 1:
+        raise ValueError("stability probes must be at least 1")
+    if probe_interval < 0:
+        raise ValueError("probe interval cannot be negative")
+
+    first: PreflightResult | None = None
+    for index in range(probes):
+        result = run_preflight(
+            api_base_url,
+            season_id=season_id,
+            timeout=timeout,
+            allow_loopback=allow_loopback,
+        )
+        if first is None:
+            first = result
+        elif result != first:
+            raise RuntimeError("Backend identity changed during stability preflight")
+
+        if index + 1 < probes and probe_interval:
+            time.sleep(probe_interval)
+
+    assert first is not None
+    return first
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("api_base_url")
     parser.add_argument("--season-id", default="2026-27")
     parser.add_argument("--timeout", type=float, default=5.0)
+    parser.add_argument(
+        "--stability-probes",
+        type=int,
+        default=1,
+        help="Require this many consecutive matching health/season-context probes.",
+    )
+    parser.add_argument(
+        "--probe-interval",
+        type=float,
+        default=0.0,
+        help="Seconds between stability probes. Four probes at 300 seconds cover 15 minutes.",
+    )
     parser.add_argument(
         "--allow-loopback",
         action="store_true",
@@ -112,8 +160,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
-        result = run_preflight(
+        result = run_stability_preflight(
             args.api_base_url,
+            probes=args.stability_probes,
+            probe_interval=args.probe_interval,
             season_id=args.season_id,
             timeout=args.timeout,
             allow_loopback=args.allow_loopback,
@@ -122,7 +172,10 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"ready": False, "error": str(exc)}, indent=2))
         return 1
 
-    print(json.dumps(asdict(result), indent=2, sort_keys=True))
+    payload = asdict(result)
+    payload["stability_probes"] = args.stability_probes
+    payload["probe_interval_seconds"] = args.probe_interval
+    print(json.dumps(payload, indent=2, sort_keys=True))
     return 0
 
 
