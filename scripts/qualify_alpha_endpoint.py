@@ -10,7 +10,7 @@ import time
 from dataclasses import asdict, dataclass
 from typing import Callable
 
-from scripts.check_alpha_backend import run_preflight
+from scripts.check_alpha_backend import PreflightResult, run_preflight
 
 
 @dataclass(frozen=True)
@@ -43,15 +43,22 @@ def qualify_endpoint(
     started = clock()
     attempts = 0
     passed_attempts = 0
+    first_result: PreflightResult | None = None
 
     while True:
-        run_preflight(
+        result = run_preflight(
             api_base_url,
             season_id=season_id,
             timeout=timeout,
             allow_loopback=allow_loopback,
         )
         attempts += 1
+
+        if first_result is None:
+            first_result = result
+        elif result != first_result:
+            raise RuntimeError("Backend identity changed during endpoint qualification")
+
         passed_attempts += 1
 
         elapsed = clock() - started
