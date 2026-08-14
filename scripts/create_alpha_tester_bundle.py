@@ -63,6 +63,7 @@ def _start_here(commit: str) -> str:
 
 BUILD: {commit[:12]}
 STATUS: UI REVIEW PENDING
+PACKAGE: com.krk344.nhlgmgame
 
 WHAT THIS IS
 This is an early test version with eight fictional franchises and an 82-game test schedule. It is not an official NHL roster or schedule product.
