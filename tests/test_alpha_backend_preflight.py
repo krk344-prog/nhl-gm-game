@@ -1,7 +1,13 @@
 import threading
 import unittest
+from unittest.mock import patch
 
-from scripts.check_alpha_backend import _normalized_base_url, run_preflight
+from scripts.check_alpha_backend import (
+    PreflightResult,
+    _normalized_base_url,
+    run_preflight,
+    run_stability_preflight,
+)
 from src.season_context_api import create_season_context_server
 
 
@@ -28,6 +34,50 @@ class AlphaBackendPreflightTest(unittest.TestCase):
         self.assertEqual(result.api_version, "0.2.0-alpha")
         self.assertEqual(result.season_id, "2026-27")
         self.assertEqual(result.regular_season_games, 84)
+
+    def test_stability_preflight_requires_repeated_matching_identity(self):
+        result = run_stability_preflight(
+            self.base_url,
+            probes=3,
+            probe_interval=0,
+            allow_loopback=True,
+        )
+
+        self.assertTrue(result.ready)
+        self.assertEqual(result.api_version, "0.2.0-alpha")
+
+    def test_stability_preflight_rejects_identity_change(self):
+        stable = PreflightResult(
+            api_base_url="http://192.168.1.25:8000/api/v1",
+            health_status="ok",
+            api_version="0.2.0-alpha",
+            season_id="2026-27",
+            regular_season_games=84,
+            ready=True,
+        )
+        changed = PreflightResult(
+            api_base_url=stable.api_base_url,
+            health_status="ok",
+            api_version="unexpected-version",
+            season_id=stable.season_id,
+            regular_season_games=stable.regular_season_games,
+            ready=True,
+        )
+
+        with patch("scripts.check_alpha_backend.run_preflight", side_effect=[stable, changed]):
+            with self.assertRaisesRegex(RuntimeError, "identity changed"):
+                run_stability_preflight(stable.api_base_url, probes=2)
+
+    def test_stability_preflight_rejects_invalid_probe_settings(self):
+        with self.assertRaisesRegex(ValueError, "at least 1"):
+            run_stability_preflight(self.base_url, probes=0, allow_loopback=True)
+        with self.assertRaisesRegex(ValueError, "cannot be negative"):
+            run_stability_preflight(
+                self.base_url,
+                probes=1,
+                probe_interval=-1,
+                allow_loopback=True,
+            )
 
     def test_loopback_is_rejected_for_tester_builds(self):
         with self.assertRaisesRegex(ValueError, "loopback"):
