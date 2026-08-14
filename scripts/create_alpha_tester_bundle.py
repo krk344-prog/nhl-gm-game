@@ -81,7 +81,8 @@ TEST ROUTE
 5. Open the standings.
 6. Attempt one trade.
 7. Close and reopen the game to confirm your progress remains.
-8. Reset the game and confirm it returns to Day 1.
+8. Generate the debug report and provide only the privacy-reviewed output to the organizer.
+9. Reset the game and confirm it returns to Day 1.
 
 REPORTING A PROBLEM
 Use BUG-REPORT.txt. Record what you were doing, what you expected, what happened, and whether it happens again. Do not include your name, device serial number, network address, save file, or password.
