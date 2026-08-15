@@ -35,7 +35,7 @@ class AlphaEndpointQualificationTest(unittest.TestCase):
         fake_time = FakeTime()
 
         result = qualify_endpoint(
-            self.base_url,
+            self.base_url + "/",
             duration_seconds=60,
             interval_seconds=30,
             allow_loopback=True,
@@ -44,6 +44,7 @@ class AlphaEndpointQualificationTest(unittest.TestCase):
         )
 
         self.assertTrue(result.ready)
+        self.assertEqual(result.api_base_url, self.base_url)
         self.assertEqual(result.attempts, 3)
         self.assertEqual(result.passed_attempts, 3)
         self.assertEqual(result.duration_seconds, 60)
