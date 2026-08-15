@@ -15,6 +15,7 @@ from scripts.check_alpha_backend import PreflightResult, run_preflight
 
 @dataclass(frozen=True)
 class EndpointQualification:
+    api_base_url: str
     endpoint_class: str
     duration_seconds: float
     interval_seconds: float
@@ -40,6 +41,7 @@ def qualify_endpoint(
     if interval_seconds <= 0:
         raise ValueError("interval_seconds must be positive")
 
+    selected_api_base_url = api_base_url.rstrip("/")
     started = clock()
     attempts = 0
     passed_attempts = 0
@@ -47,7 +49,7 @@ def qualify_endpoint(
 
     while True:
         result = run_preflight(
-            api_base_url,
+            selected_api_base_url,
             season_id=season_id,
             timeout=timeout,
             allow_loopback=allow_loopback,
@@ -67,6 +69,7 @@ def qualify_endpoint(
         sleeper(min(interval_seconds, max(0.0, duration_seconds - elapsed)))
 
     return EndpointQualification(
+        api_base_url=selected_api_base_url,
         endpoint_class="loopback-development" if allow_loopback else "tester-reachable",
         duration_seconds=round(clock() - started, 3),
         interval_seconds=interval_seconds,
