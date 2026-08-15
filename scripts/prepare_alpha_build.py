@@ -15,6 +15,7 @@ from select_alpha_api_endpoint import discover_private_ipv4_addresses, select_en
 PR_BRANCH = "agent/alpha-rules-integration-v1"
 BUILD_SCRIPT = "scripts/build_alpha_apk_local.py"
 QUALIFICATION_SCRIPT = "scripts/qualify_alpha_endpoint.py"
+QUALIFICATION_RECORD = "artifacts/alpha-endpoint-qualification.json"
 
 
 def prepare_build_handoff(
@@ -53,6 +54,8 @@ def prepare_build_handoff(
         selected_api_base_url,
         "--season-id",
         season_id,
+        "--output",
+        QUALIFICATION_RECORD,
     ]
     build_command = [
         sys.executable,
@@ -69,13 +72,14 @@ def prepare_build_handoff(
         "regular_season_games": result.regular_season_games,
         "ref": PR_BRANCH,
         "qualification_script": QUALIFICATION_SCRIPT,
+        "qualification_record": QUALIFICATION_RECORD,
         "qualification_argv": qualification_command,
         "qualification_command": shlex.join(qualification_command),
         "build_script": BUILD_SCRIPT,
         "build_argv": build_command,
         "build_command": shlex.join(build_command),
         "next_action": (
-            "Run qualification_command first. Run build_command only after endpoint qualification returns ready=true."
+            "Run qualification_command first. Confirm qualification_record exists and ready=true, then run build_command."
         ),
     }
 
