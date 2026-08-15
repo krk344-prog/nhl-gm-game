@@ -14,6 +14,7 @@ from select_alpha_api_endpoint import discover_private_ipv4_addresses, select_en
 
 PR_BRANCH = "agent/alpha-rules-integration-v1"
 BUILD_SCRIPT = "scripts/build_alpha_apk_local.py"
+QUALIFICATION_SCRIPT = "scripts/qualify_alpha_endpoint.py"
 
 
 def prepare_build_handoff(
@@ -24,7 +25,7 @@ def prepare_build_handoff(
     addresses: Iterable[str] | None = None,
     preflight: Callable[..., PreflightResult] = run_preflight,
 ) -> dict[str, object]:
-    """Select and preflight one endpoint, then return the exact local build command."""
+    """Select and preflight one endpoint, then return locked qualification/build commands."""
 
     source = "explicit"
     if api_base_url is None:
@@ -46,7 +47,14 @@ def prepare_build_handoff(
             "Backend preflight returned a different endpoint; refusing to package an unqualified API target"
         )
 
-    command = [
+    qualification_command = [
+        sys.executable,
+        QUALIFICATION_SCRIPT,
+        selected_api_base_url,
+        "--season-id",
+        season_id,
+    ]
+    build_command = [
         sys.executable,
         BUILD_SCRIPT,
         "--api-base-url",
@@ -60,10 +68,15 @@ def prepare_build_handoff(
         "season_id": result.season_id,
         "regular_season_games": result.regular_season_games,
         "ref": PR_BRANCH,
+        "qualification_script": QUALIFICATION_SCRIPT,
+        "qualification_argv": qualification_command,
+        "qualification_command": shlex.join(qualification_command),
         "build_script": BUILD_SCRIPT,
-        "build_argv": command,
-        "build_command": shlex.join(command),
-        "next_action": "Run build_command from PR #13 without editing the endpoint.",
+        "build_argv": build_command,
+        "build_command": shlex.join(build_command),
+        "next_action": (
+            "Run qualification_command first. Run build_command only after endpoint qualification returns ready=true."
+        ),
     }
 
 
