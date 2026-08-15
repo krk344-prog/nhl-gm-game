@@ -9,6 +9,7 @@ import sys
 import time
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Callable
 
 from scripts.check_alpha_backend import PreflightResult, run_preflight
@@ -88,6 +89,14 @@ def qualify_endpoint(
     )
 
 
+def write_qualification_record(result: EndpointQualification, output: str | Path) -> Path:
+    """Persist the exact qualification evidence used for the pilot build handoff."""
+    path = Path(output)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(asdict(result), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return path
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("api_base_url")
@@ -95,6 +104,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--interval-seconds", type=float, default=30.0)
     parser.add_argument("--timeout", type=float, default=5.0)
     parser.add_argument("--season-id", default="2026-27")
+    parser.add_argument(
+        "--output",
+        help="Write the successful qualification record to this JSON path.",
+    )
     parser.add_argument(
         "--allow-loopback",
         action="store_true",
@@ -111,7 +124,9 @@ def main(argv: list[str] | None = None) -> int:
             season_id=args.season_id,
             allow_loopback=args.allow_loopback,
         )
-    except (ValueError, RuntimeError) as exc:
+        if args.output:
+            write_qualification_record(result, args.output)
+    except (OSError, ValueError, RuntimeError) as exc:
         print(json.dumps({"ready": False, "error": str(exc)}, indent=2))
         return 1
 
