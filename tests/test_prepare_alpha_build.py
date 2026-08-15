@@ -50,6 +50,21 @@ class PrepareAlphaBuildTests(unittest.TestCase):
         )
         self.assertNotIn("gh workflow run", payload["build_command"])
 
+    def test_handoff_requires_stability_qualification_before_build(self):
+        payload = module.prepare_build_handoff(
+            api_base_url="http://192.168.1.20:8000/api/v1",
+            preflight=_passing_preflight,
+        )
+        self.assertEqual(payload["qualification_script"], "scripts/qualify_alpha_endpoint.py")
+        self.assertTrue((ROOT / payload["qualification_script"]).is_file())
+        self.assertEqual(
+            payload["qualification_argv"][-3:],
+            ["http://192.168.1.20:8000/api/v1", "--season-id", "2026-27"],
+        )
+        self.assertIn("qualify_alpha_endpoint.py", payload["qualification_command"])
+        self.assertIn("qualification_command first", payload["next_action"])
+        self.assertIn("only after endpoint qualification returns ready=true", payload["next_action"])
+
     def test_discovered_endpoint_is_selected_preflighted_and_locked(self):
         payload = module.prepare_build_handoff(
             addresses=["127.0.0.1", "192.168.1.30"],
@@ -58,6 +73,7 @@ class PrepareAlphaBuildTests(unittest.TestCase):
         self.assertEqual(payload["endpoint_source"], "discovered")
         self.assertEqual(payload["api_base_url"], "http://192.168.1.30:8000/api/v1")
         self.assertEqual(payload["build_argv"][-2], "http://192.168.1.30:8000/api/v1")
+        self.assertEqual(payload["qualification_argv"][-3], "http://192.168.1.30:8000/api/v1")
 
     def test_preflight_cannot_substitute_a_different_packaged_endpoint(self):
         def mismatched_preflight(api_base_url, *, season_id, timeout, allow_loopback):
