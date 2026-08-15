@@ -8,6 +8,7 @@ import json
 import sys
 import time
 from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
 from typing import Callable
 
 from scripts.check_alpha_backend import PreflightResult, run_preflight
@@ -22,6 +23,7 @@ class EndpointQualification:
     attempts: int
     passed_attempts: int
     season_id: str
+    qualified_at_utc: str
     ready: bool
 
 
@@ -35,6 +37,7 @@ def qualify_endpoint(
     allow_loopback: bool = False,
     clock: Callable[[], float] = time.monotonic,
     sleeper: Callable[[float], None] = time.sleep,
+    utc_now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
 ) -> EndpointQualification:
     if duration_seconds < 0:
         raise ValueError("duration_seconds must be non-negative")
@@ -68,6 +71,10 @@ def qualify_endpoint(
             break
         sleeper(min(interval_seconds, max(0.0, duration_seconds - elapsed)))
 
+    qualified_at = utc_now()
+    if qualified_at.tzinfo is None or qualified_at.utcoffset() is None:
+        raise ValueError("utc_now must return a timezone-aware datetime")
+
     return EndpointQualification(
         api_base_url=selected_api_base_url,
         endpoint_class="loopback-development" if allow_loopback else "tester-reachable",
@@ -76,6 +83,7 @@ def qualify_endpoint(
         attempts=attempts,
         passed_attempts=passed_attempts,
         season_id=season_id,
+        qualified_at_utc=qualified_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
         ready=True,
     )
 
