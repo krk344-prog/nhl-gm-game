@@ -64,15 +64,12 @@ class PrepareAlphaBuildTests(unittest.TestCase):
         self.assertEqual(
             payload["qualification_argv"][-5:],
             [
+                "http://192.168.1.20:8000/api/v1",
                 "--season-id",
                 "2026-27",
                 "--output",
                 "artifacts/alpha-endpoint-qualification.json",
-            ][-5:],
-        )
-        self.assertEqual(
-            payload["qualification_argv"][2],
-            "http://192.168.1.20:8000/api/v1",
+            ],
         )
         self.assertIn("qualify_alpha_endpoint.py", payload["qualification_command"])
         self.assertIn("qualification_command first", payload["next_action"])
