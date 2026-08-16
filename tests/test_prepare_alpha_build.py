@@ -47,14 +47,13 @@ class PrepareAlphaBuildTests(unittest.TestCase):
         self.assertEqual(
             payload["build_argv"][-5:],
             [
+                "--api-base-url",
                 "http://192.168.1.20:8000/api/v1",
                 "--qualification-record",
                 "artifacts/alpha-endpoint-qualification.json",
                 "--execute",
-            ][-5:],
+            ],
         )
-        self.assertIn("--qualification-record", payload["build_argv"])
-        self.assertIn("artifacts/alpha-endpoint-qualification.json", payload["build_argv"])
         self.assertNotIn("gh workflow run", payload["build_command"])
 
     def test_handoff_requires_stability_qualification_before_build(self):
