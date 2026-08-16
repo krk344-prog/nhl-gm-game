@@ -17,6 +17,7 @@ def valid_record() -> dict[str, object]:
     return {
         "commit_sha": "a" * 40,
         "api_base_url": "http://192.168.1.77:8000/api/v1",
+        "application_package": "com.krk344.nhlgmgame",
         "device_model": "PRIVATE DEVICE MODEL",
         "android_version": "PRIVATE ANDROID VERSION",
         "apk_sha256": "b" * 64,
@@ -59,6 +60,7 @@ class AlphaDeviceSmokeSummaryTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(summary["status"], "pass")
         self.assertEqual(summary["commit"], "a" * 12)
+        self.assertEqual(summary["application_package"], "com.krk344.nhlgmgame")
         self.assertEqual(summary["checks_passed"], 13)
         self.assertEqual(summary["checks_required"], 13)
         self.assertEqual(summary["endpoint_class"], "private-or-controlled-http")
