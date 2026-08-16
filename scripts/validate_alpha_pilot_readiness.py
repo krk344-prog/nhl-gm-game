@@ -12,6 +12,8 @@ from typing import Any
 
 from scripts.validate_alpha_first_session_observation import validate_observation
 
+APPLICATION_PACKAGE = "com.krk344.nhlgmgame"
+
 DEVICE_PASSES = (
     "artifact_verifier_passed",
     "apk_installed",
@@ -88,8 +90,14 @@ def validate(
     if not all(apk_hashes) or len(set(apk_hashes)) != 1:
         errors.append("identity_mismatch:apk_sha256")
 
-    if stage3.get("application_package") != "com.krk344.nhlgmgame":
-        errors.append("invalid:application_package")
+    package_ids = (
+        device.get("application_package"),
+        stage3.get("application_package"),
+        session_package.get("android_package"),
+    )
+    if any(package_id != APPLICATION_PACKAGE for package_id in package_ids):
+        errors.append("identity_mismatch:application_package")
+
     if stage3.get("build_type") != "standalone-release-apk":
         errors.append("invalid:build_type")
 
@@ -118,6 +126,7 @@ def main() -> int:
         "errors": errors,
         "commit_sha": stage3.get("commit_sha") if stage3 else None,
         "apk_sha256": stage3.get("apk_sha256") if stage3 else None,
+        "application_package": stage3.get("application_package") if stage3 else None,
         "first_session_evidence_required": True,
         "pilot_started": False,
         "merge_authorized": False,
