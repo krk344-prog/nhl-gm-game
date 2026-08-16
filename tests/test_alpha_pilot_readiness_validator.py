@@ -9,6 +9,7 @@ class AlphaPilotReadinessValidatorTests(unittest.TestCase):
             "commit_sha": "a" * 40,
             "apk_sha256": "b" * 64,
             "application_package": "com.krk344.nhlgmgame",
+            "api_base_url": "http://192.168.1.25:8000/api/v1",
             "blockers": [],
         }
         record.update({field: True for field in DEVICE_PASSES})
@@ -19,6 +20,7 @@ class AlphaPilotReadinessValidatorTests(unittest.TestCase):
             "commit_sha": "a" * 40,
             "apk_sha256": "b" * 64,
             "application_package": "com.krk344.nhlgmgame",
+            "api_base_url": "http://192.168.1.25:8000/api/v1",
             "build_type": "standalone-release-apk",
             "stage3_decision": "COMPLETE_UI_REVIEW_PENDING",
             "blockers": [],
@@ -33,6 +35,7 @@ class AlphaPilotReadinessValidatorTests(unittest.TestCase):
                 "commit_sha": "a" * 40,
                 "apk_sha256": "b" * 64,
                 "android_package": "com.krk344.nhlgmgame",
+                "api_base_url": "http://192.168.1.25:8000/api/v1",
             },
             "observation": {
                 "tester_code": "T01",
@@ -75,6 +78,14 @@ class AlphaPilotReadinessValidatorTests(unittest.TestCase):
         self.assertIn(
             "identity_mismatch:application_package",
             validate(device, self._stage3(), self._first_session()),
+        )
+
+    def test_api_endpoint_identity_mismatch_blocks(self):
+        stage3 = self._stage3()
+        stage3["api_base_url"] = "http://192.168.1.26:8000/api/v1"
+        self.assertIn(
+            "identity_mismatch:api_base_url",
+            validate(self._device(), stage3, self._first_session()),
         )
 
     def test_matching_but_malformed_hashes_block(self):
