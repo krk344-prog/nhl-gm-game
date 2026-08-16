@@ -3,6 +3,7 @@
   "commit_sha": "",
   "apk_sha256": "",
   "application_package": "com.krk344.nhlgmgame",
+  "api_base_url": "",
   "build_type": "standalone-release-apk",
   "endpoint_class": "",
   "anonymous_tester_id": "",
