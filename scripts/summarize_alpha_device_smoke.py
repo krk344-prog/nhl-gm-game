@@ -5,7 +5,7 @@ Completed smoke records may contain a local-network endpoint, device model, Andr
 version, and APK digest. Those details are useful to the facilitator but should not
 be copied into public issue or pull-request comments. This dependency-free command
 validates the private record and emits only the minimum evidence needed for a pilot
-approval decision.
+approval decision, including the non-sensitive Android package identity.
 """
 
 from __future__ import annotations
@@ -42,6 +42,7 @@ def build_public_summary(record: dict[str, Any]) -> dict[str, Any]:
     return {
         "status": "pass" if not errors else "block",
         "commit": short_commit,
+        "application_package": record.get("application_package"),
         "tested_at": record.get("tested_at"),
         "endpoint_class": _endpoint_class(record.get("api_base_url")),
         "checks_passed": passed_checks,
