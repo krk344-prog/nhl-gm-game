@@ -62,6 +62,8 @@ def prepare_build_handoff(
         BUILD_SCRIPT,
         "--api-base-url",
         selected_api_base_url,
+        "--qualification-record",
+        QUALIFICATION_RECORD,
         "--execute",
     ]
     return {
@@ -79,7 +81,7 @@ def prepare_build_handoff(
         "build_argv": build_command,
         "build_command": shlex.join(build_command),
         "next_action": (
-            "Run qualification_command first. Confirm qualification_record exists and ready=true, then run build_command."
+            "Run qualification_command first. Confirm qualification_record exists and ready=true, then run build_command before the qualification expires."
         ),
     }
 
