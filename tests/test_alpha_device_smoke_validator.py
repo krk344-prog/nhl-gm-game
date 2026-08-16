@@ -15,6 +15,7 @@ class AlphaDeviceSmokeValidatorTests(unittest.TestCase):
         record = {
             "commit_sha": "1709302f98d1ae8113ed643ee97b1566ad387fba",
             "api_base_url": "http://192.168.1.25:8000/api/v1",
+            "application_package": "com.krk344.nhlgmgame",
             "device_model": "Pixel 9",
             "android_version": "16",
             "apk_sha256": "a" * 64,
@@ -27,6 +28,16 @@ class AlphaDeviceSmokeValidatorTests(unittest.TestCase):
 
     def test_valid_exact_package_record_passes(self):
         self.assertEqual([], MODULE.validate_record(self.valid_record()))
+
+    def test_wrong_application_package_is_blocked(self):
+        record = self.valid_record()
+        record["application_package"] = "com.example.other"
+        self.assertIn("invalid:application_package", MODULE.validate_record(record))
+
+    def test_missing_application_package_is_blocked(self):
+        record = self.valid_record()
+        record.pop("application_package")
+        self.assertIn("missing_or_blank:application_package", MODULE.validate_record(record))
 
     def test_abbreviated_commit_sha_is_blocked(self):
         record = self.valid_record()
