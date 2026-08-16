@@ -41,6 +41,7 @@ REQUIRED_TEXT = (
     "commit_sha",
     "apk_sha256",
     "application_package",
+    "api_base_url",
     "build_type",
     "endpoint_class",
     "anonymous_tester_id",
@@ -151,6 +152,7 @@ def main() -> int:
         "status": "pass" if not errors else "block",
         "errors": errors,
         "commit_sha": payload.get("commit_sha"),
+        "api_base_url": payload.get("api_base_url"),
         "capture_count": len(payload.get("captures", {})) if isinstance(payload.get("captures"), dict) else 0,
         "stage3_decision": payload.get("stage3_decision"),
     }, indent=2, sort_keys=True))
