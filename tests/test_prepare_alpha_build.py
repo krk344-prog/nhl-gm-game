@@ -45,9 +45,16 @@ class PrepareAlphaBuildTests(unittest.TestCase):
         self.assertEqual(payload["build_script"], "scripts/build_alpha_apk_local.py")
         self.assertTrue((ROOT / payload["build_script"]).is_file())
         self.assertEqual(
-            payload["build_argv"][-3:],
-            ["--api-base-url", "http://192.168.1.20:8000/api/v1", "--execute"],
+            payload["build_argv"][-5:],
+            [
+                "http://192.168.1.20:8000/api/v1",
+                "--qualification-record",
+                "artifacts/alpha-endpoint-qualification.json",
+                "--execute",
+            ][-5:],
         )
+        self.assertIn("--qualification-record", payload["build_argv"])
+        self.assertIn("artifacts/alpha-endpoint-qualification.json", payload["build_argv"])
         self.assertNotIn("gh workflow run", payload["build_command"])
 
     def test_handoff_requires_stability_qualification_before_build(self):
@@ -83,7 +90,7 @@ class PrepareAlphaBuildTests(unittest.TestCase):
         )
         self.assertEqual(payload["endpoint_source"], "discovered")
         self.assertEqual(payload["api_base_url"], "http://192.168.1.30:8000/api/v1")
-        self.assertEqual(payload["build_argv"][-2], "http://192.168.1.30:8000/api/v1")
+        self.assertEqual(payload["build_argv"][3], "http://192.168.1.30:8000/api/v1")
         self.assertEqual(payload["qualification_argv"][2], "http://192.168.1.30:8000/api/v1")
 
     def test_preflight_cannot_substitute_a_different_packaged_endpoint(self):
