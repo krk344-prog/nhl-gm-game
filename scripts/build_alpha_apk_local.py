@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -19,6 +20,7 @@ PR_BRANCH = "agent/alpha-rules-integration-v1"
 ROOT = Path(__file__).resolve().parents[1]
 MOBILE = ROOT / "mobile"
 OUTPUT = ROOT / "dist" / "technical-alpha"
+QUALIFICATION_MAX_AGE_SECONDS = 1800.0
 
 
 def validate_api_base_url(value: str) -> str:
@@ -32,6 +34,56 @@ def validate_api_base_url(value: str) -> str:
     if host == "localhost" or host == "0.0.0.0" or host == "::1" or host.startswith("127."):
         raise ValueError("tester APK requires a non-loopback endpoint")
     return value
+
+
+def validate_qualification_record(
+    path: str | Path,
+    api_base_url: str,
+    *,
+    now: datetime | None = None,
+    max_age_seconds: float = QUALIFICATION_MAX_AGE_SECONDS,
+) -> dict[str, object]:
+    """Require fresh tester-reachable qualification for the exact endpoint being packaged."""
+    record_path = Path(path)
+    if not record_path.is_file():
+        raise RuntimeError(f"endpoint qualification record not found: {record_path}")
+    try:
+        payload = json.loads(record_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"endpoint qualification record is unreadable: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise RuntimeError("endpoint qualification record must contain a JSON object")
+    if payload.get("ready") is not True:
+        raise RuntimeError("endpoint qualification record is not ready=true")
+    if payload.get("endpoint_class") != "tester-reachable":
+        raise RuntimeError("endpoint qualification record is not tester-reachable evidence")
+
+    expected_endpoint = validate_api_base_url(api_base_url)
+    record_endpoint = str(payload.get("api_base_url") or "").rstrip("/")
+    if record_endpoint != expected_endpoint:
+        raise RuntimeError("endpoint qualification record does not match the APK API endpoint")
+
+    qualified_at_raw = payload.get("qualified_at_utc")
+    if not isinstance(qualified_at_raw, str) or not qualified_at_raw:
+        raise RuntimeError("endpoint qualification record is missing qualified_at_utc")
+    try:
+        qualified_at = datetime.fromisoformat(qualified_at_raw.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise RuntimeError("endpoint qualification record has an invalid qualified_at_utc") from exc
+    if qualified_at.tzinfo is None or qualified_at.utcoffset() is None:
+        raise RuntimeError("endpoint qualification timestamp must be timezone-aware")
+
+    current = datetime.now(timezone.utc) if now is None else now
+    if current.tzinfo is None or current.utcoffset() is None:
+        raise ValueError("now must be timezone-aware")
+    age_seconds = (current.astimezone(timezone.utc) - qualified_at.astimezone(timezone.utc)).total_seconds()
+    if age_seconds < 0:
+        raise RuntimeError("endpoint qualification timestamp is in the future")
+    if age_seconds > max_age_seconds:
+        raise RuntimeError(
+            f"endpoint qualification is stale ({age_seconds:.0f}s old; max {max_age_seconds:.0f}s)"
+        )
+    return payload
 
 
 def _major_version(output: str) -> int | None:
@@ -123,8 +175,9 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def build(api_base_url: str) -> dict[str, str]:
+def build(api_base_url: str, qualification_record: str | Path) -> dict[str, str]:
     api_base_url = validate_api_base_url(api_base_url)
+    qualification = validate_qualification_record(qualification_record, api_base_url)
     validate_build_environment(inspect_build_environment())
     branch = subprocess.check_output(
         ["git", "branch", "--show-current"], cwd=ROOT, text=True
@@ -166,7 +219,12 @@ def build(api_base_url: str) -> dict[str, str]:
         f"{export_digest}  {export_archive.name}\n", encoding="utf-8"
     )
     (OUTPUT / "technical-alpha-build.txt").write_text(
-        f"commit={commit}\napi_base_url={api_base_url}\nbuild_type=standalone-release-apk\n",
+        (
+            f"commit={commit}\n"
+            f"api_base_url={api_base_url}\n"
+            f"build_type=standalone-release-apk\n"
+            f"qualified_at_utc={qualification['qualified_at_utc']}\n"
+        ),
         encoding="utf-8",
     )
     return {"status": "pass", "output_dir": str(OUTPUT), "commit": commit, "api_base_url": api_base_url}
@@ -175,6 +233,7 @@ def build(api_base_url: str) -> dict[str, str]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--api-base-url", required=True)
+    parser.add_argument("--qualification-record")
     parser.add_argument("--execute", action="store_true")
     parser.add_argument("--check-environment", action="store_true")
     args = parser.parse_args(argv)
@@ -186,7 +245,9 @@ def main(argv: list[str] | None = None) -> int:
         if not args.execute:
             print(json.dumps({"status": "ready", "api_base_url": endpoint, "environment": environment, "commands": command_plan(endpoint)}, indent=2))
             return 0
-        print(json.dumps(build(endpoint), indent=2))
+        if not args.qualification_record:
+            raise RuntimeError("--qualification-record is required for an executable tester APK build")
+        print(json.dumps(build(endpoint, args.qualification_record), indent=2))
         return 0
     except (ValueError, RuntimeError, OSError, subprocess.CalledProcessError) as exc:
         print(json.dumps({"status": "block", "error": str(exc)}, indent=2))
