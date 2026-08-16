@@ -98,6 +98,13 @@ def validate(
     if any(package_id != APPLICATION_PACKAGE for package_id in package_ids):
         errors.append("identity_mismatch:application_package")
 
+    device_endpoint = _normalized(device.get("api_base_url"))
+    stage3_endpoint = _normalized(stage3.get("api_base_url"))
+    session_endpoint = _normalized(session_package.get("api_base_url"))
+    endpoints = (device_endpoint, stage3_endpoint, session_endpoint)
+    if not all(endpoints) or len(set(endpoints)) != 1:
+        errors.append("identity_mismatch:api_base_url")
+
     if stage3.get("build_type") != "standalone-release-apk":
         errors.append("invalid:build_type")
 
@@ -127,6 +134,7 @@ def main() -> int:
         "commit_sha": stage3.get("commit_sha") if stage3 else None,
         "apk_sha256": stage3.get("apk_sha256") if stage3 else None,
         "application_package": stage3.get("application_package") if stage3 else None,
+        "api_base_url": stage3.get("api_base_url") if stage3 else None,
         "first_session_evidence_required": True,
         "pilot_started": False,
         "merge_authorized": False,
