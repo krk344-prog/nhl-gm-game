@@ -1,6 +1,7 @@
 {
   "commit_sha": "REPLACE_WITH_EXACT_COMMIT_SHA",
   "api_base_url": "http://REPLACE_WITH_APPROVED_HOST:8000/api/v1",
+  "application_package": "com.krk344.nhlgmgame",
   "device_model": "REPLACE_WITH_DEVICE_MODEL",
   "android_version": "REPLACE_WITH_ANDROID_VERSION",
   "apk_sha256": "REPLACE_WITH_64_CHARACTER_APK_SHA256",
