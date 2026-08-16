@@ -8,6 +8,7 @@ class AlphaPilotReadinessValidatorTests(unittest.TestCase):
         record = {
             "commit_sha": "a" * 40,
             "apk_sha256": "b" * 64,
+            "application_package": "com.krk344.nhlgmgame",
             "blockers": [],
         }
         record.update({field: True for field in DEVICE_PASSES})
@@ -66,6 +67,14 @@ class AlphaPilotReadinessValidatorTests(unittest.TestCase):
         self.assertIn(
             "identity_mismatch:apk_sha256",
             validate(self._device(), self._stage3(), first_session),
+        )
+
+    def test_android_package_identity_mismatch_blocks(self):
+        device = self._device()
+        device["application_package"] = "com.example.other"
+        self.assertIn(
+            "identity_mismatch:application_package",
+            validate(device, self._stage3(), self._first_session()),
         )
 
     def test_matching_but_malformed_hashes_block(self):
