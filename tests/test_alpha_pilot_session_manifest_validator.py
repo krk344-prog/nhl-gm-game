@@ -2,8 +2,12 @@ import copy
 import json
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
-from scripts.validate_alpha_pilot_session_manifest import validate_manifest
+from scripts.validate_alpha_pilot_session_manifest import (
+    validate_local_evidence_references,
+    validate_manifest,
+)
 
 
 TEMPLATE = Path("docs/technical_alpha_pilot_session_manifest.template.json")
@@ -108,6 +112,31 @@ class AlphaPilotSessionManifestValidatorTests(unittest.TestCase):
         manifest["evidence"]["stage3_capture_reference"] = ""
         errors = validate_manifest(manifest)
         self.assertIn("stage3_capture_reference is required", errors)
+
+    def test_local_evidence_references_must_resolve_before_final_ready(self):
+        manifest = self.ready_manifest()
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "artifacts").mkdir()
+            (root / "private").mkdir()
+            (root / "artifacts/alpha-endpoint-qualification.json").write_text("{}", encoding="utf-8")
+            (root / "private/device-smoke-record.json").write_text("{}", encoding="utf-8")
+            (root / "private/stage3-capture-record.json").write_text("{}", encoding="utf-8")
+            self.assertEqual([], validate_local_evidence_references(manifest, root))
+
+            (root / "private/stage3-capture-record.json").unlink()
+            errors = validate_local_evidence_references(manifest, root)
+            self.assertIn(
+                "stage3_capture_reference does not resolve to an existing evidence file: private/stage3-capture-record.json",
+                errors,
+            )
+
+    def test_local_evidence_reference_cannot_escape_evidence_root(self):
+        manifest = self.ready_manifest()
+        manifest["evidence"]["device_smoke_reference"] = "../device-smoke-record.json"
+        with TemporaryDirectory() as temp_dir:
+            errors = validate_local_evidence_references(manifest, Path(temp_dir))
+        self.assertIn("device_smoke_reference must be a safe relative evidence path", errors)
 
 
 if __name__ == "__main__":
