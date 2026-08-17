@@ -39,6 +39,12 @@ REQUIRED_EVIDENCE_REFERENCES = (
     "privacy_review_reference",
     "public_summary_reference",
 )
+LOCAL_EVIDENCE_REFERENCE_KEYS = (
+    "endpoint_qualification_reference",
+    "device_smoke_reference",
+    "save_reload_reference",
+    "stage3_capture_reference",
+)
 MIN_ENDPOINT_QUALIFICATION_MINUTES = 15
 BLOCKED_ENDPOINT_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
 
@@ -127,9 +133,33 @@ def validate_manifest(manifest: dict[str, Any]) -> list[str]:
     return errors
 
 
+def validate_local_evidence_references(manifest: dict[str, Any], evidence_root: Path) -> list[str]:
+    """Require file-backed final-gate evidence references to resolve on disk."""
+    errors: list[str] = []
+    evidence = manifest.get("evidence", {})
+    for key in LOCAL_EVIDENCE_REFERENCE_KEYS:
+        reference = str(evidence.get(key, "")).strip()
+        if not reference:
+            continue
+        relative_path = reference.split("#", 1)[0]
+        candidate = Path(relative_path)
+        if candidate.is_absolute() or ".." in candidate.parts:
+            errors.append(f"{key} must be a safe relative evidence path")
+            continue
+        if not (evidence_root / candidate).is_file():
+            errors.append(f"{key} does not resolve to an existing evidence file: {relative_path}")
+    return errors
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("manifest", type=Path)
+    parser.add_argument(
+        "--evidence-root",
+        type=Path,
+        default=Path("."),
+        help="Repository/session root used to resolve file-backed evidence references.",
+    )
     args = parser.parse_args()
 
     try:
@@ -143,6 +173,8 @@ def main() -> int:
         return 2
 
     errors = validate_manifest(payload)
+    if not errors:
+        errors.extend(validate_local_evidence_references(payload, args.evidence_root))
     if errors:
         for error in errors:
             print(f"BLOCK: {error}", file=sys.stderr)
