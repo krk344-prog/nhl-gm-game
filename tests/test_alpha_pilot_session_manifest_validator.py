@@ -113,6 +113,20 @@ class AlphaPilotSessionManifestValidatorTests(unittest.TestCase):
         errors = validate_manifest(manifest)
         self.assertIn("stage3_capture_reference is required", errors)
 
+    def test_public_evidence_references_must_bind_to_issue_6(self):
+        manifest = self.ready_manifest()
+        manifest["evidence"]["privacy_review_reference"] = "issue-7-private-evidence-review"
+        manifest["evidence"]["public_summary_reference"] = "random-summary"
+        errors = validate_manifest(manifest)
+        self.assertIn(
+            "privacy_review_reference must identify an issue #6 coordination record using issue-6-<slug>",
+            errors,
+        )
+        self.assertIn(
+            "public_summary_reference must identify an issue #6 coordination record using issue-6-<slug>",
+            errors,
+        )
+
     def test_local_evidence_references_must_resolve_before_final_ready(self):
         manifest = self.ready_manifest()
         with TemporaryDirectory() as temp_dir:
