@@ -45,8 +45,15 @@ class AlphaPilotSessionManifestValidatorTests(unittest.TestCase):
             "privacy_review",
         ):
             manifest["evidence"][key] = "pass"
-        manifest["evidence"]["endpoint_qualification_minutes"] = 15
-        manifest["evidence"]["public_summary_reference"] = "issue-6-private-evidence-summary"
+        manifest["evidence"].update(
+            endpoint_qualification_minutes=15,
+            endpoint_qualification_reference="artifacts/alpha-endpoint-qualification.json",
+            device_smoke_reference="private/device-smoke-record.json",
+            save_reload_reference="private/device-smoke-record.json#save_reload",
+            stage3_capture_reference="private/stage3-capture-record.json",
+            privacy_review_reference="issue-6-private-evidence-review",
+            public_summary_reference="issue-6-private-evidence-summary",
+        )
         manifest["defects"]["go_no_go"] = "go-for-kyle-approval"
         return manifest
 
@@ -95,6 +102,12 @@ class AlphaPilotSessionManifestValidatorTests(unittest.TestCase):
         errors = validate_manifest(manifest)
         self.assertIn("endpoint qualification must cover at least 15 uninterrupted minutes", errors)
         self.assertIn("installed application launch must be confirmed", errors)
+
+    def test_missing_evidence_reference_blocks_ready_manifest(self):
+        manifest = self.ready_manifest()
+        manifest["evidence"]["stage3_capture_reference"] = ""
+        errors = validate_manifest(manifest)
+        self.assertIn("stage3_capture_reference is required", errors)
 
 
 if __name__ == "__main__":
