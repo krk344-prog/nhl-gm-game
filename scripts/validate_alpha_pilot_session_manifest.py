@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
+ISSUE_6_REFERENCE_RE = re.compile(r"^issue-6-[a-z0-9][a-z0-9-]*$")
 REQUIRED_ROUTE = (
     "new_game",
     "franchise_selection",
@@ -44,6 +45,10 @@ LOCAL_EVIDENCE_REFERENCE_KEYS = (
     "device_smoke_reference",
     "save_reload_reference",
     "stage3_capture_reference",
+)
+ISSUE_6_EVIDENCE_REFERENCE_KEYS = (
+    "privacy_review_reference",
+    "public_summary_reference",
 )
 MIN_ENDPOINT_QUALIFICATION_MINUTES = 15
 BLOCKED_ENDPOINT_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
@@ -119,6 +124,14 @@ def validate_manifest(manifest: dict[str, Any]) -> list[str]:
     )
     for reference in REQUIRED_EVIDENCE_REFERENCES:
         _require(bool(str(evidence.get(reference, "")).strip()), f"{reference} is required", errors)
+    for reference in ISSUE_6_EVIDENCE_REFERENCE_KEYS:
+        value = str(evidence.get(reference, "")).strip()
+        if value:
+            _require(
+                bool(ISSUE_6_REFERENCE_RE.fullmatch(value)),
+                f"{reference} must identify an issue #6 coordination record using issue-6-<slug>",
+                errors,
+            )
 
     defects = manifest.get("defects", {})
     _require(defects.get("open_blockers") == 0, "open Blocker defects must be zero", errors)
