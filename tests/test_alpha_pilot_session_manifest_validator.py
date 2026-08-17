@@ -152,6 +152,21 @@ class AlphaPilotSessionManifestValidatorTests(unittest.TestCase):
             errors = validate_local_evidence_references(manifest, Path(temp_dir))
         self.assertIn("device_smoke_reference must be a safe relative evidence path", errors)
 
+    def test_local_evidence_symlink_cannot_escape_evidence_root(self):
+        manifest = self.ready_manifest()
+        with TemporaryDirectory() as temp_dir, TemporaryDirectory() as outside_dir:
+            root = Path(temp_dir)
+            outside = Path(outside_dir)
+            (root / "artifacts").mkdir()
+            (root / "private").mkdir()
+            (root / "artifacts/alpha-endpoint-qualification.json").write_text("{}", encoding="utf-8")
+            (root / "private/device-smoke-record.json").write_text("{}", encoding="utf-8")
+            outside_stage3 = outside / "stage3-capture-record.json"
+            outside_stage3.write_text("{}", encoding="utf-8")
+            (root / "private/stage3-capture-record.json").symlink_to(outside_stage3)
+            errors = validate_local_evidence_references(manifest, root)
+        self.assertIn("stage3_capture_reference must resolve inside the evidence root", errors)
+
 
 if __name__ == "__main__":
     unittest.main()
