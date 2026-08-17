@@ -31,6 +31,14 @@ REQUIRED_EVIDENCE = (
     "stage3_capture_validation",
     "privacy_review",
 )
+REQUIRED_EVIDENCE_REFERENCES = (
+    "endpoint_qualification_reference",
+    "device_smoke_reference",
+    "save_reload_reference",
+    "stage3_capture_reference",
+    "privacy_review_reference",
+    "public_summary_reference",
+)
 MIN_ENDPOINT_QUALIFICATION_MINUTES = 15
 BLOCKED_ENDPOINT_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
 
@@ -55,7 +63,7 @@ def validate_manifest(manifest: dict[str, Any]) -> list[str]:
     """Return validation errors. An empty list means ready for Kyle approval."""
     errors: list[str] = []
 
-    _require(manifest.get("schema_version") == 4, "schema_version must be 4", errors)
+    _require(manifest.get("schema_version") == 5, "schema_version must be 5", errors)
     _require(manifest.get("status") == "ready_for_kyle_approval", "status must be ready_for_kyle_approval", errors)
 
     authorization = manifest.get("pilot_authorization", {})
@@ -103,7 +111,8 @@ def validate_manifest(manifest: dict[str, Any]) -> list[str]:
         f"endpoint qualification must cover at least {MIN_ENDPOINT_QUALIFICATION_MINUTES} uninterrupted minutes",
         errors,
     )
-    _require(bool(str(evidence.get("public_summary_reference", "")).strip()), "public_summary_reference is required", errors)
+    for reference in REQUIRED_EVIDENCE_REFERENCES:
+        _require(bool(str(evidence.get(reference, "")).strip()), f"{reference} is required", errors)
 
     defects = manifest.get("defects", {})
     _require(defects.get("open_blockers") == 0, "open Blocker defects must be zero", errors)
