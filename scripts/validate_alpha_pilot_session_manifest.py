@@ -147,9 +147,10 @@ def validate_manifest(manifest: dict[str, Any]) -> list[str]:
 
 
 def validate_local_evidence_references(manifest: dict[str, Any], evidence_root: Path) -> list[str]:
-    """Require file-backed final-gate evidence references to resolve on disk."""
+    """Require file-backed final-gate evidence references to resolve inside the evidence root."""
     errors: list[str] = []
     evidence = manifest.get("evidence", {})
+    resolved_root = evidence_root.resolve()
     for key in LOCAL_EVIDENCE_REFERENCE_KEYS:
         reference = str(evidence.get(key, "")).strip()
         if not reference:
@@ -159,7 +160,13 @@ def validate_local_evidence_references(manifest: dict[str, Any], evidence_root: 
         if candidate.is_absolute() or ".." in candidate.parts:
             errors.append(f"{key} must be a safe relative evidence path")
             continue
-        if not (evidence_root / candidate).is_file():
+        resolved_candidate = (resolved_root / candidate).resolve()
+        try:
+            resolved_candidate.relative_to(resolved_root)
+        except ValueError:
+            errors.append(f"{key} must resolve inside the evidence root")
+            continue
+        if not resolved_candidate.is_file():
             errors.append(f"{key} does not resolve to an existing evidence file: {relative_path}")
     return errors
 
