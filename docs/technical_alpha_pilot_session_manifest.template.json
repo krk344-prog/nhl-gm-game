@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "status": "incomplete",
   "pilot_authorization": {
     "kyle_approval_recorded": false,
@@ -45,10 +45,15 @@
   "evidence": {
     "endpoint_qualification": "pending",
     "endpoint_qualification_minutes": 0,
+    "endpoint_qualification_reference": "",
     "physical_or_equivalent_device_smoke": "pending",
+    "device_smoke_reference": "",
     "save_reload_reconciliation": "pending",
+    "save_reload_reference": "",
     "stage3_capture_validation": "pending",
+    "stage3_capture_reference": "",
     "privacy_review": "pending",
+    "privacy_review_reference": "",
     "public_summary_reference": ""
   },
   "defects": {
@@ -63,6 +68,7 @@
   },
   "notes": [
     "This manifest is a facilitator control record, not pilot authorization.",
+    "Every pass state must identify the reviewed evidence artifact; status flags alone are not sufficient for readiness.",
     "The CI commit, built commit, APK checksum, Android package, exact API endpoint, confirmed launch, route evidence, and Stage 3 captures must reconcile to one exact pilot environment.",
     "Endpoint qualification must cover at least 15 uninterrupted minutes before packaging.",
     "Do not begin the pilot or merge PR #13 without Kyle's explicit approval.",
