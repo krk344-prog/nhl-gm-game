@@ -26,6 +26,7 @@ class AlphaPilotSessionManifestValidatorTests(unittest.TestCase):
         manifest["build_identity"].update(
             commit_sha=commit,
             apk_sha256="b" * 64,
+            api_base_url="http://192.168.1.50:8000/api/v1",
             artifact_verification="pass",
             installed_package_reconciled=True,
             launch_confirmation="pass",
@@ -62,6 +63,16 @@ class AlphaPilotSessionManifestValidatorTests(unittest.TestCase):
         manifest["build_identity"]["commit_sha"] = "c" * 40
         errors = validate_manifest(manifest)
         self.assertIn("built commit must match the validated PR head", errors)
+
+    def test_endpoint_identity_missing_or_loopback_blocks(self):
+        manifest = self.ready_manifest()
+        manifest["build_identity"]["api_base_url"] = ""
+        errors = validate_manifest(manifest)
+        self.assertIn("api_base_url must identify the exact tester-accessible http(s) backend", errors)
+
+        manifest["build_identity"]["api_base_url"] = "http://127.0.0.1:8000/api/v1"
+        errors = validate_manifest(manifest)
+        self.assertIn("api_base_url must identify the exact tester-accessible http(s) backend", errors)
 
     def test_major_defect_and_missing_recovery_evidence_block(self):
         manifest = self.ready_manifest()
