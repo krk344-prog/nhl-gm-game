@@ -9,6 +9,7 @@ import re
 import sys
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -31,6 +32,7 @@ REQUIRED_EVIDENCE = (
     "privacy_review",
 )
 MIN_ENDPOINT_QUALIFICATION_MINUTES = 15
+BLOCKED_ENDPOINT_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
 
 
 def _require(condition: bool, message: str, errors: list[str]) -> None:
@@ -38,11 +40,22 @@ def _require(condition: bool, message: str, errors: list[str]) -> None:
         errors.append(message)
 
 
+def _is_tester_accessible_api_url(value: Any) -> bool:
+    if not isinstance(value, str) or not value.strip():
+        return False
+    parsed = urlparse(value.strip())
+    return (
+        parsed.scheme in {"http", "https"}
+        and bool(parsed.hostname)
+        and parsed.hostname.lower() not in BLOCKED_ENDPOINT_HOSTS
+    )
+
+
 def validate_manifest(manifest: dict[str, Any]) -> list[str]:
     """Return validation errors. An empty list means ready for Kyle approval."""
     errors: list[str] = []
 
-    _require(manifest.get("schema_version") == 3, "schema_version must be 3", errors)
+    _require(manifest.get("schema_version") == 4, "schema_version must be 4", errors)
     _require(manifest.get("status") == "ready_for_kyle_approval", "status must be ready_for_kyle_approval", errors)
 
     authorization = manifest.get("pilot_authorization", {})
@@ -63,6 +76,7 @@ def validate_manifest(manifest: dict[str, Any]) -> list[str]:
     _require(bool(SHA256_RE.fullmatch(str(build.get("apk_sha256", "")))), "apk_sha256 must be a 64-character lowercase hex digest", errors)
     _require(build.get("android_package") == "com.krk344.nhlgmgame", "Android package identity is invalid", errors)
     _require(build.get("build_type") == "release", "build_type must be release", errors)
+    _require(_is_tester_accessible_api_url(build.get("api_base_url")), "api_base_url must identify the exact tester-accessible http(s) backend", errors)
     _require(build.get("endpoint_class") in {"private-lan", "tester-accessible-hosted"}, "endpoint_class must be tester accessible", errors)
     _require(build.get("artifact_verification") == "pass", "artifact verification must pass", errors)
     _require(build.get("installed_package_reconciled") is True, "installed package must reconcile to the verified artifact", errors)
