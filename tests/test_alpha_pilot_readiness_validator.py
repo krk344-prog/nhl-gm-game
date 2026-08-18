@@ -36,6 +36,7 @@ class AlphaPilotReadinessValidatorTests(unittest.TestCase):
                 "apk_sha256": "b" * 64,
                 "android_package": "com.krk344.nhlgmgame",
                 "api_base_url": "http://192.168.1.25:8000/api/v1",
+                "build_type": "release",
             },
             "observation": {
                 "tester_code": "T01",
