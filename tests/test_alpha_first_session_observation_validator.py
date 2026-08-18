@@ -73,14 +73,14 @@ class AlphaFirstSessionObservationValidatorTests(unittest.TestCase):
         payload["package_identity"]["api_base_url"] = ""
         errors = MODULE.validate_observation(payload)
         self.assertIn(
-            "api_base_url must be an explicit tester-reachable http(s) endpoint without credentials",
+            "api_base_url must be the explicit tester-reachable authoritative /api/v1 http(s) endpoint without credentials, query, or fragment",
             errors,
         )
 
         payload["package_identity"]["api_base_url"] = "http://127.0.0.1:8000/api/v1"
         errors = MODULE.validate_observation(payload)
         self.assertIn(
-            "api_base_url must be an explicit tester-reachable http(s) endpoint without credentials",
+            "api_base_url must be the explicit tester-reachable authoritative /api/v1 http(s) endpoint without credentials, query, or fragment",
             errors,
         )
 
@@ -88,9 +88,23 @@ class AlphaFirstSessionObservationValidatorTests(unittest.TestCase):
         payload = complete_observation()
         payload["package_identity"]["api_base_url"] = "https://tester:secret@example.test/api/v1"
         self.assertIn(
-            "api_base_url must be an explicit tester-reachable http(s) endpoint without credentials",
+            "api_base_url must be the explicit tester-reachable authoritative /api/v1 http(s) endpoint without credentials, query, or fragment",
             MODULE.validate_observation(payload),
         )
+
+    def test_non_authoritative_path_query_or_fragment_blocks(self):
+        for endpoint in (
+            "http://192.168.1.50:8000/health",
+            "http://192.168.1.50:8000/api/v1?debug=1",
+            "http://192.168.1.50:8000/api/v1#session",
+        ):
+            with self.subTest(endpoint=endpoint):
+                payload = complete_observation()
+                payload["package_identity"]["api_base_url"] = endpoint
+                self.assertIn(
+                    "api_base_url must be the explicit tester-reachable authoritative /api/v1 http(s) endpoint without credentials, query, or fragment",
+                    MODULE.validate_observation(payload),
+                )
 
 
 if __name__ == "__main__":
