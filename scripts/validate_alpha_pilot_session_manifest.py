@@ -67,6 +67,8 @@ def _is_tester_accessible_api_url(value: Any) -> bool:
         parsed.scheme in {"http", "https"}
         and bool(parsed.hostname)
         and parsed.hostname.lower() not in BLOCKED_ENDPOINT_HOSTS
+        and parsed.username is None
+        and parsed.password is None
     )
 
 
@@ -95,7 +97,7 @@ def validate_manifest(manifest: dict[str, Any]) -> list[str]:
     _require(bool(SHA256_RE.fullmatch(str(build.get("apk_sha256", "")))), "apk_sha256 must be a 64-character lowercase hex digest", errors)
     _require(build.get("android_package") == "com.krk344.nhlgmgame", "Android package identity is invalid", errors)
     _require(build.get("build_type") == "release", "build_type must be release", errors)
-    _require(_is_tester_accessible_api_url(build.get("api_base_url")), "api_base_url must identify the exact tester-accessible http(s) backend", errors)
+    _require(_is_tester_accessible_api_url(build.get("api_base_url")), "api_base_url must identify the exact tester-accessible http(s) backend without embedded credentials", errors)
     _require(build.get("endpoint_class") in {"private-lan", "tester-accessible-hosted"}, "endpoint_class must be tester accessible", errors)
     _require(build.get("artifact_verification") == "pass", "artifact verification must pass", errors)
     _require(build.get("installed_package_reconciled") is True, "installed package must reconcile to the verified artifact", errors)
