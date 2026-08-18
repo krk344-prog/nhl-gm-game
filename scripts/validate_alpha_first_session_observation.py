@@ -33,6 +33,8 @@ def _tester_reachable_endpoint(value: Any) -> bool:
             return False
         if parsed.username is not None or parsed.password is not None:
             return False
+        if parsed.query or parsed.fragment or parsed.path.rstrip("/") != "/api/v1":
+            return False
         lowered = hostname.lower()
         if lowered in {"localhost", "0.0.0.0", "::", "::1"}:
             return False
@@ -57,7 +59,7 @@ def validate_observation(payload: dict[str, Any]) -> list[str]:
     _require(package.get("android_package") == "com.krk344.nhlgmgame", "Android package identity is invalid", errors)
     _require(
         _tester_reachable_endpoint(package.get("api_base_url")),
-        "api_base_url must be an explicit tester-reachable http(s) endpoint without credentials",
+        "api_base_url must be the explicit tester-reachable authoritative /api/v1 http(s) endpoint without credentials, query, or fragment",
         errors,
     )
 
