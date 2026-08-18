@@ -79,11 +79,26 @@ class AlphaPilotSessionManifestValidatorTests(unittest.TestCase):
         manifest = self.ready_manifest()
         manifest["build_identity"]["api_base_url"] = ""
         errors = validate_manifest(manifest)
-        self.assertIn("api_base_url must identify the exact tester-accessible http(s) backend", errors)
+        self.assertIn(
+            "api_base_url must identify the exact tester-accessible http(s) backend without embedded credentials",
+            errors,
+        )
 
         manifest["build_identity"]["api_base_url"] = "http://127.0.0.1:8000/api/v1"
         errors = validate_manifest(manifest)
-        self.assertIn("api_base_url must identify the exact tester-accessible http(s) backend", errors)
+        self.assertIn(
+            "api_base_url must identify the exact tester-accessible http(s) backend without embedded credentials",
+            errors,
+        )
+
+    def test_endpoint_identity_with_embedded_credentials_blocks(self):
+        manifest = self.ready_manifest()
+        manifest["build_identity"]["api_base_url"] = "https://pilot-user:pilot-secret@example.test/api/v1"
+        errors = validate_manifest(manifest)
+        self.assertIn(
+            "api_base_url must identify the exact tester-accessible http(s) backend without embedded credentials",
+            errors,
+        )
 
     def test_major_defect_and_missing_recovery_evidence_block(self):
         manifest = self.ready_manifest()
