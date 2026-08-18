@@ -57,6 +57,7 @@ def validate_observation(payload: dict[str, Any]) -> list[str]:
     _require(bool(COMMIT_RE.fullmatch(str(package.get("commit_sha", "")))), "commit_sha must be a 40-character lowercase hex SHA", errors)
     _require(bool(SHA256_RE.fullmatch(str(package.get("apk_sha256", "")))), "apk_sha256 must be a 64-character lowercase hex digest", errors)
     _require(package.get("android_package") == "com.krk344.nhlgmgame", "Android package identity is invalid", errors)
+    _require(package.get("build_type") == "release", "first-session evidence must come from a release APK build", errors)
     _require(
         _tester_reachable_endpoint(package.get("api_base_url")),
         "api_base_url must be the explicit tester-reachable authoritative /api/v1 http(s) endpoint without credentials, query, or fragment",
