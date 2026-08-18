@@ -10,12 +10,13 @@ Record these values from the approved exact-package checkpoint before the sessio
 - commit SHA:
 - delivery path: Android APK / approved browser deployment
 - package or deployment identity:
+- build type: `release` for Android APK evidence
 - APK SHA-256, when applicable:
 - endpoint qualification record:
 - anonymous tester code:
 - session code:
 
-Stop the session if any identity value differs from the active evidence package. Do not combine evidence from different commits, packages, endpoints, installations, or sessions.
+Stop the session if any identity value differs from the active evidence package. Do not combine evidence from different commits, packages, endpoints, installations, build types, or sessions. Android first-session evidence counts toward Technical Alpha readiness only when it comes from the exact release APK.
 
 ## Required pre-test disclosure
 
