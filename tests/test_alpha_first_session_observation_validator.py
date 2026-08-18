@@ -18,6 +18,7 @@ def complete_observation():
             "commit_sha": "a" * 40,
             "apk_sha256": "b" * 64,
             "android_package": "com.krk344.nhlgmgame",
+            "build_type": "release",
             "api_base_url": "http://192.168.1.50:8000/api/v1",
         },
         "observation": {
@@ -46,6 +47,14 @@ def complete_observation():
 class AlphaFirstSessionObservationValidatorTests(unittest.TestCase):
     def test_complete_observation_passes(self):
         self.assertEqual([], MODULE.validate_observation(complete_observation()))
+
+    def test_non_release_build_blocks(self):
+        payload = complete_observation()
+        payload["package_identity"]["build_type"] = "debug"
+        self.assertIn(
+            "first-session evidence must come from a release APK build",
+            MODULE.validate_observation(payload),
+        )
 
     def test_coaching_or_missing_route_blocks(self):
         payload = complete_observation()
