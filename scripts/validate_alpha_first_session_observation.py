@@ -4,11 +4,13 @@
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import json
 import re
 import sys
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -21,6 +23,29 @@ def _require(condition: bool, message: str, errors: list[str]) -> None:
         errors.append(message)
 
 
+def _tester_reachable_endpoint(value: Any) -> bool:
+    if not isinstance(value, str) or not value.strip():
+        return False
+    try:
+        parsed = urlsplit(value.strip())
+        hostname = parsed.hostname
+        if parsed.scheme not in {"http", "https"} or not hostname:
+            return False
+        if parsed.username is not None or parsed.password is not None:
+            return False
+        lowered = hostname.lower()
+        if lowered in {"localhost", "0.0.0.0", "::", "::1"}:
+            return False
+        try:
+            if ipaddress.ip_address(hostname).is_loopback:
+                return False
+        except ValueError:
+            pass
+    except ValueError:
+        return False
+    return True
+
+
 def validate_observation(payload: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     _require(payload.get("schema_version") == 1, "schema_version must be 1", errors)
@@ -30,6 +55,11 @@ def validate_observation(payload: dict[str, Any]) -> list[str]:
     _require(bool(COMMIT_RE.fullmatch(str(package.get("commit_sha", "")))), "commit_sha must be a 40-character lowercase hex SHA", errors)
     _require(bool(SHA256_RE.fullmatch(str(package.get("apk_sha256", "")))), "apk_sha256 must be a 64-character lowercase hex digest", errors)
     _require(package.get("android_package") == "com.krk344.nhlgmgame", "Android package identity is invalid", errors)
+    _require(
+        _tester_reachable_endpoint(package.get("api_base_url")),
+        "api_base_url must be an explicit tester-reachable http(s) endpoint without credentials",
+        errors,
+    )
 
     observation = payload.get("observation", {})
     code = str(observation.get("tester_code", ""))
