@@ -18,6 +18,7 @@ def complete_observation():
             "commit_sha": "a" * 40,
             "apk_sha256": "b" * 64,
             "android_package": "com.krk344.nhlgmgame",
+            "api_base_url": "http://192.168.1.50:8000/api/v1",
         },
         "observation": {
             "tester_code": "T01",
@@ -66,6 +67,30 @@ class AlphaFirstSessionObservationValidatorTests(unittest.TestCase):
         errors = MODULE.validate_observation(payload)
         self.assertIn("pilot approval must remain false until Kyle explicitly approves", errors)
         self.assertIn("implemented screens must remain UI Review Pending", errors)
+
+    def test_missing_or_local_endpoint_blocks(self):
+        payload = complete_observation()
+        payload["package_identity"]["api_base_url"] = ""
+        errors = MODULE.validate_observation(payload)
+        self.assertIn(
+            "api_base_url must be an explicit tester-reachable http(s) endpoint without credentials",
+            errors,
+        )
+
+        payload["package_identity"]["api_base_url"] = "http://127.0.0.1:8000/api/v1"
+        errors = MODULE.validate_observation(payload)
+        self.assertIn(
+            "api_base_url must be an explicit tester-reachable http(s) endpoint without credentials",
+            errors,
+        )
+
+    def test_credential_bearing_endpoint_blocks(self):
+        payload = complete_observation()
+        payload["package_identity"]["api_base_url"] = "https://tester:secret@example.test/api/v1"
+        self.assertIn(
+            "api_base_url must be an explicit tester-reachable http(s) endpoint without credentials",
+            MODULE.validate_observation(payload),
+        )
 
 
 if __name__ == "__main__":
