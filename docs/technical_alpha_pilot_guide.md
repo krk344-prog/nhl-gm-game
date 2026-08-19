@@ -45,10 +45,12 @@ Use this sequence for every physical-device pilot build. Do not distribute an AP
 2a. Connect the Android device by USB, enable USB debugging, and run `python scripts/check_alpha_android_device.py`. Continue only when it returns `"status": "ready"`. When more than one authorized device is attached, rerun with `--serial <ADB_SERIAL>`. Keep the serial private; the command's public-ready output intentionally omits it.
 3. Start the integrated backend from the repository root with `python scripts/start_dev.py`.
 4. From a second terminal at the repository root, run `python scripts/prepare_alpha_build.py --season-id 2026-27`.
-5. Continue only when the command returns JSON with `"ready": true`, a non-loopback `api_base_url`, the expected season context, `"ref": "agent/alpha-rules-integration-v1"`, and a `build_command` targeting `scripts/build_alpha_apk_local.py`.
-6. Run the returned `build_command` exactly as emitted. Do not edit the endpoint or branch. The command has already selected a tester-reachable endpoint and completed backend preflight.
-7. For a previously approved endpoint, run `python scripts/prepare_alpha_build.py --api-base-url <URL> --season-id 2026-27` and apply the same criteria.
-8. Stop when the command returns `"ready": false`; do not guess an address or manually assemble a build command.
+5. Continue only when the command returns JSON with `"ready": true`, a non-loopback `api_base_url`, the expected season context, `"ref": "agent/alpha-rules-integration-v1"`, a `qualification_command`, `qualification_record`, and a `build_command` targeting `scripts/build_alpha_apk_local.py`.
+5a. Run the returned `qualification_command` exactly as emitted. Do not edit the endpoint, season, output path, probe count, or interval. The qualification command performs the repeated stability window against the exact endpoint selected by the handoff.
+5b. Continue only when `artifacts/alpha-endpoint-qualification.json` exists and records `"ready": true` for the exact same `api_base_url` and season. If qualification fails or is interrupted, do not build; rerun `prepare_alpha_build.py` and qualification from the beginning.
+6. Run the returned `build_command` exactly as emitted while that qualification record is still fresh. Do not edit the endpoint or branch. The builder requires the matching qualification record and fails closed when the record is stale or belongs to another endpoint.
+7. For a previously approved endpoint, run `python scripts/prepare_alpha_build.py --api-base-url <URL> --season-id 2026-27` and apply the same preflight, qualification, and build criteria.
+8. Stop when any handoff or qualification step returns `"ready": false`; do not guess an address or manually assemble a build command.
 9. The local builder must produce `dist/technical-alpha/nhl-gm-technical-alpha.apk`, `nhl-gm-technical-alpha.apk.sha256`, `nhl-gm-android-export.tar.gz`, `nhl-gm-android-export.sha256`, and `technical-alpha-build.txt` from the exact PR #13 commit.
 10. Run `python scripts/verify_alpha_artifact.py dist/technical-alpha --expected-commit <COMMIT_SHA> --expected-api-base-url <URL>`.
 11. Continue only when the verifier returns JSON with `"status": "pass"`; it validates both portable checksum files, the exact commit, exact endpoint, expected `standalone-release-apk` build type, and the non-empty embedded JavaScript application bundle at `assets/index.android.bundle`.
@@ -64,7 +66,7 @@ Use this sequence for every physical-device pilot build. Do not distribute an AP
 21. Generate the privacy-safe summary with `python scripts/summarize_alpha_device_smoke.py <DEVICE_SMOKE_RECORD.json>`. Post only this redacted summary publicly.
 22. Distribute the APK only after the exact-package smoke test passes and all verification steps pass.
 
-A changing local IP address invalidates the configured APK. Repeat preparation, local build, verification, installation, launch confirmation, and smoke validation whenever the tester-facing URL changes.
+A changing local IP address invalidates the configured APK and its endpoint qualification. Repeat preparation, qualification, local build, verification, installation, launch confirmation, and smoke validation whenever the tester-facing URL changes.
 
 ## Tester setup
 
