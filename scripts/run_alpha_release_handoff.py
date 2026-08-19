@@ -15,6 +15,9 @@ from prepare_alpha_build import prepare_build_handoff
 DEVICE_PREFLIGHT_SCRIPT = "scripts/check_alpha_android_device.py"
 INSTALL_SCRIPT = "scripts/install_alpha_apk.py"
 LAUNCH_SCRIPT = "scripts/launch_alpha_app.py"
+DEVICE_SMOKE_TEMPLATE = "docs/technical_alpha_device_smoke_record.template.json"
+DEVICE_SMOKE_VALIDATOR = "scripts/validate_alpha_device_smoke.py"
+DEVICE_SMOKE_SUMMARIZER = "scripts/summarize_alpha_device_smoke.py"
 ARTIFACT_DIRECTORY = "dist/technical-alpha"
 
 
@@ -86,7 +89,10 @@ def run_release_handoff(
         "qualification_record": handoff["qualification_record"],
         "artifact_directory": ARTIFACT_DIRECTORY,
         "completed_phases": completed,
-        "next_action": "Complete the guided Technical Alpha gameplay, save/reload, debug, and reset smoke route on this same device, then capture Stage 3 evidence.",
+        "device_smoke_template": DEVICE_SMOKE_TEMPLATE,
+        "device_smoke_validation_command": f"python {DEVICE_SMOKE_VALIDATOR} <PRIVATE_DEVICE_SMOKE_RECORD.json>",
+        "device_smoke_summary_command": f"python {DEVICE_SMOKE_SUMMARIZER} <PRIVATE_DEVICE_SMOKE_RECORD.json>",
+        "next_action": "Copy the device-smoke template to a private working location, complete the guided gameplay/save-reload/debug/reset route on this same device, validate the private record, generate the privacy-safe summary, then capture Stage 3 evidence.",
     }
 
 
