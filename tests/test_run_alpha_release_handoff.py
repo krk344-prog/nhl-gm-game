@@ -28,8 +28,18 @@ class RunAlphaReleaseHandoffTests(unittest.TestCase):
             "qualification_argv": ["python", "scripts/qualify_alpha_endpoint.py"],
             "build_argv": ["python", "scripts/build_alpha_apk_local.py", "--execute"],
         }
+        self.commit = "a" * 40
 
-    def test_runs_device_preflight_then_qualification_then_exact_build(self):
+    def _run(self, runner, **kwargs):
+        return module.run_release_handoff(
+            runner=runner,
+            record_exists=lambda path: True,
+            artifact_exists=lambda path: True,
+            check_output=lambda *args, **kwargs: self.commit + "\n",
+            **kwargs,
+        )
+
+    def test_runs_device_qualification_build_install_and_launch_on_same_device(self):
         calls = []
 
         def runner(argv, *, check):
@@ -37,26 +47,32 @@ class RunAlphaReleaseHandoffTests(unittest.TestCase):
             return SimpleNamespace(returncode=0)
 
         with patch.object(module, "prepare_build_handoff", return_value=self.handoff):
-            result = module.run_release_handoff(
-                api_base_url=self.handoff["api_base_url"],
-                serial="device-123",
-                runner=runner,
-                record_exists=lambda path: True,
-            )
+            result = self._run(runner, serial="device-123")
 
         self.assertTrue(result["ready"])
+        self.assertEqual(result["commit"], self.commit)
         self.assertEqual(
             result["completed_phases"],
-            ["device_preflight", "qualification", "build"],
+            ["device_preflight", "qualification", "build", "install", "launch"],
         )
+        self.assertEqual(calls[0][0], [sys.executable, module.DEVICE_PREFLIGHT_SCRIPT, "--serial", "device-123"])
+        self.assertEqual(calls[1][0], self.handoff["qualification_argv"])
+        self.assertEqual(calls[2][0], self.handoff["build_argv"])
         self.assertEqual(
-            calls,
+            calls[3][0],
             [
-                ([sys.executable, module.DEVICE_PREFLIGHT_SCRIPT, "--serial", "device-123"], False),
-                (self.handoff["qualification_argv"], False),
-                (self.handoff["build_argv"], False),
+                sys.executable,
+                module.INSTALL_SCRIPT,
+                module.ARTIFACT_DIRECTORY,
+                "--expected-commit",
+                self.commit,
+                "--expected-api-base-url",
+                self.handoff["api_base_url"],
+                "--serial",
+                "device-123",
             ],
         )
+        self.assertEqual(calls[4][0], [sys.executable, module.LAUNCH_SCRIPT, "--serial", "device-123"])
 
     def test_failed_device_preflight_stops_before_qualification(self):
         calls = []
@@ -67,10 +83,7 @@ class RunAlphaReleaseHandoffTests(unittest.TestCase):
 
         with patch.object(module, "prepare_build_handoff", return_value=self.handoff):
             with self.assertRaisesRegex(RuntimeError, "device_preflight failed with exit code 4"):
-                module.run_release_handoff(
-                    runner=runner,
-                    record_exists=lambda path: True,
-                )
+                self._run(runner)
 
         self.assertEqual(calls, [[sys.executable, module.DEVICE_PREFLIGHT_SCRIPT]])
 
@@ -86,6 +99,26 @@ class RunAlphaReleaseHandoffTests(unittest.TestCase):
                 module.run_release_handoff(
                     runner=runner,
                     record_exists=lambda path: False,
+                    artifact_exists=lambda path: True,
+                    check_output=lambda *args, **kwargs: self.commit + "\n",
+                )
+
+        self.assertEqual(calls, [[sys.executable, module.DEVICE_PREFLIGHT_SCRIPT], self.handoff["qualification_argv"]])
+
+    def test_missing_artifact_blocks_install_and_launch(self):
+        calls = []
+
+        def runner(argv, *, check):
+            calls.append(list(argv))
+            return SimpleNamespace(returncode=0)
+
+        with patch.object(module, "prepare_build_handoff", return_value=self.handoff):
+            with self.assertRaisesRegex(RuntimeError, "required Technical Alpha artifact directory"):
+                module.run_release_handoff(
+                    runner=runner,
+                    record_exists=lambda path: True,
+                    artifact_exists=lambda path: False,
+                    check_output=lambda *args, **kwargs: self.commit + "\n",
                 )
 
         self.assertEqual(
@@ -93,11 +126,12 @@ class RunAlphaReleaseHandoffTests(unittest.TestCase):
             [
                 [sys.executable, module.DEVICE_PREFLIGHT_SCRIPT],
                 self.handoff["qualification_argv"],
+                self.handoff["build_argv"],
             ],
         )
 
-    def test_failed_qualification_stops_before_build(self):
-        returncodes = iter((0, 9))
+    def test_failed_install_stops_before_launch(self):
+        returncodes = iter((0, 0, 0, 7))
         calls = []
 
         def runner(argv, *, check):
@@ -105,32 +139,20 @@ class RunAlphaReleaseHandoffTests(unittest.TestCase):
             return SimpleNamespace(returncode=next(returncodes))
 
         with patch.object(module, "prepare_build_handoff", return_value=self.handoff):
-            with self.assertRaisesRegex(RuntimeError, "qualification failed with exit code 9"):
-                module.run_release_handoff(
-                    runner=runner,
-                    record_exists=lambda path: True,
-                )
+            with self.assertRaisesRegex(RuntimeError, "install failed with exit code 7"):
+                self._run(runner)
 
-        self.assertEqual(
-            calls,
-            [
-                [sys.executable, module.DEVICE_PREFLIGHT_SCRIPT],
-                self.handoff["qualification_argv"],
-            ],
-        )
+        self.assertEqual(len(calls), 4)
 
-    def test_failed_build_is_reported_after_successful_preflight_and_qualification(self):
-        returncodes = iter((0, 0, 7))
+    def test_failed_launch_is_reported_after_verified_install(self):
+        returncodes = iter((0, 0, 0, 0, 8))
 
         def runner(argv, *, check):
             return SimpleNamespace(returncode=next(returncodes))
 
         with patch.object(module, "prepare_build_handoff", return_value=self.handoff):
-            with self.assertRaisesRegex(RuntimeError, "build failed with exit code 7"):
-                module.run_release_handoff(
-                    runner=runner,
-                    record_exists=lambda path: True,
-                )
+            with self.assertRaisesRegex(RuntimeError, "launch failed with exit code 8"):
+                self._run(runner)
 
 
 if __name__ == "__main__":
