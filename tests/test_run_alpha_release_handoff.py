@@ -55,6 +55,17 @@ class RunAlphaReleaseHandoffTests(unittest.TestCase):
             result["completed_phases"],
             ["device_preflight", "qualification", "build", "install", "launch"],
         )
+        self.assertEqual(result["device_smoke_template"], module.DEVICE_SMOKE_TEMPLATE)
+        self.assertEqual(
+            result["device_smoke_validation_command"],
+            f"python {module.DEVICE_SMOKE_VALIDATOR} <PRIVATE_DEVICE_SMOKE_RECORD.json>",
+        )
+        self.assertEqual(
+            result["device_smoke_summary_command"],
+            f"python {module.DEVICE_SMOKE_SUMMARIZER} <PRIVATE_DEVICE_SMOKE_RECORD.json>",
+        )
+        self.assertIn("private working location", result["next_action"])
+        self.assertIn("privacy-safe summary", result["next_action"])
         self.assertEqual(calls[0][0], [sys.executable, module.DEVICE_PREFLIGHT_SCRIPT, "--serial", "device-123"])
         self.assertEqual(calls[1][0], self.handoff["qualification_argv"])
         self.assertEqual(calls[2][0], self.handoff["build_argv"])
