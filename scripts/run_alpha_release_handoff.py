@@ -22,6 +22,7 @@ DEVICE_SMOKE_SUMMARIZER = "scripts/summarize_alpha_device_smoke.py"
 STAGE3_CAPTURE_TEMPLATE = "docs/technical_alpha_stage3_capture_record.template.json"
 STAGE3_CAPTURE_VALIDATOR = "scripts/validate_alpha_stage3_capture.py"
 ARTIFACT_DIRECTORY = "dist/technical-alpha"
+APPLICATION_PACKAGE = "com.krk344.nhlgmgame"
 
 
 def run_release_handoff(
@@ -104,11 +105,16 @@ def run_release_handoff(
         "artifact_directory": ARTIFACT_DIRECTORY,
         "completed_phases": completed,
         "device_smoke_template": DEVICE_SMOKE_TEMPLATE,
+        "device_smoke_prefill": {
+            "commit_sha": commit,
+            "api_base_url": handoff["api_base_url"],
+            "application_package": APPLICATION_PACKAGE,
+        },
         "device_smoke_validation_command": f"python {DEVICE_SMOKE_VALIDATOR} <PRIVATE_DEVICE_SMOKE_RECORD.json>",
         "device_smoke_summary_command": f"python {DEVICE_SMOKE_SUMMARIZER} <PRIVATE_DEVICE_SMOKE_RECORD.json>",
         "stage3_capture_template": STAGE3_CAPTURE_TEMPLATE,
         "stage3_capture_validation_command": f"python {STAGE3_CAPTURE_VALIDATOR} <PRIVATE_STAGE3_CAPTURE_RECORD.json>",
-        "next_action": "Copy the device-smoke template to a private working location, complete the guided gameplay/save-reload/debug/reset route on this same device, validate the private record, generate the privacy-safe summary, then copy the Stage 3 capture template, capture the exact running package, and validate that Stage 3 record before final readiness review.",
+        "next_action": "Copy the device-smoke template to a private working location, prefill it with the returned exact commit/API/package identity, complete the guided gameplay/save-reload/debug/reset route on this same device, validate the private record, generate the privacy-safe summary, then copy the Stage 3 capture template, capture the exact running package, and validate that Stage 3 record before final readiness review.",
     }
 
 
