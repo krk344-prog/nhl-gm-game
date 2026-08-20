@@ -13,6 +13,7 @@ from typing import Callable, Sequence
 from prepare_alpha_build import prepare_build_handoff
 
 DEVICE_PREFLIGHT_SCRIPT = "scripts/check_alpha_android_device.py"
+BACKEND_PREFLIGHT_SCRIPT = "scripts/check_alpha_backend.py"
 INSTALL_SCRIPT = "scripts/install_alpha_apk.py"
 LAUNCH_SCRIPT = "scripts/launch_alpha_app.py"
 DEVICE_SMOKE_TEMPLATE = "docs/technical_alpha_device_smoke_record.template.json"
@@ -34,7 +35,7 @@ def run_release_handoff(
     artifact_exists: Callable[[str], bool] = lambda path: Path(path).is_dir(),
     check_output: Callable[..., str] = subprocess.check_output,
 ) -> dict[str, object]:
-    """Preflight one device, qualify the endpoint, build, install, and launch one release candidate."""
+    """Preflight one device, qualify the endpoint, build, install, launch, and recheck the backend."""
 
     handoff = prepare_build_handoff(
         api_base_url=api_base_url,
@@ -63,12 +64,23 @@ def run_release_handoff(
         install_argv.extend(["--serial", serial])
         launch_argv.extend(["--serial", serial])
 
+    backend_recheck_argv = [
+        sys.executable,
+        BACKEND_PREFLIGHT_SCRIPT,
+        str(handoff["api_base_url"]),
+        "--season-id",
+        str(handoff["season_id"]),
+        "--timeout",
+        str(timeout),
+    ]
+
     phases: Sequence[tuple[str, Sequence[str]]] = (
         ("device_preflight", device_argv),
         ("qualification", handoff["qualification_argv"]),
         ("build", handoff["build_argv"]),
         ("install", install_argv),
         ("launch", launch_argv),
+        ("backend_recheck", backend_recheck_argv),
     )
     completed: list[str] = []
 
