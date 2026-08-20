@@ -39,7 +39,7 @@ class RunAlphaReleaseHandoffTests(unittest.TestCase):
             **kwargs,
         )
 
-    def test_runs_device_qualification_build_install_and_launch_on_same_device(self):
+    def test_runs_device_qualification_build_install_launch_and_backend_recheck_on_same_device(self):
         calls = []
 
         def runner(argv, *, check):
@@ -53,7 +53,7 @@ class RunAlphaReleaseHandoffTests(unittest.TestCase):
         self.assertEqual(result["commit"], self.commit)
         self.assertEqual(
             result["completed_phases"],
-            ["device_preflight", "qualification", "build", "install", "launch"],
+            ["device_preflight", "qualification", "build", "install", "launch", "backend_recheck"],
         )
         self.assertEqual(result["device_smoke_template"], module.DEVICE_SMOKE_TEMPLATE)
         self.assertEqual(
@@ -91,6 +91,18 @@ class RunAlphaReleaseHandoffTests(unittest.TestCase):
             ],
         )
         self.assertEqual(calls[4][0], [sys.executable, module.LAUNCH_SCRIPT, "--serial", "device-123"])
+        self.assertEqual(
+            calls[5][0],
+            [
+                sys.executable,
+                module.BACKEND_PREFLIGHT_SCRIPT,
+                self.handoff["api_base_url"],
+                "--season-id",
+                self.handoff["season_id"],
+                "--timeout",
+                "5.0",
+            ],
+        )
 
     def test_failed_device_preflight_stops_before_qualification(self):
         calls = []
@@ -170,6 +182,16 @@ class RunAlphaReleaseHandoffTests(unittest.TestCase):
 
         with patch.object(module, "prepare_build_handoff", return_value=self.handoff):
             with self.assertRaisesRegex(RuntimeError, "launch failed with exit code 8"):
+                self._run(runner)
+
+    def test_failed_backend_recheck_blocks_gameplay_handoff(self):
+        returncodes = iter((0, 0, 0, 0, 0, 9))
+
+        def runner(argv, *, check):
+            return SimpleNamespace(returncode=next(returncodes))
+
+        with patch.object(module, "prepare_build_handoff", return_value=self.handoff):
+            with self.assertRaisesRegex(RuntimeError, "backend_recheck failed with exit code 9"):
                 self._run(runner)
 
 
