@@ -18,6 +18,7 @@ def valid_record() -> dict[str, object]:
         "commit_sha": "a" * 40,
         "api_base_url": "http://192.168.1.77:8000/api/v1",
         "application_package": "com.krk344.nhlgmgame",
+        "build_type": "standalone-release-apk",
         "device_model": "PRIVATE DEVICE MODEL",
         "android_version": "PRIVATE ANDROID VERSION",
         "apk_sha256": "b" * 64,
