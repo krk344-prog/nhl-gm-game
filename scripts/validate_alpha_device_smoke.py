@@ -4,8 +4,8 @@
 The validator is dependency-free and intentionally conservative. It accepts a JSON
 record created by the facilitator after installing the checksum-verified APK and
 running the approved pilot route. Any missing, failed, loopback-bound, stale,
-future-dated, weakly timestamped, or wrong-package evidence blocks the record from
-being treated as pilot-ready.
+future-dated, weakly timestamped, wrong-package, or non-release-build evidence
+blocks the record from being treated as pilot-ready.
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 APPLICATION_PACKAGE = "com.krk344.nhlgmgame"
+BUILD_TYPE = "standalone-release-apk"
 
 REQUIRED_TRUE_FIELDS = (
     "artifact_verifier_passed",
@@ -41,6 +42,7 @@ REQUIRED_TEXT_FIELDS = (
     "commit_sha",
     "api_base_url",
     "application_package",
+    "build_type",
     "device_model",
     "android_version",
     "apk_sha256",
@@ -164,6 +166,11 @@ def validate_record(record: dict[str, Any]) -> list[str]:
         if application_package != APPLICATION_PACKAGE:
             errors.append("invalid:application_package")
 
+    build_type = record.get("build_type")
+    if isinstance(build_type, str) and build_type.strip():
+        if build_type != BUILD_TYPE:
+            errors.append("invalid:build_type")
+
     apk_sha256 = record.get("apk_sha256")
     if isinstance(apk_sha256, str) and apk_sha256.strip():
         normalized_digest = apk_sha256.strip().lower()
@@ -249,6 +256,7 @@ def main() -> int:
         "commit_sha": payload.get("commit_sha"),
         "api_base_url": payload.get("api_base_url"),
         "application_package": payload.get("application_package"),
+        "build_type": payload.get("build_type"),
         "device_model": payload.get("device_model"),
     }
     print(json.dumps(result, indent=2, sort_keys=True))
