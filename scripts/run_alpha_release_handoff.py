@@ -37,13 +37,8 @@ def run_release_handoff(
     artifact_exists: Callable[[str], bool] = lambda path: Path(path).is_dir(),
     check_output: Callable[..., str] = subprocess.check_output,
 ) -> dict[str, object]:
-    """Preflight one device, qualify the endpoint, build, install, launch, and recheck the backend."""
+    """Preflight one device, then qualify, build, install, launch, and recheck the backend."""
 
-    handoff = prepare_build_handoff(
-        api_base_url=api_base_url,
-        season_id=season_id,
-        timeout=timeout,
-    )
     commit = check_output(["git", "rev-parse", "HEAD"], text=True).strip()
     if not commit:
         raise RuntimeError("could not determine the exact PR #13 commit for release handoff")
@@ -51,6 +46,16 @@ def run_release_handoff(
     device_argv = [sys.executable, DEVICE_PREFLIGHT_SCRIPT]
     if serial:
         device_argv.extend(["--serial", serial])
+
+    device_result = runner(device_argv, check=False)
+    if device_result.returncode != 0:
+        raise RuntimeError(f"device_preflight failed with exit code {device_result.returncode}")
+
+    handoff = prepare_build_handoff(
+        api_base_url=api_base_url,
+        season_id=season_id,
+        timeout=timeout,
+    )
 
     install_argv = [
         sys.executable,
@@ -77,14 +82,13 @@ def run_release_handoff(
     ]
 
     phases: Sequence[tuple[str, Sequence[str]]] = (
-        ("device_preflight", device_argv),
         ("qualification", handoff["qualification_argv"]),
         ("build", handoff["build_argv"]),
         ("install", install_argv),
         ("launch", launch_argv),
         ("backend_recheck", backend_recheck_argv),
     )
-    completed: list[str] = []
+    completed: list[str] = ["device_preflight"]
 
     for phase, phase_argv in phases:
         if phase == "build" and not record_exists(str(handoff["qualification_record"])):
