@@ -113,17 +113,18 @@ class RunAlphaReleaseHandoffTests(unittest.TestCase):
             ],
         )
 
-    def test_failed_device_preflight_stops_before_qualification(self):
+    def test_failed_device_preflight_stops_before_endpoint_preparation_or_qualification(self):
         calls = []
 
         def runner(argv, *, check):
             calls.append(list(argv))
             return SimpleNamespace(returncode=4)
 
-        with patch.object(module, "prepare_build_handoff", return_value=self.handoff):
+        with patch.object(module, "prepare_build_handoff", return_value=self.handoff) as prepare_mock:
             with self.assertRaisesRegex(RuntimeError, "device_preflight failed with exit code 4"):
                 self._run(runner)
 
+        prepare_mock.assert_not_called()
         self.assertEqual(calls, [[sys.executable, module.DEVICE_PREFLIGHT_SCRIPT]])
 
     def test_missing_qualification_record_blocks_build(self):
