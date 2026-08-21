@@ -47,9 +47,11 @@ class AlphaReleaseHandoffPrefillTests(unittest.TestCase):
                 "commit_sha": commit,
                 "api_base_url": handoff["api_base_url"],
                 "application_package": "com.krk344.nhlgmgame",
+                "build_type": "standalone-release-apk",
             },
         )
-        self.assertIn("returned exact commit/API/package identity", result["next_action"])
+        self.assertIn("returned exact release identity", result["next_action"])
+        self.assertIn("verified APK checksum", result["next_action"])
 
 
 if __name__ == "__main__":
