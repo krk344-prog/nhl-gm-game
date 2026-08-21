@@ -43,6 +43,17 @@ class TechnicalAlphaPilotGuideTests(unittest.TestCase):
                 self.assertIn(term, lowered)
         self.assertIn("Do not post the SQLite database", self.guide)
 
+    def test_physical_device_release_step_requires_complete_smoke_route(self) -> None:
+        for term in (
+            "On that same installed package, complete the full required smoke route in order",
+            "New Game, franchise selection, advance day, roster, standings",
+            "one trade attempt plus Trade History verification",
+            "save, reload, debug report, and reset",
+            "Do not substitute a partial API-only check for this physical-device route",
+        ):
+            with self.subTest(term=term):
+                self.assertIn(term, self.guide)
+
     def test_configured_apk_procedure_uses_verified_local_build_handoff(self) -> None:
         for term in (
             "python scripts/prepare_alpha_build.py --season-id 2026-27",
