@@ -81,11 +81,11 @@ class RunAlphaReleaseHandoffTests(unittest.TestCase):
             result["stage3_capture_validation_command"],
             f"python {module.STAGE3_CAPTURE_VALIDATOR} <PRIVATE_STAGE3_CAPTURE_RECORD.json>",
         )
-        self.assertIn("private working location", result["next_action"])
+        self.assertIn("prefilled private device-smoke record", result["next_action"])
+        self.assertIn("same device", result["next_action"])
         self.assertIn("privacy-safe summary", result["next_action"])
-        self.assertIn("same returned release identity", result["next_action"])
-        self.assertIn("APK checksum", result["next_action"])
-        self.assertIn("validate that Stage 3 record", result["next_action"])
+        self.assertIn("prefilled Stage 3 capture record", result["next_action"])
+        self.assertIn("validate it before final readiness review", result["next_action"])
         self.assertEqual(calls[0][0], [sys.executable, module.DEVICE_PREFLIGHT_SCRIPT, "--serial", "device-123"])
         self.assertEqual(calls[1][0], self.handoff["qualification_argv"])
         self.assertEqual(calls[2][0], self.handoff["build_argv"])
