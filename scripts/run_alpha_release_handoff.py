@@ -45,9 +45,15 @@ def _write_prefilled_record(template_path: str, output_path: str, identity: dict
     if not isinstance(template, dict):
         raise RuntimeError(f"Technical Alpha evidence template is not a JSON object: {template_path}")
 
+    missing_identity_fields = sorted(key for key in identity if key not in template)
+    if missing_identity_fields:
+        raise RuntimeError(
+            "Technical Alpha evidence template is missing required release identity fields: "
+            + ", ".join(missing_identity_fields)
+        )
+
     for key, value in identity.items():
-        if key in template:
-            template[key] = value
+        template[key] = value
 
     destination = Path(output_path)
     destination.parent.mkdir(parents=True, exist_ok=True)
