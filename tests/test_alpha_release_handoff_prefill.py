@@ -29,6 +29,7 @@ class AlphaReleaseHandoffPrefillTests(unittest.TestCase):
             "build_argv": ["python", "scripts/build_alpha_apk_local.py", "--execute"],
         }
         commit = "b" * 40
+        apk_sha256 = "c" * 64
 
         def runner(argv, *, check):
             return SimpleNamespace(returncode=0)
@@ -38,6 +39,7 @@ class AlphaReleaseHandoffPrefillTests(unittest.TestCase):
                 runner=runner,
                 record_exists=lambda path: True,
                 artifact_exists=lambda path: True,
+                checksum_reader=lambda path: apk_sha256,
                 check_output=lambda *args, **kwargs: commit + "\n",
             )
 
@@ -48,10 +50,12 @@ class AlphaReleaseHandoffPrefillTests(unittest.TestCase):
                 "api_base_url": handoff["api_base_url"],
                 "application_package": "com.krk344.nhlgmgame",
                 "build_type": "standalone-release-apk",
+                "apk_sha256": apk_sha256,
             },
         )
+        self.assertEqual(result["stage3_capture_prefill"], result["device_smoke_prefill"])
         self.assertIn("returned exact release identity", result["next_action"])
-        self.assertIn("verified APK checksum", result["next_action"])
+        self.assertIn("APK checksum", result["next_action"])
 
 
 if __name__ == "__main__":
