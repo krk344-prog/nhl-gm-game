@@ -22,8 +22,19 @@ DEVICE_SMOKE_SUMMARIZER = "scripts/summarize_alpha_device_smoke.py"
 STAGE3_CAPTURE_TEMPLATE = "docs/technical_alpha_stage3_capture_record.template.json"
 STAGE3_CAPTURE_VALIDATOR = "scripts/validate_alpha_stage3_capture.py"
 ARTIFACT_DIRECTORY = "dist/technical-alpha"
+APK_CHECKSUM_PATH = f"{ARTIFACT_DIRECTORY}/nhl-gm-technical-alpha.apk.sha256"
 APPLICATION_PACKAGE = "com.krk344.nhlgmgame"
 BUILD_TYPE = "standalone-release-apk"
+
+
+def _read_apk_checksum(path: str) -> str:
+    parts = Path(path).read_text(encoding="utf-8").strip().split()
+    if len(parts) != 2 or parts[1].lstrip("*") != "nhl-gm-technical-alpha.apk":
+        raise RuntimeError("Technical Alpha APK checksum manifest is invalid")
+    digest = parts[0].lower()
+    if len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest):
+        raise RuntimeError("Technical Alpha APK checksum is not a valid SHA-256 digest")
+    return digest
 
 
 def run_release_handoff(
@@ -35,6 +46,7 @@ def run_release_handoff(
     runner: Callable[..., subprocess.CompletedProcess] = subprocess.run,
     record_exists: Callable[[str], bool] = lambda path: Path(path).is_file(),
     artifact_exists: Callable[[str], bool] = lambda path: Path(path).is_dir(),
+    checksum_reader: Callable[[str], str] = _read_apk_checksum,
     check_output: Callable[..., str] = subprocess.check_output,
 ) -> dict[str, object]:
     """Preflight one device, then qualify, build, install, launch, and recheck the backend."""
@@ -101,11 +113,13 @@ def run_release_handoff(
             raise RuntimeError(f"{phase} failed with exit code {result.returncode}")
         completed.append(phase)
 
+    apk_sha256 = checksum_reader(APK_CHECKSUM_PATH)
     candidate_identity = {
         "commit_sha": commit,
         "api_base_url": handoff["api_base_url"],
         "application_package": APPLICATION_PACKAGE,
         "build_type": BUILD_TYPE,
+        "apk_sha256": apk_sha256,
     }
 
     return {
@@ -115,6 +129,7 @@ def run_release_handoff(
         "commit": commit,
         "qualification_record": handoff["qualification_record"],
         "artifact_directory": ARTIFACT_DIRECTORY,
+        "apk_sha256": apk_sha256,
         "completed_phases": completed,
         "device_smoke_template": DEVICE_SMOKE_TEMPLATE,
         "device_smoke_prefill": candidate_identity,
@@ -123,7 +138,7 @@ def run_release_handoff(
         "stage3_capture_template": STAGE3_CAPTURE_TEMPLATE,
         "stage3_capture_prefill": candidate_identity,
         "stage3_capture_validation_command": f"python {STAGE3_CAPTURE_VALIDATOR} <PRIVATE_STAGE3_CAPTURE_RECORD.json>",
-        "next_action": "Copy the device-smoke template to a private working location, prefill it with the returned exact release identity, complete the guided gameplay/save-reload/debug/reset route on this same device, validate the private record, generate the privacy-safe summary, then copy the Stage 3 capture template, prefill it with the same returned release identity, add the verified APK checksum and remaining capture evidence, and validate that Stage 3 record before final readiness review.",
+        "next_action": "Copy the device-smoke template to a private working location, prefill it with the returned exact release identity including the APK checksum, complete the guided gameplay/save-reload/debug/reset route on this same device, validate the private record, generate the privacy-safe summary, then copy the Stage 3 capture template, prefill it with the same returned release identity, add the remaining capture evidence, and validate that Stage 3 record before final readiness review.",
     }
 
 
