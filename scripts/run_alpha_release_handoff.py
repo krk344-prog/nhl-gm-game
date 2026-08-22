@@ -23,6 +23,9 @@ STAGE3_CAPTURE_TEMPLATE = "docs/technical_alpha_stage3_capture_record.template.j
 STAGE3_CAPTURE_VALIDATOR = "scripts/validate_alpha_stage3_capture.py"
 ARTIFACT_DIRECTORY = "dist/technical-alpha"
 APK_CHECKSUM_PATH = f"{ARTIFACT_DIRECTORY}/nhl-gm-technical-alpha.apk.sha256"
+PRIVATE_EVIDENCE_DIRECTORY = ".alpha-private"
+DEVICE_SMOKE_PRIVATE_FILENAME = "technical-alpha-device-smoke.json"
+STAGE3_CAPTURE_PRIVATE_FILENAME = "technical-alpha-stage3-capture.json"
 APPLICATION_PACKAGE = "com.krk344.nhlgmgame"
 BUILD_TYPE = "standalone-release-apk"
 
@@ -37,16 +40,33 @@ def _read_apk_checksum(path: str) -> str:
     return digest
 
 
+def _write_prefilled_record(template_path: str, output_path: str, identity: dict[str, object]) -> str:
+    template = json.loads(Path(template_path).read_text(encoding="utf-8"))
+    if not isinstance(template, dict):
+        raise RuntimeError(f"Technical Alpha evidence template is not a JSON object: {template_path}")
+
+    for key, value in identity.items():
+        if key in template:
+            template[key] = value
+
+    destination = Path(output_path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(json.dumps(template, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return str(destination)
+
+
 def run_release_handoff(
     *,
     api_base_url: str | None = None,
     season_id: str = "2026-27",
     timeout: float = 5.0,
     serial: str | None = None,
+    evidence_directory: str | None = None,
     runner: Callable[..., subprocess.CompletedProcess] = subprocess.run,
     record_exists: Callable[[str], bool] = lambda path: Path(path).is_file(),
     artifact_exists: Callable[[str], bool] = lambda path: Path(path).is_dir(),
     checksum_reader: Callable[[str], str] = _read_apk_checksum,
+    evidence_writer: Callable[[str, str, dict[str, object]], str] = _write_prefilled_record,
     check_output: Callable[..., str] = subprocess.check_output,
 ) -> dict[str, object]:
     """Preflight one device, then qualify, build, install, launch, and recheck the backend."""
@@ -114,13 +134,28 @@ def run_release_handoff(
         completed.append(phase)
 
     apk_sha256 = checksum_reader(APK_CHECKSUM_PATH)
-    candidate_identity = {
+    candidate_identity: dict[str, object] = {
         "commit_sha": commit,
         "api_base_url": handoff["api_base_url"],
         "application_package": APPLICATION_PACKAGE,
         "build_type": BUILD_TYPE,
         "apk_sha256": apk_sha256,
     }
+
+    device_smoke_private_record = None
+    stage3_capture_private_record = None
+    if evidence_directory:
+        private_root = Path(evidence_directory)
+        device_smoke_private_record = evidence_writer(
+            DEVICE_SMOKE_TEMPLATE,
+            str(private_root / DEVICE_SMOKE_PRIVATE_FILENAME),
+            candidate_identity,
+        )
+        stage3_capture_private_record = evidence_writer(
+            STAGE3_CAPTURE_TEMPLATE,
+            str(private_root / STAGE3_CAPTURE_PRIVATE_FILENAME),
+            candidate_identity,
+        )
 
     return {
         "ready": True,
@@ -133,12 +168,14 @@ def run_release_handoff(
         "completed_phases": completed,
         "device_smoke_template": DEVICE_SMOKE_TEMPLATE,
         "device_smoke_prefill": candidate_identity,
+        "device_smoke_private_record": device_smoke_private_record,
         "device_smoke_validation_command": f"python {DEVICE_SMOKE_VALIDATOR} <PRIVATE_DEVICE_SMOKE_RECORD.json>",
         "device_smoke_summary_command": f"python {DEVICE_SMOKE_SUMMARIZER} <PRIVATE_DEVICE_SMOKE_RECORD.json>",
         "stage3_capture_template": STAGE3_CAPTURE_TEMPLATE,
         "stage3_capture_prefill": candidate_identity,
+        "stage3_capture_private_record": stage3_capture_private_record,
         "stage3_capture_validation_command": f"python {STAGE3_CAPTURE_VALIDATOR} <PRIVATE_STAGE3_CAPTURE_RECORD.json>",
-        "next_action": "Copy the device-smoke template to a private working location, prefill it with the returned exact release identity including the APK checksum, complete the guided gameplay/save-reload/debug/reset route on this same device, validate the private record, generate the privacy-safe summary, then copy the Stage 3 capture template, prefill it with the same returned release identity, add the remaining capture evidence, and validate that Stage 3 record before final readiness review.",
+        "next_action": "Complete the prefilled private device-smoke record on this same device, validate it, generate the privacy-safe summary, then complete the prefilled Stage 3 capture record with the remaining capture evidence and validate it before final readiness review.",
     }
 
 
@@ -148,6 +185,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--season-id", default="2026-27")
     parser.add_argument("--timeout", type=float, default=5.0)
     parser.add_argument("--serial", help="adb serial to select when multiple authorized Android devices are connected")
+    parser.add_argument(
+        "--evidence-directory",
+        default=PRIVATE_EVIDENCE_DIRECTORY,
+        help="private local directory for prefilled device-smoke and Stage 3 evidence records",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -156,8 +198,9 @@ def main(argv: list[str] | None = None) -> int:
             season_id=args.season_id,
             timeout=args.timeout,
             serial=args.serial,
+            evidence_directory=args.evidence_directory,
         )
-    except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as exc:
+    except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError, json.JSONDecodeError) as exc:
         print(json.dumps({"ready": False, "error": str(exc)}, indent=2))
         return 1
 
