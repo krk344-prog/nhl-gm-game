@@ -29,12 +29,14 @@ class RunAlphaReleaseHandoffTests(unittest.TestCase):
             "build_argv": ["python", "scripts/build_alpha_apk_local.py", "--execute"],
         }
         self.commit = "a" * 40
+        self.apk_sha256 = "b" * 64
 
     def _run(self, runner, **kwargs):
         return module.run_release_handoff(
             runner=runner,
             record_exists=lambda path: True,
             artifact_exists=lambda path: True,
+            checksum_reader=lambda path: self.apk_sha256,
             check_output=lambda *args, **kwargs: self.commit + "\n",
             **kwargs,
         )
@@ -51,6 +53,7 @@ class RunAlphaReleaseHandoffTests(unittest.TestCase):
 
         self.assertTrue(result["ready"])
         self.assertEqual(result["commit"], self.commit)
+        self.assertEqual(result["apk_sha256"], self.apk_sha256)
         self.assertEqual(
             result["completed_phases"],
             ["device_preflight", "qualification", "build", "install", "launch", "backend_recheck"],
@@ -60,6 +63,7 @@ class RunAlphaReleaseHandoffTests(unittest.TestCase):
             "api_base_url": self.handoff["api_base_url"],
             "application_package": module.APPLICATION_PACKAGE,
             "build_type": module.BUILD_TYPE,
+            "apk_sha256": self.apk_sha256,
         }
         self.assertEqual(result["device_smoke_template"], module.DEVICE_SMOKE_TEMPLATE)
         self.assertEqual(result["device_smoke_prefill"], expected_identity)
@@ -80,7 +84,7 @@ class RunAlphaReleaseHandoffTests(unittest.TestCase):
         self.assertIn("private working location", result["next_action"])
         self.assertIn("privacy-safe summary", result["next_action"])
         self.assertIn("same returned release identity", result["next_action"])
-        self.assertIn("verified APK checksum", result["next_action"])
+        self.assertIn("APK checksum", result["next_action"])
         self.assertIn("validate that Stage 3 record", result["next_action"])
         self.assertEqual(calls[0][0], [sys.executable, module.DEVICE_PREFLIGHT_SCRIPT, "--serial", "device-123"])
         self.assertEqual(calls[1][0], self.handoff["qualification_argv"])
@@ -140,6 +144,7 @@ class RunAlphaReleaseHandoffTests(unittest.TestCase):
                     runner=runner,
                     record_exists=lambda path: False,
                     artifact_exists=lambda path: True,
+                    checksum_reader=lambda path: self.apk_sha256,
                     check_output=lambda *args, **kwargs: self.commit + "\n",
                 )
 
@@ -158,6 +163,7 @@ class RunAlphaReleaseHandoffTests(unittest.TestCase):
                     runner=runner,
                     record_exists=lambda path: True,
                     artifact_exists=lambda path: False,
+                    checksum_reader=lambda path: self.apk_sha256,
                     check_output=lambda *args, **kwargs: self.commit + "\n",
                 )
 
@@ -203,6 +209,22 @@ class RunAlphaReleaseHandoffTests(unittest.TestCase):
         with patch.object(module, "prepare_build_handoff", return_value=self.handoff):
             with self.assertRaisesRegex(RuntimeError, "backend_recheck failed with exit code 9"):
                 self._run(runner)
+
+    def test_invalid_apk_checksum_blocks_evidence_handoff(self):
+        def runner(argv, *, check):
+            return SimpleNamespace(returncode=0)
+
+        with patch.object(module, "prepare_build_handoff", return_value=self.handoff):
+            with self.assertRaisesRegex(RuntimeError, "checksum"):
+                module.run_release_handoff(
+                    runner=runner,
+                    record_exists=lambda path: True,
+                    artifact_exists=lambda path: True,
+                    checksum_reader=lambda path: (_ for _ in ()).throw(
+                        RuntimeError("Technical Alpha APK checksum manifest is invalid")
+                    ),
+                    check_output=lambda *args, **kwargs: self.commit + "\n",
+                )
 
 
 if __name__ == "__main__":
