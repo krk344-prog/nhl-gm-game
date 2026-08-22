@@ -20,7 +20,7 @@ spec.loader.exec_module(module)
 
 
 class AlphaReleaseHandoffPrefillTests(unittest.TestCase):
-    def test_returns_exact_identity_for_private_device_smoke_prefill(self):
+    def test_returns_exact_identity_and_writes_private_evidence_prefills(self):
         handoff = {
             "api_base_url": "http://192.168.1.20:8000/api/v1",
             "season_id": "2026-27",
@@ -30,9 +30,14 @@ class AlphaReleaseHandoffPrefillTests(unittest.TestCase):
         }
         commit = "b" * 40
         apk_sha256 = "c" * 64
+        writes = []
 
         def runner(argv, *, check):
             return SimpleNamespace(returncode=0)
+
+        def evidence_writer(template_path, output_path, identity):
+            writes.append((template_path, output_path, dict(identity)))
+            return output_path
 
         with patch.object(module, "prepare_build_handoff", return_value=handoff):
             result = module.run_release_handoff(
@@ -40,22 +45,39 @@ class AlphaReleaseHandoffPrefillTests(unittest.TestCase):
                 record_exists=lambda path: True,
                 artifact_exists=lambda path: True,
                 checksum_reader=lambda path: apk_sha256,
+                evidence_directory=".alpha-private-test",
+                evidence_writer=evidence_writer,
                 check_output=lambda *args, **kwargs: commit + "\n",
             )
 
+        expected_identity = {
+            "commit_sha": commit,
+            "api_base_url": handoff["api_base_url"],
+            "application_package": "com.krk344.nhlgmgame",
+            "build_type": "standalone-release-apk",
+            "apk_sha256": apk_sha256,
+        }
+        self.assertEqual(result["device_smoke_prefill"], expected_identity)
+        self.assertEqual(result["stage3_capture_prefill"], expected_identity)
+        self.assertEqual(result["device_smoke_private_record"], ".alpha-private-test/technical-alpha-device-smoke.json")
+        self.assertEqual(result["stage3_capture_private_record"], ".alpha-private-test/technical-alpha-stage3-capture.json")
         self.assertEqual(
-            result["device_smoke_prefill"],
-            {
-                "commit_sha": commit,
-                "api_base_url": handoff["api_base_url"],
-                "application_package": "com.krk344.nhlgmgame",
-                "build_type": "standalone-release-apk",
-                "apk_sha256": apk_sha256,
-            },
+            writes,
+            [
+                (
+                    module.DEVICE_SMOKE_TEMPLATE,
+                    ".alpha-private-test/technical-alpha-device-smoke.json",
+                    expected_identity,
+                ),
+                (
+                    module.STAGE3_CAPTURE_TEMPLATE,
+                    ".alpha-private-test/technical-alpha-stage3-capture.json",
+                    expected_identity,
+                ),
+            ],
         )
-        self.assertEqual(result["stage3_capture_prefill"], result["device_smoke_prefill"])
-        self.assertIn("returned exact release identity", result["next_action"])
-        self.assertIn("APK checksum", result["next_action"])
+        self.assertIn("prefilled private device-smoke record", result["next_action"])
+        self.assertIn("prefilled Stage 3 capture record", result["next_action"])
 
 
 if __name__ == "__main__":
