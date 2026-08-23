@@ -28,6 +28,19 @@ DEVICE_SMOKE_PRIVATE_FILENAME = "technical-alpha-device-smoke.json"
 STAGE3_CAPTURE_PRIVATE_FILENAME = "technical-alpha-stage3-capture.json"
 APPLICATION_PACKAGE = "com.krk344.nhlgmgame"
 BUILD_TYPE = "standalone-release-apk"
+DEVICE_SMOKE_ROUTE = [
+    "New Game",
+    "Select Franchise",
+    "Advance Day",
+    "Roster",
+    "Standings",
+    "Trade",
+    "Trade History",
+    "Save",
+    "Reload",
+    "Generate Debug Report",
+    "Reset",
+]
 
 
 def _read_apk_checksum(path: str) -> str:
@@ -191,6 +204,7 @@ def run_release_handoff(
         "artifact_directory": ARTIFACT_DIRECTORY,
         "apk_sha256": apk_sha256,
         "completed_phases": completed,
+        "device_smoke_route": list(DEVICE_SMOKE_ROUTE),
         "device_smoke_template": DEVICE_SMOKE_TEMPLATE,
         "device_smoke_prefill": candidate_identity,
         "device_smoke_private_record": device_smoke_private_record,
@@ -200,7 +214,7 @@ def run_release_handoff(
         "stage3_capture_prefill": candidate_identity,
         "stage3_capture_private_record": stage3_capture_private_record,
         "stage3_capture_validation_command": f"python {STAGE3_CAPTURE_VALIDATOR} <PRIVATE_STAGE3_CAPTURE_RECORD.json>",
-        "next_action": "Complete the prefilled private device-smoke record on this same device, validate it, generate the privacy-safe summary, then complete the prefilled Stage 3 capture record with the remaining capture evidence and validate it before final readiness review.",
+        "next_action": "Follow device_smoke_route in order on this same device, complete the prefilled private device-smoke record, validate it, generate the privacy-safe summary, then complete the prefilled Stage 3 capture record with the remaining capture evidence and validate it before final readiness review.",
     }
 
 
