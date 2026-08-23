@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -116,6 +118,26 @@ class RunAlphaReleaseHandoffTests(unittest.TestCase):
                 "5.0",
             ],
         )
+
+    def test_prefilled_record_fails_closed_when_template_omits_release_identity(self):
+        identity = {
+            "commit_sha": self.commit,
+            "api_base_url": self.handoff["api_base_url"],
+            "application_package": module.APPLICATION_PACKAGE,
+            "build_type": module.BUILD_TYPE,
+            "apk_sha256": self.apk_sha256,
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            template = Path(tmpdir) / "template.json"
+            output = Path(tmpdir) / "evidence.json"
+            incomplete = dict(identity)
+            incomplete.pop("apk_sha256")
+            template.write_text(json.dumps(incomplete), encoding="utf-8")
+
+            with self.assertRaisesRegex(RuntimeError, "missing required release identity fields: apk_sha256"):
+                module._write_prefilled_record(str(template), str(output), identity)
+
+            self.assertFalse(output.exists())
 
     def test_failed_device_preflight_stops_before_endpoint_preparation_or_qualification(self):
         calls = []
