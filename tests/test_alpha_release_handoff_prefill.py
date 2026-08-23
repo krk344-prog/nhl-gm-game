@@ -50,6 +50,19 @@ class AlphaReleaseHandoffPrefillTests(unittest.TestCase):
             "build_type": "standalone-release-apk",
             "apk_sha256": apk_sha256,
         }
+        expected_route = [
+            "New Game",
+            "Select Franchise",
+            "Advance Day",
+            "Roster",
+            "Standings",
+            "Trade",
+            "Trade History",
+            "Save",
+            "Reload",
+            "Generate Debug Report",
+            "Reset",
+        ]
 
         with tempfile.TemporaryDirectory() as tmpdir:
             private_root = Path(tmpdir) / "alpha-private-test"
@@ -71,6 +84,7 @@ class AlphaReleaseHandoffPrefillTests(unittest.TestCase):
 
             self.assertEqual(result["device_smoke_prefill"], expected_identity)
             self.assertEqual(result["stage3_capture_prefill"], expected_identity)
+            self.assertEqual(result["device_smoke_route"], expected_route)
             self.assertEqual(result["device_smoke_private_record"], str(device_path))
             self.assertEqual(result["stage3_capture_private_record"], str(stage3_path))
             self.assertTrue(device_path.is_file())
@@ -92,6 +106,7 @@ class AlphaReleaseHandoffPrefillTests(unittest.TestCase):
                     ),
                 ],
             )
+            self.assertIn("device_smoke_route", result["next_action"])
             self.assertIn("prefilled private device-smoke record", result["next_action"])
             self.assertIn("prefilled Stage 3 capture record", result["next_action"])
 
