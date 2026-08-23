@@ -22,10 +22,8 @@ spec.loader.exec_module(module)
 
 
 class AlphaReleaseHandoffPrivateEvidenceTests(unittest.TestCase):
-    def test_private_evidence_records_are_written_under_requested_root_with_exact_identity(self):
-        commit = "a" * 40
-        apk_sha256 = "b" * 64
-        handoff = {
+    def _handoff(self):
+        return {
             "api_base_url": "http://192.168.1.20:8000/api/v1",
             "season_id": "2026-27",
             "qualification_record": "artifacts/alpha-endpoint-qualification.json",
@@ -33,8 +31,14 @@ class AlphaReleaseHandoffPrivateEvidenceTests(unittest.TestCase):
             "build_argv": ["python", "scripts/build_alpha_apk_local.py", "--execute"],
         }
 
-        def runner(argv, *, check):
-            return SimpleNamespace(returncode=0)
+    @staticmethod
+    def _runner(argv, *, check):
+        return SimpleNamespace(returncode=0)
+
+    def test_private_evidence_records_are_written_under_requested_root_with_exact_identity(self):
+        commit = "a" * 40
+        apk_sha256 = "b" * 64
+        handoff = self._handoff()
 
         with tempfile.TemporaryDirectory() as tmpdir:
             private_root = Path(tmpdir) / "alpha-private"
@@ -57,7 +61,7 @@ class AlphaReleaseHandoffPrivateEvidenceTests(unittest.TestCase):
             ):
                 result = module.run_release_handoff(
                     evidence_directory=str(private_root),
-                    runner=runner,
+                    runner=self._runner,
                     record_exists=lambda path: True,
                     artifact_exists=lambda path: True,
                     checksum_reader=lambda path: apk_sha256,
@@ -80,6 +84,45 @@ class AlphaReleaseHandoffPrivateEvidenceTests(unittest.TestCase):
             self.assertEqual(json.loads(stage3_path.read_text(encoding="utf-8")), expected_identity)
             self.assertTrue(device_path.is_relative_to(private_root))
             self.assertTrue(stage3_path.is_relative_to(private_root))
+
+    def test_stage3_template_failure_does_not_leave_partial_private_evidence(self):
+        commit = "a" * 40
+        apk_sha256 = "b" * 64
+        handoff = self._handoff()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            private_root = Path(tmpdir) / "alpha-private"
+            device_template = Path(tmpdir) / "device-template.json"
+            stage3_template = Path(tmpdir) / "stage3-template.json"
+            complete_template = {
+                "commit_sha": "",
+                "api_base_url": "",
+                "application_package": "",
+                "build_type": "",
+                "apk_sha256": "",
+            }
+            incomplete_stage3_template = dict(complete_template)
+            incomplete_stage3_template.pop("apk_sha256")
+            device_template.write_text(json.dumps(complete_template), encoding="utf-8")
+            stage3_template.write_text(json.dumps(incomplete_stage3_template), encoding="utf-8")
+
+            with (
+                patch.object(module, "prepare_build_handoff", return_value=handoff),
+                patch.object(module, "DEVICE_SMOKE_TEMPLATE", str(device_template)),
+                patch.object(module, "STAGE3_CAPTURE_TEMPLATE", str(stage3_template)),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "missing required release identity fields"):
+                    module.run_release_handoff(
+                        evidence_directory=str(private_root),
+                        runner=self._runner,
+                        record_exists=lambda path: True,
+                        artifact_exists=lambda path: True,
+                        checksum_reader=lambda path: apk_sha256,
+                        check_output=lambda *args, **kwargs: commit + "\n",
+                    )
+
+            self.assertFalse((private_root / module.DEVICE_SMOKE_PRIVATE_FILENAME).exists())
+            self.assertFalse((private_root / module.STAGE3_CAPTURE_PRIVATE_FILENAME).exists())
 
 
 if __name__ == "__main__":
