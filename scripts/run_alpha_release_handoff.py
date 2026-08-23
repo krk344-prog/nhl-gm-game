@@ -61,6 +61,33 @@ def _write_prefilled_record(template_path: str, output_path: str, identity: dict
     return str(destination)
 
 
+def _write_private_evidence_pair(
+    private_root: Path,
+    identity: dict[str, object],
+    evidence_writer: Callable[[str, str, dict[str, object]], str],
+) -> tuple[str, str]:
+    """Create both private records as one handoff; never leave one canonical record alone."""
+    private_root.mkdir(parents=True, exist_ok=True)
+    device_path = private_root / DEVICE_SMOKE_PRIVATE_FILENAME
+    stage3_path = private_root / STAGE3_CAPTURE_PRIVATE_FILENAME
+    device_tmp = private_root / f".{DEVICE_SMOKE_PRIVATE_FILENAME}.tmp"
+    stage3_tmp = private_root / f".{STAGE3_CAPTURE_PRIVATE_FILENAME}.tmp"
+
+    try:
+        evidence_writer(DEVICE_SMOKE_TEMPLATE, str(device_tmp), identity)
+        evidence_writer(STAGE3_CAPTURE_TEMPLATE, str(stage3_tmp), identity)
+        device_tmp.replace(device_path)
+        stage3_tmp.replace(stage3_path)
+    except Exception:
+        device_tmp.unlink(missing_ok=True)
+        stage3_tmp.unlink(missing_ok=True)
+        device_path.unlink(missing_ok=True)
+        stage3_path.unlink(missing_ok=True)
+        raise
+
+    return str(device_path), str(stage3_path)
+
+
 def run_release_handoff(
     *,
     api_base_url: str | None = None,
@@ -151,16 +178,8 @@ def run_release_handoff(
     device_smoke_private_record = None
     stage3_capture_private_record = None
     if evidence_directory:
-        private_root = Path(evidence_directory)
-        device_smoke_private_record = evidence_writer(
-            DEVICE_SMOKE_TEMPLATE,
-            str(private_root / DEVICE_SMOKE_PRIVATE_FILENAME),
-            candidate_identity,
-        )
-        stage3_capture_private_record = evidence_writer(
-            STAGE3_CAPTURE_TEMPLATE,
-            str(private_root / STAGE3_CAPTURE_PRIVATE_FILENAME),
-            candidate_identity,
+        device_smoke_private_record, stage3_capture_private_record = _write_private_evidence_pair(
+            Path(evidence_directory), candidate_identity, evidence_writer
         )
 
     return {
