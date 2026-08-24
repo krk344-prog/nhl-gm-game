@@ -29,12 +29,18 @@ class TechnicalAlphaPilotGuideTests(unittest.TestCase):
         for term in (
             "exact build commit", "backend status", "Start Test",
             "franchise selection", "advance day", "roster", "standings",
-            "trade", "save", "reload", "debug report", "reset",
+            "trade, Trade History, save", "reload", "debug report", "reset",
             "private bug-report destination", "360-pixel mobile viewport",
             "UI Review Pending",
         ):
             with self.subTest(term=term):
                 self.assertIn(term, self.guide)
+
+    def test_facilitator_readiness_includes_trade_history(self) -> None:
+        self.assertIn(
+            "New Game, franchise selection, advance day, roster, standings, trade, Trade History, save, reload, debug report, and reset have passed.",
+            self.guide,
+        )
 
     def test_core_smoke_route_and_privacy_controls_are_documented(self) -> None:
         lowered = self.guide.lower()
