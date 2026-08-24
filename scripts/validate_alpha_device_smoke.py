@@ -33,6 +33,7 @@ REQUIRED_TRUE_FIELDS = (
     "roster_passed",
     "standings_passed",
     "trade_passed",
+    "trade_history_passed",
     "save_reload_passed",
     "debug_report_passed",
     "reset_passed",
