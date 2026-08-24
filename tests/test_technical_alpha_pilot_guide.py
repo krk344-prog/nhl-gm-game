@@ -36,6 +36,15 @@ class TechnicalAlphaPilotGuideTests(unittest.TestCase):
             with self.subTest(term=term):
                 self.assertIn(term, self.guide)
 
+    def test_launch_handoff_blocks_start_when_backend_is_not_ready(self) -> None:
+        for term in (
+            "`Start Test` must be enabled only when backend status is `Ready`",
+            "for `Unavailable` or `Maintenance`, keep the action visibly disabled",
+            "show the stop/retry instruction beside it",
+        ):
+            with self.subTest(term=term):
+                self.assertIn(term, self.guide)
+
     def test_facilitator_readiness_includes_trade_history(self) -> None:
         self.assertIn(
             "New Game, franchise selection, advance day, roster, standings, trade, Trade History, save, reload, debug report, and reset have passed.",
