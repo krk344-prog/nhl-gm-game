@@ -45,6 +45,16 @@ class TechnicalAlphaPilotGuideTests(unittest.TestCase):
             with self.subTest(term=term):
                 self.assertIn(term, self.guide)
 
+    def test_physical_smoke_requires_ready_launch_card(self) -> None:
+        for term in (
+            "Before beginning gameplay, verify the tester launch handoff card reports backend status `Ready`",
+            "`Start Test` is enabled",
+            "If the card reports `Unavailable` or `Maintenance`, stop the session",
+            "Do not record gameplay smoke against a launch card that was not in the `Ready` state",
+        ):
+            with self.subTest(term=term):
+                self.assertIn(term, self.guide)
+
     def test_facilitator_readiness_includes_trade_history(self) -> None:
         self.assertIn(
             "New Game, franchise selection, advance day, roster, standings, trade, Trade History, save, reload, debug report, and reset have passed.",
