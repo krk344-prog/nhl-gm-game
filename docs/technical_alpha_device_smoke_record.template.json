@@ -17,6 +17,7 @@
   "roster_passed": false,
   "standings_passed": false,
   "trade_passed": false,
+  "trade_history_passed": false,
   "save_reload_passed": false,
   "debug_report_passed": false,
   "reset_passed": false,
