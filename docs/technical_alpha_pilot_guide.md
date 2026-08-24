@@ -19,7 +19,7 @@ Before a tester starts, the facilitator must provide one compact launch handoff 
 - the exact build commit and package filename or URL;
 - backend status as `Ready`, `Unavailable`, or `Maintenance`, using text as well as any color;
 - the supported network requirement and a stop instruction when the backend is unavailable;
-- the required guided route: New Game, franchise selection, advance day, roster, standings, trade, save, reload, debug report, and reset;
+- the required guided route: New Game, franchise selection, advance day, roster, standings, trade, Trade History, save, reload, debug report, and reset;
 - the eight-team/82-game fictional-league disclosure and the most important known limitation;
 - the private bug-report destination and the information testers must not post publicly.
 
@@ -32,7 +32,7 @@ Do not distribute the build until all of the following are true:
 1. The exact package has a version identifier and commit SHA.
 2. The API and application use the supported integrated launch path.
 3. A clean-install smoke test has passed on the same package testers will receive.
-4. New Game, franchise selection, advance day, roster, standings, trade, save, reload, debug report, and reset have passed.
+4. New Game, franchise selection, advance day, roster, standings, trade, Trade History, save, reload, debug report, and reset have passed.
 5. Known limitations and issue-report instructions are included with the build.
 6. A private channel exists for save files or personally identifying device information.
 
