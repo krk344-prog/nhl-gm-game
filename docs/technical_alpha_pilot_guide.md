@@ -23,7 +23,7 @@ Before a tester starts, the facilitator must provide one compact launch handoff 
 - the eight-team/82-game fictional-league disclosure and the most important known limitation;
 - the private bug-report destination and the information testers must not post publicly.
 
-The card must fit without horizontal scrolling at a 360-pixel mobile viewport, keep the primary `Start Test` action visible, and expose build identity before franchise selection. Implemented launch screens remain `UI Review Pending` until Kyle approves Stage 3 evidence.
+The card must fit without horizontal scrolling at a 360-pixel mobile viewport, keep the primary `Start Test` action visible, and expose build identity before franchise selection. `Start Test` must be enabled only when backend status is `Ready`; for `Unavailable` or `Maintenance`, keep the action visibly disabled and show the stop/retry instruction beside it so a tester cannot enter a known-broken session. Implemented launch screens remain `UI Review Pending` until Kyle approves Stage 3 evidence.
 
 ## Facilitator readiness check
 
