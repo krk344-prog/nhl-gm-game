@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from scripts.validate_alpha_device_smoke import validate_record as validate_device_record
 from scripts.validate_alpha_first_session_observation import validate_observation
 
 APPLICATION_PACKAGE = "com.krk344.nhlgmgame"
@@ -55,6 +56,11 @@ def validate(
     first_session: dict[str, Any],
 ) -> list[str]:
     errors: list[str] = []
+
+    # Re-run the authoritative physical-device validator at the final approval gate.
+    # This prevents stale, malformed, non-release, or unreachable-endpoint device
+    # evidence from becoming approval-ready merely because its identity still matches.
+    errors.extend(f"device:{error}" for error in validate_device_record(device))
 
     for field in DEVICE_PASSES:
         if device.get(field) is not True:
