@@ -1,4 +1,5 @@
 import unittest
+from datetime import datetime, timezone
 
 from scripts.validate_alpha_pilot_readiness import DEVICE_PASSES, validate
 
@@ -10,6 +11,10 @@ class AlphaPilotReadinessValidatorTests(unittest.TestCase):
             "apk_sha256": "b" * 64,
             "application_package": "com.krk344.nhlgmgame",
             "api_base_url": "http://192.168.1.25:8000/api/v1",
+            "build_type": "standalone-release-apk",
+            "device_model": "Pixel Test Device",
+            "android_version": "16",
+            "tested_at": datetime.now(timezone.utc).isoformat(),
             "blockers": [],
         }
         record.update({field: True for field in DEVICE_PASSES})
@@ -63,6 +68,14 @@ class AlphaPilotReadinessValidatorTests(unittest.TestCase):
     def test_matching_complete_evidence_is_ready_for_approval(self):
         self.assertEqual(
             [], validate(self._device(), self._stage3(), self._first_session())
+        )
+
+    def test_stale_device_evidence_blocks_final_readiness(self):
+        device = self._device()
+        device["tested_at"] = "2026-01-01T00:00:00+00:00"
+        self.assertIn(
+            "device:stale:tested_at",
+            validate(device, self._stage3(), self._first_session()),
         )
 
     def test_package_identity_mismatch_blocks(self):
