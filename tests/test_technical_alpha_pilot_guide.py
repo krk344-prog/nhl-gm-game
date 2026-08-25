@@ -79,6 +79,16 @@ class TechnicalAlphaPilotGuideTests(unittest.TestCase):
             with self.subTest(term=term):
                 self.assertIn(term, self.guide)
 
+    def test_guided_route_explicitly_exercises_save_then_reload(self) -> None:
+        for term in (
+            "Complete the route in order on the same installed package",
+            "human execution of the physical-device smoke gate",
+            "Save the current game state, close the application, and restart the API/application",
+            "Reload the saved game and confirm the selected franchise, current day, results, standings, and trade history persist",
+        ):
+            with self.subTest(term=term):
+                self.assertIn(term, self.guide)
+
     def test_configured_apk_procedure_uses_verified_local_build_handoff(self) -> None:
         for term in (
             "python scripts/prepare_alpha_build.py --season-id 2026-27",
