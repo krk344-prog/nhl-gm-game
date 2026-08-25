@@ -113,6 +113,14 @@ class AlphaPilotReadinessValidatorTests(unittest.TestCase):
         self.assertIn("device_not_passed:trade_passed", errors)
         self.assertIn("stage3_major_defects_present", errors)
 
+    def test_failed_trade_history_blocks_final_readiness(self):
+        device = self._device()
+        device["trade_history_passed"] = False
+        self.assertIn(
+            "device_not_passed:trade_history_passed",
+            validate(device, self._stage3(), self._first_session()),
+        )
+
     def test_coached_or_incomplete_first_session_blocks(self):
         first_session = self._first_session()
         first_session["observation"][
