@@ -25,6 +25,7 @@ DEVICE_PASSES = (
     "roster_passed",
     "standings_passed",
     "trade_passed",
+    "trade_history_passed",
     "save_reload_passed",
     "debug_report_passed",
     "reset_passed",
@@ -118,27 +119,33 @@ def main() -> int:
     parser.add_argument("first_session_record", type=Path)
     args = parser.parse_args()
 
-    device, device_errors = _load(args.device_record, "device_record")
-    stage3, stage3_errors = _load(args.stage3_record, "stage3_record")
-    first_session, first_session_errors = _load(
-        args.first_session_record, "first_session_record"
-    )
-    errors = device_errors + stage3_errors + first_session_errors
-    if device is not None and stage3 is not None and first_session is not None:
-        errors.extend(validate(device, stage3, first_session))
+    device, device_errors = _load(args.device_record, "device")
+    stage3, stage3_errors = _load(args.stage3_record, "stage3")
+    first_session, first_session_errors = _load(args.first_session_record, "first_session")
+    load_errors = device_errors + stage3_errors + first_session_errors
+    if load_errors:
+        print(json.dumps({"ready_for_kyle_approval": False, "errors": load_errors}, indent=2))
+        return 2
 
-    status = "ready_for_kyle_approval" if not errors else "block"
-    print(json.dumps({
-        "status": status,
-        "errors": errors,
-        "commit_sha": stage3.get("commit_sha") if stage3 else None,
-        "apk_sha256": stage3.get("apk_sha256") if stage3 else None,
-        "application_package": stage3.get("application_package") if stage3 else None,
-        "api_base_url": stage3.get("api_base_url") if stage3 else None,
-        "first_session_evidence_required": True,
-        "pilot_started": False,
-        "merge_authorized": False,
-    }, indent=2, sort_keys=True))
+    assert device is not None and stage3 is not None and first_session is not None
+    errors = validate(device, stage3, first_session)
+    print(
+        json.dumps(
+            {
+                "ready_for_kyle_approval": not errors,
+                "errors": errors,
+                "merge_authorized": False,
+                "pilot_authorized": False,
+                "next_action": (
+                    "Request Kyle approval; do not merge or start the pilot yet."
+                    if not errors
+                    else "Close every listed evidence gap before requesting Kyle approval."
+                ),
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
     return 0 if not errors else 1
 
 
