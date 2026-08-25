@@ -75,7 +75,7 @@ Use only the installation package supplied by the facilitator. Record its commit
 
 ## Guided test route
 
-Complete the route in order. Stop and report a blocker when a required step cannot be completed.
+Complete the route in order on the same installed package. Stop and report a blocker when a required step cannot be completed. This tester route is the human execution of the physical-device smoke gate; do not substitute a shorter exploratory path when recording release evidence.
 
 1. Launch the application and confirm the Technical Alpha disclosure is visible or supplied with the build.
 2. Confirm eight fictional franchises are available.
@@ -85,8 +85,8 @@ Complete the route in order. Stop and report a blocker when a required step cann
 6. Filter the roster by forwards, defense, and goaltenders.
 7. Open Trade Center, choose a trade partner, and submit one likely accepted and one likely rejected proposal.
 8. Confirm both proposals appear in Trade History.
-9. Close the application and restart the API/application.
-10. Confirm the selected franchise, current day, results, standings, and trade history persist.
+9. Save the current game state, close the application, and restart the API/application.
+10. Reload the saved game and confirm the selected franchise, current day, results, standings, and trade history persist.
 11. Generate the debug report.
 12. Use New Game / Reset Save and confirm the game returns to Day 1 only after confirmation.
 
