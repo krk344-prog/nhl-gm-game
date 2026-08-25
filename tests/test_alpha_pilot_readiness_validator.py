@@ -102,6 +102,14 @@ class AlphaPilotReadinessValidatorTests(unittest.TestCase):
             validate(self._device(), stage3, self._first_session()),
         )
 
+    def test_stage3_non_release_build_blocks_final_readiness(self):
+        stage3 = self._stage3()
+        stage3["build_type"] = "debug"
+        self.assertIn(
+            "invalid:build_type",
+            validate(self._device(), stage3, self._first_session()),
+        )
+
     def test_matching_but_malformed_hashes_block(self):
         device = self._device()
         stage3 = self._stage3()
