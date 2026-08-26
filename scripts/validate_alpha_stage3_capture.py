@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -60,6 +60,7 @@ REQUIRED_TEXT = (
     "route_result_reference",
     "captured_at",
 )
+MAX_EVIDENCE_AGE = timedelta(days=7)
 
 
 def _blank(value: Any) -> bool:
@@ -85,20 +86,22 @@ def _valid_api_base_url(value: Any) -> bool:
     return True
 
 
-def _valid_utc_timestamp(value: Any) -> bool:
+def _parse_utc_timestamp(value: Any) -> datetime | None:
     if _blank(value):
-        return False
+        return None
     text = value.strip()
     if not text.endswith("Z"):
-        return False
+        return None
     try:
         parsed = datetime.fromisoformat(text[:-1] + "+00:00")
     except ValueError:
-        return False
-    return parsed.tzinfo is not None and parsed.utcoffset() == timezone.utc.utcoffset(parsed)
+        return None
+    if parsed.tzinfo is None or parsed.utcoffset() != timezone.utc.utcoffset(parsed):
+        return None
+    return parsed.astimezone(timezone.utc)
 
 
-def validate_record(record: dict[str, Any]) -> list[str]:
+def validate_record(record: dict[str, Any], *, now: datetime | None = None) -> list[str]:
     errors: list[str] = []
 
     if record.get("schema_version") != 1:
@@ -125,8 +128,16 @@ def validate_record(record: dict[str, Any]) -> list[str]:
         errors.append("invalid:api_base_url")
 
     captured_at = record.get("captured_at")
-    if not _blank(captured_at) and not _valid_utc_timestamp(captured_at):
-        errors.append("invalid:captured_at")
+    if not _blank(captured_at):
+        parsed_captured_at = _parse_utc_timestamp(captured_at)
+        if parsed_captured_at is None:
+            errors.append("invalid:captured_at")
+        else:
+            now_utc = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+            if parsed_captured_at > now_utc:
+                errors.append("future:captured_at")
+            elif now_utc - parsed_captured_at > MAX_EVIDENCE_AGE:
+                errors.append("stale:captured_at")
 
     if record.get("application_package") != "com.krk344.nhlgmgame":
         errors.append("invalid:application_package")
