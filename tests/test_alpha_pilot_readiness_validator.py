@@ -1,7 +1,12 @@
+import json
 import unittest
 from datetime import datetime, timezone
+from pathlib import Path
 
 from scripts.validate_alpha_pilot_readiness import DEVICE_PASSES, validate
+
+
+STAGE3_TEMPLATE_PATH = Path("docs/technical_alpha_stage3_capture_record.template.json")
 
 
 class AlphaPilotReadinessValidatorTests(unittest.TestCase):
@@ -21,16 +26,27 @@ class AlphaPilotReadinessValidatorTests(unittest.TestCase):
         return record
 
     def _stage3(self):
-        return {
-            "commit_sha": "a" * 40,
-            "apk_sha256": "b" * 64,
-            "application_package": "com.krk344.nhlgmgame",
-            "api_base_url": "http://192.168.1.25:8000/api/v1",
-            "build_type": "standalone-release-apk",
-            "stage3_decision": "COMPLETE_UI_REVIEW_PENDING",
-            "blockers": [],
-            "open_major_defects": [],
-        }
+        record = json.loads(STAGE3_TEMPLATE_PATH.read_text(encoding="utf-8"))
+        record.update(
+            commit_sha="a" * 40,
+            apk_sha256="b" * 64,
+            api_base_url="http://192.168.1.25:8000/api/v1",
+            endpoint_class="private_lan",
+            anonymous_tester_id="tester-01",
+            route_result_reference="private/session-01.json",
+            captured_at=datetime.now(timezone.utc).isoformat(),
+            stage3_decision="COMPLETE_UI_REVIEW_PENDING",
+        )
+        for field in record["preconditions"]:
+            record["preconditions"][field] = True
+        for capture_id, capture in record["captures"].items():
+            capture["result"] = "PASS"
+            capture["private_reference"] = f"private/{capture_id}.png"
+        for field in record["ui_checks"]:
+            record["ui_checks"][field] = True
+        for field in record["sign_off"]:
+            record["sign_off"][field] = "reviewer"
+        return record
 
     def _first_session(self):
         return {
@@ -78,6 +94,14 @@ class AlphaPilotReadinessValidatorTests(unittest.TestCase):
             validate(device, self._stage3(), self._first_session()),
         )
 
+    def test_incomplete_stage3_capture_blocks_final_readiness(self):
+        stage3 = self._stage3()
+        del stage3["captures"]["S3-09"]
+        self.assertIn(
+            "stage3:missing:capture.S3-09",
+            validate(self._device(), stage3, self._first_session()),
+        )
+
     def test_package_identity_mismatch_blocks(self):
         first_session = self._first_session()
         first_session["package_identity"]["apk_sha256"] = "c" * 64
@@ -105,10 +129,9 @@ class AlphaPilotReadinessValidatorTests(unittest.TestCase):
     def test_stage3_non_release_build_blocks_final_readiness(self):
         stage3 = self._stage3()
         stage3["build_type"] = "debug"
-        self.assertIn(
-            "invalid:build_type",
-            validate(self._device(), stage3, self._first_session()),
-        )
+        errors = validate(self._device(), stage3, self._first_session())
+        self.assertIn("stage3:invalid:build_type", errors)
+        self.assertIn("invalid:build_type", errors)
 
     def test_matching_but_malformed_hashes_block(self):
         device = self._device()
