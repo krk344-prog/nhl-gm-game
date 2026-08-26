@@ -44,6 +44,18 @@ class AlphaStage3CaptureValidatorTests(unittest.TestCase):
         record["api_base_url"] = ""
         self.assertIn("missing_or_blank:api_base_url", validate_record(record))
 
+    def test_non_authoritative_or_unsafe_api_endpoint_blocks(self) -> None:
+        for endpoint in (
+            "http://192.168.1.25:8000/health",
+            "http://127.0.0.1:8000/api/v1",
+            "http://tester:secret@192.168.1.25:8000/api/v1",
+            "http://192.168.1.25:8000/api/v1?debug=1",
+        ):
+            with self.subTest(endpoint=endpoint):
+                record = passing_record()
+                record["api_base_url"] = endpoint
+                self.assertIn("invalid:api_base_url", validate_record(record))
+
     def test_missing_non_ideal_capture_blocks(self) -> None:
         record = passing_record()
         del record["captures"]["S3-09"]
