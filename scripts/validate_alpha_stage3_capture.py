@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -84,6 +85,19 @@ def _valid_api_base_url(value: Any) -> bool:
     return True
 
 
+def _valid_utc_timestamp(value: Any) -> bool:
+    if _blank(value):
+        return False
+    text = value.strip()
+    if not text.endswith("Z"):
+        return False
+    try:
+        parsed = datetime.fromisoformat(text[:-1] + "+00:00")
+    except ValueError:
+        return False
+    return parsed.tzinfo is not None and parsed.utcoffset() == timezone.utc.utcoffset(parsed)
+
+
 def validate_record(record: dict[str, Any]) -> list[str]:
     errors: list[str] = []
 
@@ -109,6 +123,10 @@ def validate_record(record: dict[str, Any]) -> list[str]:
     api_base_url = record.get("api_base_url")
     if not _blank(api_base_url) and not _valid_api_base_url(api_base_url):
         errors.append("invalid:api_base_url")
+
+    captured_at = record.get("captured_at")
+    if not _blank(captured_at) and not _valid_utc_timestamp(captured_at):
+        errors.append("invalid:captured_at")
 
     if record.get("application_package") != "com.krk344.nhlgmgame":
         errors.append("invalid:application_package")
