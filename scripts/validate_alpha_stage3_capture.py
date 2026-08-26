@@ -8,6 +8,7 @@ import json
 import sys
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 REQUIRED_CAPTURES = {
     "S3-01": "launch_or_connection",
@@ -64,6 +65,25 @@ def _blank(value: Any) -> bool:
     return not isinstance(value, str) or not value.strip()
 
 
+def _valid_api_base_url(value: Any) -> bool:
+    if _blank(value):
+        return False
+    try:
+        parsed = urlsplit(value.strip())
+    except ValueError:
+        return False
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        return False
+    if parsed.username is not None or parsed.password is not None:
+        return False
+    if parsed.query or parsed.fragment or parsed.path.rstrip("/") != "/api/v1":
+        return False
+    host = parsed.hostname.lower()
+    if host == "localhost" or host == "0.0.0.0" or host == "::1" or host.startswith("127."):
+        return False
+    return True
+
+
 def validate_record(record: dict[str, Any]) -> list[str]:
     errors: list[str] = []
 
@@ -85,6 +105,10 @@ def validate_record(record: dict[str, Any]) -> list[str]:
         normalized = apk_sha256.strip().lower()
         if len(normalized) != 64 or any(ch not in "0123456789abcdef" for ch in normalized):
             errors.append("invalid:apk_sha256")
+
+    api_base_url = record.get("api_base_url")
+    if not _blank(api_base_url) and not _valid_api_base_url(api_base_url):
+        errors.append("invalid:api_base_url")
 
     if record.get("application_package") != "com.krk344.nhlgmgame":
         errors.append("invalid:application_package")
