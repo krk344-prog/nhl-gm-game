@@ -12,6 +12,7 @@ from typing import Any
 
 from scripts.validate_alpha_device_smoke import validate_record as validate_device_record
 from scripts.validate_alpha_first_session_observation import validate_observation
+from scripts.validate_alpha_stage3_capture import validate_record as validate_stage3_record
 
 APPLICATION_PACKAGE = "com.krk344.nhlgmgame"
 
@@ -68,6 +69,12 @@ def validate(
 
     if device.get("blockers") not in (None, []):
         errors.append("device_blockers_present")
+
+    # Re-run the authoritative Stage 3 validator at the final approval gate rather
+    # than trusting only its top-level decision and identity fields. This keeps the
+    # required captures, preconditions, UI checks, privacy boundary, and sign-offs
+    # fail-closed during the final reconciliation step.
+    errors.extend(f"stage3:{error}" for error in validate_stage3_record(stage3))
 
     if stage3.get("stage3_decision") != "COMPLETE_UI_REVIEW_PENDING":
         errors.append("stage3_not_complete")
