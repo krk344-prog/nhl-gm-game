@@ -56,6 +56,18 @@ class AlphaStage3CaptureValidatorTests(unittest.TestCase):
                 record["api_base_url"] = endpoint
                 self.assertIn("invalid:api_base_url", validate_record(record))
 
+    def test_capture_timestamp_must_be_unambiguous_utc(self) -> None:
+        for captured_at in (
+            "2026-08-02 11:30:00",
+            "2026-08-02T11:30:00",
+            "2026-08-02T11:30:00-04:00",
+            "not-a-timestamp",
+        ):
+            with self.subTest(captured_at=captured_at):
+                record = passing_record()
+                record["captured_at"] = captured_at
+                self.assertIn("invalid:captured_at", validate_record(record))
+
     def test_missing_non_ideal_capture_blocks(self) -> None:
         record = passing_record()
         del record["captures"]["S3-09"]
