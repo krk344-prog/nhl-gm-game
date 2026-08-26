@@ -9,7 +9,17 @@ import sys
 from pathlib import Path
 from typing import Any
 
-REQUIRED_CAPTURE_IDS = tuple(f"S3-{index:02d}" for index in range(1, 10))
+REQUIRED_CAPTURES = {
+    "S3-01": "launch_or_connection",
+    "S3-02": "new_game_franchise_selection",
+    "S3-03": "dashboard_after_advance_day",
+    "S3-04": "roster",
+    "S3-05": "standings",
+    "S3-06": "trade",
+    "S3-07": "reloaded_save",
+    "S3-08": "reset_confirmation_and_result",
+    "S3-09": "non_ideal_recovery",
+}
 REQUIRED_PRECONDITIONS = (
     "artifact_identity_passed",
     "backend_qualification_passed",
@@ -95,11 +105,13 @@ def validate_record(record: dict[str, Any]) -> list[str]:
     if not isinstance(captures, dict):
         errors.append("missing:captures")
     else:
-        for capture_id in REQUIRED_CAPTURE_IDS:
+        for capture_id, expected_state in REQUIRED_CAPTURES.items():
             capture = captures.get(capture_id)
             if not isinstance(capture, dict):
                 errors.append(f"missing:capture.{capture_id}")
                 continue
+            if capture.get("state") != expected_state:
+                errors.append(f"invalid_state:capture.{capture_id}")
             if capture.get("result") != "PASS":
                 errors.append(f"not_passed:capture.{capture_id}")
             if _blank(capture.get("private_reference")):
