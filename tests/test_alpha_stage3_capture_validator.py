@@ -49,6 +49,11 @@ class AlphaStage3CaptureValidatorTests(unittest.TestCase):
         del record["captures"]["S3-09"]
         self.assertIn("missing:capture.S3-09", validate_record(record))
 
+    def test_mislabeled_capture_state_blocks(self) -> None:
+        record = passing_record()
+        record["captures"]["S3-09"]["state"] = "standings"
+        self.assertIn("invalid_state:capture.S3-09", validate_record(record))
+
     def test_failed_privacy_and_major_defect_block(self) -> None:
         record = passing_record()
         record["ui_checks"]["privacy_boundary_passed"] = False
