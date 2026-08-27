@@ -114,6 +114,19 @@ class AlphaStage3CaptureValidatorTests(unittest.TestCase):
         record["captures"]["S3-09"]["state"] = "standings"
         self.assertIn("invalid_state:capture.S3-09", self.validate(record))
 
+    def test_capture_reference_must_remain_under_private_evidence_path(self) -> None:
+        for reference in (
+            "/tmp/S3-01.png",
+            "../outside/S3-01.png",
+            "private/../../outside/S3-01.png",
+            r"C:\temp\S3-01.png",
+            "screenshots/S3-01.png",
+        ):
+            with self.subTest(reference=reference):
+                record = passing_record()
+                record["captures"]["S3-01"]["private_reference"] = reference
+                self.assertIn("invalid_private_reference:capture.S3-01", self.validate(record))
+
     def test_failed_privacy_and_major_defect_block(self) -> None:
         record = passing_record()
         record["ui_checks"]["privacy_boundary_passed"] = False
