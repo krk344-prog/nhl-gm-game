@@ -20,7 +20,7 @@ def passing_record() -> dict:
         apk_sha256="b" * 64,
         api_base_url="http://192.168.1.25:8000/api/v1",
         endpoint_class="private_lan",
-        anonymous_tester_id="tester-01",
+        anonymous_tester_id="T01",
         route_result_reference="private/session-01.json",
         captured_at=(TEST_NOW - timedelta(hours=1)).isoformat().replace("+00:00", "Z"),
         stage3_decision="COMPLETE_UI_REVIEW_PENDING",
@@ -70,6 +70,13 @@ class AlphaStage3CaptureValidatorTests(unittest.TestCase):
         record = passing_record()
         record["endpoint_class"] = "approved_hosted_test"
         self.assertIn("mismatch:endpoint_class", self.validate(record))
+
+    def test_anonymous_tester_id_must_match_assignment_code(self) -> None:
+        for tester_id in ("tester-01", "Kyle", "T1", "T001", "t01"):
+            with self.subTest(tester_id=tester_id):
+                record = passing_record()
+                record["anonymous_tester_id"] = tester_id
+                self.assertIn("invalid:anonymous_tester_id", self.validate(record))
 
     def test_capture_timestamp_must_be_unambiguous_utc(self) -> None:
         for captured_at in (
