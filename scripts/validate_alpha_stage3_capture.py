@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import json
 import sys
 from datetime import datetime, timedelta, timezone
@@ -86,6 +87,20 @@ def _valid_api_base_url(value: Any) -> bool:
     return True
 
 
+def _endpoint_class_matches(value: Any, endpoint_class: Any) -> bool:
+    if _blank(value) or endpoint_class not in {"private_lan", "approved_hosted_test"}:
+        return False
+    try:
+        host = urlsplit(value.strip()).hostname
+        address = ipaddress.ip_address(host) if host else None
+    except ValueError:
+        address = None
+    is_private_lan = bool(address and address.is_private and not address.is_loopback)
+    return (endpoint_class == "private_lan" and is_private_lan) or (
+        endpoint_class == "approved_hosted_test" and not is_private_lan
+    )
+
+
 def _parse_utc_timestamp(value: Any) -> datetime | None:
     if _blank(value):
         return None
@@ -127,6 +142,12 @@ def validate_record(record: dict[str, Any], *, now: datetime | None = None) -> l
     if not _blank(api_base_url) and not _valid_api_base_url(api_base_url):
         errors.append("invalid:api_base_url")
 
+    endpoint_class = record.get("endpoint_class")
+    if endpoint_class not in {"private_lan", "approved_hosted_test"}:
+        errors.append("invalid:endpoint_class")
+    elif not _blank(api_base_url) and _valid_api_base_url(api_base_url) and not _endpoint_class_matches(api_base_url, endpoint_class):
+        errors.append("mismatch:endpoint_class")
+
     captured_at = record.get("captured_at")
     if not _blank(captured_at):
         parsed_captured_at = _parse_utc_timestamp(captured_at)
@@ -143,8 +164,6 @@ def validate_record(record: dict[str, Any], *, now: datetime | None = None) -> l
         errors.append("invalid:application_package")
     if record.get("build_type") != "standalone-release-apk":
         errors.append("invalid:build_type")
-    if record.get("endpoint_class") not in {"private_lan", "approved_hosted_test"}:
-        errors.append("invalid:endpoint_class")
 
     preconditions = record.get("preconditions")
     if not isinstance(preconditions, dict):
