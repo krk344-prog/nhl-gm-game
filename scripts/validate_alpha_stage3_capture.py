@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import ipaddress
 import json
+import re
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -62,6 +63,7 @@ REQUIRED_TEXT = (
     "captured_at",
 )
 MAX_EVIDENCE_AGE = timedelta(days=7)
+TESTER_CODE_RE = re.compile(r"^T\d{2}$")
 
 
 def _blank(value: Any) -> bool:
@@ -147,6 +149,10 @@ def validate_record(record: dict[str, Any], *, now: datetime | None = None) -> l
         errors.append("invalid:endpoint_class")
     elif not _blank(api_base_url) and _valid_api_base_url(api_base_url) and not _endpoint_class_matches(api_base_url, endpoint_class):
         errors.append("mismatch:endpoint_class")
+
+    anonymous_tester_id = record.get("anonymous_tester_id")
+    if not _blank(anonymous_tester_id) and not TESTER_CODE_RE.fullmatch(anonymous_tester_id.strip()):
+        errors.append("invalid:anonymous_tester_id")
 
     captured_at = record.get("captured_at")
     if not _blank(captured_at):
