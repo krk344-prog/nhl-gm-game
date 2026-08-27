@@ -73,6 +73,11 @@ class AlphaStage3CaptureValidatorTests(unittest.TestCase):
                 record["captured_at"] = captured_at
                 self.assertIn("invalid:captured_at", self.validate(record))
 
+    def test_capture_at_exact_freshness_boundary_passes(self) -> None:
+        record = passing_record()
+        record["captured_at"] = (TEST_NOW - MAX_EVIDENCE_AGE).isoformat().replace("+00:00", "Z")
+        self.assertEqual([], self.validate(record))
+
     def test_stale_or_future_capture_timestamp_blocks(self) -> None:
         stale = passing_record()
         stale["captured_at"] = (TEST_NOW - MAX_EVIDENCE_AGE - timedelta(seconds=1)).isoformat().replace("+00:00", "Z")
