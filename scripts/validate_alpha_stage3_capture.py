@@ -9,7 +9,7 @@ import json
 import re
 import sys
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -68,6 +68,19 @@ TESTER_CODE_RE = re.compile(r"^T\d{2}$")
 
 def _blank(value: Any) -> bool:
     return not isinstance(value, str) or not value.strip()
+
+
+def _safe_private_reference(value: Any) -> bool:
+    if _blank(value):
+        return False
+    text = value.strip().replace("\\", "/")
+    path = PurePosixPath(text)
+    return (
+        not path.is_absolute()
+        and ".." not in path.parts
+        and path.parts
+        and path.parts[0] == "private"
+    )
 
 
 def _valid_api_base_url(value: Any) -> bool:
@@ -192,8 +205,11 @@ def validate_record(record: dict[str, Any], *, now: datetime | None = None) -> l
                 errors.append(f"invalid_state:capture.{capture_id}")
             if capture.get("result") != "PASS":
                 errors.append(f"not_passed:capture.{capture_id}")
-            if _blank(capture.get("private_reference")):
+            private_reference = capture.get("private_reference")
+            if _blank(private_reference):
                 errors.append(f"missing_private_reference:capture.{capture_id}")
+            elif not _safe_private_reference(private_reference):
+                errors.append(f"invalid_private_reference:capture.{capture_id}")
 
     ui_checks = record.get("ui_checks")
     if not isinstance(ui_checks, dict):
