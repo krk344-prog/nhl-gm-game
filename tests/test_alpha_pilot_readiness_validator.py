@@ -34,7 +34,7 @@ class AlphaPilotReadinessValidatorTests(unittest.TestCase):
             endpoint_class="private_lan",
             anonymous_tester_id="tester-01",
             route_result_reference="private/session-01.json",
-            captured_at=datetime.now(timezone.utc).isoformat(),
+            captured_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             stage3_decision="COMPLETE_UI_REVIEW_PENDING",
         )
         for field in record["preconditions"]:
