@@ -61,6 +61,16 @@ class AlphaStage3CaptureValidatorTests(unittest.TestCase):
                 record["api_base_url"] = endpoint
                 self.assertIn("invalid:api_base_url", self.validate(record))
 
+    def test_endpoint_class_must_match_endpoint_reachability(self) -> None:
+        record = passing_record()
+        record["api_base_url"] = "https://alpha.example.test/api/v1"
+        record["endpoint_class"] = "private_lan"
+        self.assertIn("mismatch:endpoint_class", self.validate(record))
+
+        record = passing_record()
+        record["endpoint_class"] = "approved_hosted_test"
+        self.assertIn("mismatch:endpoint_class", self.validate(record))
+
     def test_capture_timestamp_must_be_unambiguous_utc(self) -> None:
         for captured_at in (
             "2026-08-26 19:00:00",
