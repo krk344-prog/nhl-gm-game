@@ -32,7 +32,7 @@ class AlphaPilotReadinessValidatorTests(unittest.TestCase):
             apk_sha256="b" * 64,
             api_base_url="http://192.168.1.25:8000/api/v1",
             endpoint_class="private_lan",
-            anonymous_tester_id="tester-01",
+            anonymous_tester_id="T01",
             route_result_reference="private/session-01.json",
             captured_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             stage3_decision="COMPLETE_UI_REVIEW_PENDING",
