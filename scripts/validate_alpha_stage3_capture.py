@@ -167,6 +167,10 @@ def validate_record(record: dict[str, Any], *, now: datetime | None = None) -> l
     if not _blank(anonymous_tester_id) and not TESTER_CODE_RE.fullmatch(anonymous_tester_id.strip()):
         errors.append("invalid:anonymous_tester_id")
 
+    route_result_reference = record.get("route_result_reference")
+    if not _blank(route_result_reference) and not _safe_private_reference(route_result_reference):
+        errors.append("invalid:route_result_reference")
+
     captured_at = record.get("captured_at")
     if not _blank(captured_at):
         parsed_captured_at = _parse_utc_timestamp(captured_at)
