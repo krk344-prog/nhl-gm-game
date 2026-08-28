@@ -46,11 +46,20 @@ class AlphaStage3RouteReferenceTests(unittest.TestCase):
             "private/../../outside/route-result.json",
             r"C:\temp\route-result.json",
             "reports/route-result.json",
+            "private",
+            "private/",
         ):
             with self.subTest(reference=reference):
                 record = passing_record()
                 record["route_result_reference"] = reference
                 self.assertIn("invalid:route_result_reference", validate_record(record, now=TEST_NOW))
+
+    def test_capture_reference_requires_a_private_evidence_leaf(self) -> None:
+        for reference in ("private", "private/"):
+            with self.subTest(reference=reference):
+                record = passing_record()
+                record["captures"]["S3-01"]["private_reference"] = reference
+                self.assertIn("invalid_private_reference:capture.S3-01", validate_record(record, now=TEST_NOW))
 
 
 if __name__ == "__main__":
