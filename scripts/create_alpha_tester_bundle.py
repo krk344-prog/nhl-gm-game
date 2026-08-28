@@ -81,9 +81,12 @@ TEST ROUTE
 4. Open the roster.
 5. Open the standings.
 6. Attempt one trade.
-7. Close and reopen the game to confirm your progress remains.
-8. Generate the debug report and provide only the privacy-reviewed output to the organizer.
-9. Reset the game and confirm it returns to Day 1.
+7. Open Trade History and confirm the trade result is recorded.
+8. Save the game.
+9. Close and reopen the game.
+10. Reload the saved game and confirm your franchise, day, results, standings, and Trade History persist.
+11. Generate the debug report and provide only the privacy-reviewed output to the organizer.
+12. Reset the game and confirm it returns to Day 1.
 
 REPORTING A PROBLEM
 Use BUG-REPORT.txt. Record what you were doing, what you expected, what happened, and whether it happens again. Do not include your name, device serial number, network address, save file, or password.
