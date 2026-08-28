@@ -47,6 +47,9 @@ class CreateAlphaTesterBundleTests(unittest.TestCase):
                 start_here = archive.read(
                     "NHL-GM-First-Playable/START-HERE.txt"
                 ).decode("utf-8")
+                bug_report = archive.read(
+                    "NHL-GM-First-Playable/BUG-REPORT.txt"
+                ).decode("utf-8")
                 build_info = archive.read(
                     "NHL-GM-First-Playable/BUILD-INFO.txt"
                 ).decode("utf-8")
@@ -61,8 +64,14 @@ class CreateAlphaTesterBundleTests(unittest.TestCase):
                 self.assertIn("returns to Day 1", start_here)
                 self.assertLess(start_here.index("Open Trade History"), start_here.index("Save the game"))
                 self.assertLess(start_here.index("Save the game"), start_here.index("Reload the saved game"))
+                self.assertIn(f"Build: {commit[:12]}", bug_report)
+                self.assertIn("Build type: standalone-release-apk", bug_report)
+                self.assertIn("Package: com.krk344.nhlgmgame", bug_report)
+                self.assertIn("Endpoint class: private-lan", bug_report)
+                self.assertIn("APK SHA-256: abc", bug_report)
                 self.assertIn("endpoint_class=private-lan", build_info)
                 self.assertNotIn(api_url, start_here)
+                self.assertNotIn(api_url, bug_report)
                 self.assertNotIn(api_url, build_info)
 
     def test_rejects_incomplete_manifest_before_packaging(self):
