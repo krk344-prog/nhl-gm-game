@@ -93,11 +93,15 @@ Use BUG-REPORT.txt. Record what you were doing, what you expected, what happened
 """
 
 
-def _bug_report(commit: str) -> str:
+def _bug_report(commit: str, build_type: str, endpoint_class: str, apk_sha256: str) -> str:
     return f"""NHL GM FIRST PLAYABLE — BUG REPORT
 
 Anonymous tester code:
 Build: {commit[:12]}
+Build type: {build_type}
+Package: com.krk344.nhlgmgame
+Endpoint class: {endpoint_class}
+APK SHA-256: {apk_sha256}
 Phone model and Android version:
 Screen or step:
 What I was trying to do:
@@ -154,15 +158,20 @@ def create_tester_bundle(
         temp_path = Path(temporary.name)
 
     endpoint_class = _endpoint_class(api_base_url)
+    build_type = str(verification["build_type"])
+    apk_sha256 = str(verification["checksums"][APK_NAME])
     try:
         with ZipFile(temp_path, "w", compression=ZIP_DEFLATED) as archive:
             for name in required_files:
                 archive.write(artifact_directory / name, f"{BUNDLE_ROOT}/{name}")
             archive.writestr(f"{BUNDLE_ROOT}/START-HERE.txt", _start_here(commit))
-            archive.writestr(f"{BUNDLE_ROOT}/BUG-REPORT.txt", _bug_report(commit))
+            archive.writestr(
+                f"{BUNDLE_ROOT}/BUG-REPORT.txt",
+                _bug_report(commit, build_type, endpoint_class, apk_sha256),
+            )
             archive.writestr(
                 f"{BUNDLE_ROOT}/BUILD-INFO.txt",
-                _build_info(commit, str(verification["build_type"]), endpoint_class),
+                _build_info(commit, build_type, endpoint_class),
             )
         temp_path.replace(output_zip)
     except Exception:
@@ -203,7 +212,7 @@ def main() -> int:
             expected_api_base_url=args.expected_api_base_url,
         )
     except (BundleError, OSError, VerificationError) as exc:
-        print(json.dumps({"status": "fail", "error": str(exc)}, sort_keys=True))
+        print(json.dumps({"status": "fail", "error": str(exc),}, sort_keys=True))
         return 1
     print(json.dumps(result, sort_keys=True))
     return 0
