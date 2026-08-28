@@ -78,8 +78,9 @@ def _safe_private_reference(value: Any) -> bool:
     return (
         not path.is_absolute()
         and ".." not in path.parts
-        and path.parts
+        and len(path.parts) >= 2
         and path.parts[0] == "private"
+        and path.name not in {"", ".", ".."}
     )
 
 
@@ -258,14 +259,7 @@ def main() -> int:
         return 2
 
     errors = validate_record(payload)
-    print(json.dumps({
-        "status": "pass" if not errors else "block",
-        "errors": errors,
-        "commit_sha": payload.get("commit_sha"),
-        "api_base_url": payload.get("api_base_url"),
-        "capture_count": len(payload.get("captures", {})) if isinstance(payload.get("captures"), dict) else 0,
-        "stage3_decision": payload.get("stage3_decision"),
-    }, indent=2, sort_keys=True))
+    print(json.dumps({"status": "pass" if not errors else "block", "errors": errors}, indent=2))
     return 0 if not errors else 1
 
 
