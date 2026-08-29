@@ -69,6 +69,16 @@ class AlphaBugReportValidationTests(unittest.TestCase):
         self.assertIn("attachment 1 must be privacy reviewed", errors)
         self.assertIn("pilot approval must remain false until Kyle explicitly approves", errors)
 
+    def test_unsafe_attachment_references_block(self) -> None:
+        for reference in ("/tmp/reload.png", "../reload.png", "private-evidence/../reload.png", r"C:\\temp\\reload.png"):
+            with self.subTest(reference=reference):
+                report = self.valid_report()
+                report["attachments"][0]["reference"] = reference
+                self.assertIn(
+                    "attachment 1 reference must be a safe relative evidence path",
+                    validate_report(report),
+                )
+
 
 if __name__ == "__main__":
     unittest.main()
