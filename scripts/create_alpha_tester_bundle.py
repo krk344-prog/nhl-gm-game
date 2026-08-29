@@ -96,7 +96,7 @@ Use BUG-REPORT.txt. Record what you were doing, what you expected, what happened
 def _bug_report(commit: str, build_type: str, endpoint_class: str, apk_sha256: str) -> str:
     return f"""NHL GM FIRST PLAYABLE — BUG REPORT
 
-Anonymous tester code:
+Anonymous tester code (T## only; no name):
 Build: {commit[:12]}
 Build type: {build_type}
 Package: com.krk344.nhlgmgame
