@@ -64,6 +64,8 @@ class CreateAlphaTesterBundleTests(unittest.TestCase):
                 self.assertIn("returns to Day 1", start_here)
                 self.assertLess(start_here.index("Open Trade History"), start_here.index("Save the game"))
                 self.assertLess(start_here.index("Save the game"), start_here.index("Reload the saved game"))
+                self.assertIn("Anonymous tester code (T## only; no name):", bug_report)
+                self.assertNotIn("Anonymous tester code:\n", bug_report)
                 self.assertIn(f"Build: {commit[:12]}", bug_report)
                 self.assertIn("Build type: standalone-release-apk", bug_report)
                 self.assertIn("Package: com.krk344.nhlgmgame", bug_report)
