@@ -15,6 +15,7 @@ class AlphaBugReportValidationTests(unittest.TestCase):
                 "commit_sha": "a" * 40,
                 "apk_sha256": "b" * 64,
                 "android_package": "com.krk344.nhlgmgame",
+                "build_type": "standalone-release-apk",
             },
             "report": {
                 "tester_code": "T01",
@@ -40,6 +41,16 @@ class AlphaBugReportValidationTests(unittest.TestCase):
 
     def test_complete_report_passes(self) -> None:
         self.assertEqual(validate_report(self.valid_report()), [])
+
+    def test_non_release_build_identity_blocks(self) -> None:
+        for build_type in (None, "debug", "development-client"):
+            with self.subTest(build_type=build_type):
+                report = self.valid_report()
+                if build_type is None:
+                    report["package_identity"].pop("build_type")
+                else:
+                    report["package_identity"]["build_type"] = build_type
+                self.assertIn("build_type must be standalone-release-apk", validate_report(report))
 
     def test_trade_history_and_debug_report_routes_pass(self) -> None:
         for route in ("trade_history", "debug_report"):
