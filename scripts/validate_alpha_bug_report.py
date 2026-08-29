@@ -72,6 +72,7 @@ def validate_report(payload: dict[str, Any]) -> list[str]:
     _require(bool(COMMIT_RE.fullmatch(str(package.get("commit_sha", "")))), "commit_sha must be a lowercase 40-character SHA", errors)
     _require(bool(SHA256_RE.fullmatch(str(package.get("apk_sha256", "")))), "apk_sha256 must be a lowercase 64-character digest", errors)
     _require(package.get("android_package") == "com.krk344.nhlgmgame", "Android package identity is invalid", errors)
+    _require(package.get("build_type") == "standalone-release-apk", "build_type must be standalone-release-apk", errors)
 
     report = payload.get("report", {})
     _require(bool(TESTER_CODE_RE.fullmatch(str(report.get("tester_code", "")))), "tester_code must use anonymous T## format", errors)
