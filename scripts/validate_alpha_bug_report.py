@@ -22,8 +22,10 @@ ALLOWED_ROUTES = {
     "roster",
     "standings",
     "trade",
+    "trade_history",
     "save",
     "reload",
+    "debug_report",
     "reset",
 }
 PRIVATE_KEYS = {
