@@ -7,7 +7,7 @@ import argparse
 import json
 import re
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -54,6 +54,14 @@ def _contains_private_key(value: Any) -> bool:
     return False
 
 
+def _safe_attachment_reference(value: Any) -> bool:
+    reference = str(value or "").strip()
+    if not reference or "\\" in reference:
+        return False
+    path = PurePosixPath(reference)
+    return not path.is_absolute() and ".." not in path.parts and "." not in path.parts
+
+
 def validate_report(payload: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     _require(payload.get("schema_version") == 1, "schema_version must be 1", errors)
@@ -90,7 +98,7 @@ def validate_report(payload: dict[str, Any]) -> list[str]:
                 continue
             _require(attachment.get("privacy_reviewed") is True, f"attachment {index} must be privacy reviewed", errors)
             _require(attachment.get("kind") in {"screenshot", "redacted_log", "video"}, f"attachment {index} kind is invalid", errors)
-            _require(bool(str(attachment.get("reference", "")).strip()), f"attachment {index} reference is required", errors)
+            _require(_safe_attachment_reference(attachment.get("reference")), f"attachment {index} reference must be a safe relative evidence path", errors)
 
     authorization = payload.get("authorization", {})
     _require(authorization.get("pilot_approved_by_kyle") is False, "pilot approval must remain false until Kyle explicitly approves", errors)
