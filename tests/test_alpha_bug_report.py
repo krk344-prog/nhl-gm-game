@@ -41,6 +41,13 @@ class AlphaBugReportValidationTests(unittest.TestCase):
     def test_complete_report_passes(self) -> None:
         self.assertEqual(validate_report(self.valid_report()), [])
 
+    def test_trade_history_and_debug_report_routes_pass(self) -> None:
+        for route in ("trade_history", "debug_report"):
+            with self.subTest(route=route):
+                report = self.valid_report()
+                report["report"]["route"] = route
+                self.assertEqual(validate_report(report), [])
+
     def test_private_identity_field_blocks(self) -> None:
         report = self.valid_report()
         report["report"]["tester_name"] = "Private Tester"
