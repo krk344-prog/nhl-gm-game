@@ -29,8 +29,21 @@ def check_execution_readiness(
     if serial:
         device_argv.extend(["--serial", serial])
 
-    device_result = runner(device_argv, check=False)
+    device_result = runner(
+        device_argv,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
     if device_result.returncode != 0:
+        detail = (device_result.stdout or device_result.stderr or "").strip()
+        try:
+            payload = json.loads(detail) if detail else {}
+        except json.JSONDecodeError:
+            payload = {}
+        reason = payload.get("error") if isinstance(payload, dict) else None
+        if reason:
+            raise RuntimeError(f"device_preflight blocked: {reason}")
         raise RuntimeError(f"device_preflight failed with exit code {device_result.returncode}")
 
     handoff = prepare_build_handoff(
