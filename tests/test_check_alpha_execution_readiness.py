@@ -26,6 +26,7 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
             "season_id": "2026-27",
             "endpoint_source": "explicit",
         }
+        self.commit = "a" * 40
 
     def test_reports_ready_without_running_qualification_or_build(self):
         calls = []
@@ -42,20 +43,25 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
             return SimpleNamespace(returncode=0, stdout='{"status":"ready"}\n', stderr="")
 
         with patch.object(module, "validate_source_readiness", return_value=module.PR_BRANCH) as source_mock:
-            with patch.object(module, "prepare_build_handoff", return_value=self.handoff) as prepare_mock:
-                result = module.check_execution_readiness(
-                    api_base_url=self.handoff["api_base_url"],
-                    serial="device-123",
-                    runner=runner,
-                )
+            with patch.object(module, "read_source_commit", return_value=self.commit) as commit_mock:
+                with patch.object(module, "prepare_build_handoff", return_value=self.handoff) as prepare_mock:
+                    result = module.check_execution_readiness(
+                        api_base_url=self.handoff["api_base_url"],
+                        serial="device-123",
+                        runner=runner,
+                    )
 
         source_mock.assert_called_once_with()
+        commit_mock.assert_called_once_with()
         self.assertTrue(result["ready"])
         self.assertTrue(result["source_ready"])
         self.assertEqual(result["source_branch"], module.PR_BRANCH)
+        self.assertEqual(result["source_commit"], self.commit)
         self.assertTrue(result["device_ready"])
         self.assertTrue(result["endpoint_ready"])
         self.assertEqual(result["api_base_url"], self.handoff["api_base_url"])
+        self.assertIn("same clean source commit", result["next_action"])
+        self.assertIn("rerun readiness if the source commit changes", result["next_action"])
         self.assertEqual(
             calls,
             [
@@ -88,7 +94,7 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
             ],
         )
 
-    def test_source_failure_stops_before_device_and_endpoint_preflight(self):
+    def test_source_failure_stops_before_commit_device_and_endpoint_preflight(self):
         runner_calls = []
 
         def runner(*args, **kwargs):
@@ -103,9 +109,34 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
                 f"source_preflight blocked: build must run from {module.PR_BRANCH}; current branch is main",
             ),
         ):
-            with patch.object(module, "prepare_build_handoff") as prepare_mock:
-                with self.assertRaisesRegex(module.ExecutionReadinessError, "source_preflight blocked") as raised:
-                    module.check_execution_readiness(runner=runner)
+            with patch.object(module, "read_source_commit") as commit_mock:
+                with patch.object(module, "prepare_build_handoff") as prepare_mock:
+                    with self.assertRaisesRegex(module.ExecutionReadinessError, "source_preflight blocked") as raised:
+                        module.check_execution_readiness(runner=runner)
+
+        self.assertEqual(raised.exception.blocker_scope, "source")
+        self.assertEqual(runner_calls, [])
+        commit_mock.assert_not_called()
+        prepare_mock.assert_not_called()
+
+    def test_invalid_source_commit_stops_before_device_and_endpoint_preflight(self):
+        runner_calls = []
+
+        def runner(*args, **kwargs):
+            runner_calls.append((args, kwargs))
+            return SimpleNamespace(returncode=0, stdout='{"status":"ready"}\n', stderr="")
+
+        with patch.object(module, "validate_source_readiness", return_value=module.PR_BRANCH):
+            with patch.object(
+                module,
+                "read_source_commit",
+                side_effect=module.ExecutionReadinessError(
+                    "source", "source_preflight blocked: could not determine exact Git commit"
+                ),
+            ):
+                with patch.object(module, "prepare_build_handoff") as prepare_mock:
+                    with self.assertRaisesRegex(module.ExecutionReadinessError, "could not determine exact Git commit") as raised:
+                        module.check_execution_readiness(runner=runner)
 
         self.assertEqual(raised.exception.blocker_scope, "source")
         self.assertEqual(runner_calls, [])
@@ -120,12 +151,13 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
             )
 
         with patch.object(module, "validate_source_readiness", return_value=module.PR_BRANCH):
-            with patch.object(module, "prepare_build_handoff") as prepare_mock:
-                with self.assertRaisesRegex(
-                    module.ExecutionReadinessError,
-                    "device_preflight blocked: multiple authorized Android devices are connected; rerun with --serial",
-                ) as raised:
-                    module.check_execution_readiness(runner=runner)
+            with patch.object(module, "read_source_commit", return_value=self.commit):
+                with patch.object(module, "prepare_build_handoff") as prepare_mock:
+                    with self.assertRaisesRegex(
+                        module.ExecutionReadinessError,
+                        "device_preflight blocked: multiple authorized Android devices are connected; rerun with --serial",
+                    ) as raised:
+                        module.check_execution_readiness(runner=runner)
 
         self.assertEqual(raised.exception.blocker_scope, "device")
         prepare_mock.assert_not_called()
@@ -135,16 +167,17 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
             return SimpleNamespace(returncode=0, stdout='{"status":"ready"}\n', stderr="")
 
         with patch.object(module, "validate_source_readiness", return_value=module.PR_BRANCH):
-            with patch.object(
-                module,
-                "prepare_build_handoff",
-                side_effect=RuntimeError("backend did not respond"),
-            ):
-                with self.assertRaisesRegex(
-                    module.ExecutionReadinessError,
-                    "endpoint_preflight blocked: backend did not respond",
-                ) as raised:
-                    module.check_execution_readiness(runner=runner)
+            with patch.object(module, "read_source_commit", return_value=self.commit):
+                with patch.object(
+                    module,
+                    "prepare_build_handoff",
+                    side_effect=RuntimeError("backend did not respond"),
+                ):
+                    with self.assertRaisesRegex(
+                        module.ExecutionReadinessError,
+                        "endpoint_preflight blocked: backend did not respond",
+                    ) as raised:
+                        module.check_execution_readiness(runner=runner)
 
         self.assertEqual(raised.exception.blocker_scope, "endpoint")
 
