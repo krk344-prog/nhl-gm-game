@@ -41,14 +41,18 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
             )
             return SimpleNamespace(returncode=0, stdout='{"status":"ready"}\n', stderr="")
 
-        with patch.object(module, "prepare_build_handoff", return_value=self.handoff) as prepare_mock:
-            result = module.check_execution_readiness(
-                api_base_url=self.handoff["api_base_url"],
-                serial="device-123",
-                runner=runner,
-            )
+        with patch.object(module, "validate_source_readiness", return_value=module.PR_BRANCH) as source_mock:
+            with patch.object(module, "prepare_build_handoff", return_value=self.handoff) as prepare_mock:
+                result = module.check_execution_readiness(
+                    api_base_url=self.handoff["api_base_url"],
+                    serial="device-123",
+                    runner=runner,
+                )
 
+        source_mock.assert_called_once_with()
         self.assertTrue(result["ready"])
+        self.assertTrue(result["source_ready"])
+        self.assertEqual(result["source_branch"], module.PR_BRANCH)
         self.assertTrue(result["device_ready"])
         self.assertTrue(result["endpoint_ready"])
         self.assertEqual(result["api_base_url"], self.handoff["api_base_url"])
@@ -84,6 +88,29 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
             ],
         )
 
+    def test_source_failure_stops_before_device_and_endpoint_preflight(self):
+        runner_calls = []
+
+        def runner(*args, **kwargs):
+            runner_calls.append((args, kwargs))
+            return SimpleNamespace(returncode=0, stdout='{"status":"ready"}\n', stderr="")
+
+        with patch.object(
+            module,
+            "validate_source_readiness",
+            side_effect=module.ExecutionReadinessError(
+                "source",
+                f"source_preflight blocked: build must run from {module.PR_BRANCH}; current branch is main",
+            ),
+        ):
+            with patch.object(module, "prepare_build_handoff") as prepare_mock:
+                with self.assertRaisesRegex(module.ExecutionReadinessError, "source_preflight blocked") as raised:
+                    module.check_execution_readiness(runner=runner)
+
+        self.assertEqual(raised.exception.blocker_scope, "source")
+        self.assertEqual(runner_calls, [])
+        prepare_mock.assert_not_called()
+
     def test_device_failure_stops_before_endpoint_preflight_and_is_classified(self):
         def runner(argv, *, check, capture_output, text):
             return SimpleNamespace(
@@ -92,12 +119,13 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
                 stderr="",
             )
 
-        with patch.object(module, "prepare_build_handoff") as prepare_mock:
-            with self.assertRaisesRegex(
-                module.ExecutionReadinessError,
-                "device_preflight blocked: multiple authorized Android devices are connected; rerun with --serial",
-            ) as raised:
-                module.check_execution_readiness(runner=runner)
+        with patch.object(module, "validate_source_readiness", return_value=module.PR_BRANCH):
+            with patch.object(module, "prepare_build_handoff") as prepare_mock:
+                with self.assertRaisesRegex(
+                    module.ExecutionReadinessError,
+                    "device_preflight blocked: multiple authorized Android devices are connected; rerun with --serial",
+                ) as raised:
+                    module.check_execution_readiness(runner=runner)
 
         self.assertEqual(raised.exception.blocker_scope, "device")
         prepare_mock.assert_not_called()
@@ -106,16 +134,17 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
         def runner(argv, *, check, capture_output, text):
             return SimpleNamespace(returncode=0, stdout='{"status":"ready"}\n', stderr="")
 
-        with patch.object(
-            module,
-            "prepare_build_handoff",
-            side_effect=RuntimeError("backend did not respond"),
-        ):
-            with self.assertRaisesRegex(
-                module.ExecutionReadinessError,
-                "endpoint_preflight blocked: backend did not respond",
-            ) as raised:
-                module.check_execution_readiness(runner=runner)
+        with patch.object(module, "validate_source_readiness", return_value=module.PR_BRANCH):
+            with patch.object(
+                module,
+                "prepare_build_handoff",
+                side_effect=RuntimeError("backend did not respond"),
+            ):
+                with self.assertRaisesRegex(
+                    module.ExecutionReadinessError,
+                    "endpoint_preflight blocked: backend did not respond",
+                ) as raised:
+                    module.check_execution_readiness(runner=runner)
 
         self.assertEqual(raised.exception.blocker_scope, "endpoint")
 
