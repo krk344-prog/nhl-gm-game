@@ -84,7 +84,7 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
             ],
         )
 
-    def test_device_failure_stops_before_endpoint_preflight(self):
+    def test_device_failure_stops_before_endpoint_preflight_and_is_classified(self):
         def runner(argv, *, check, capture_output, text):
             return SimpleNamespace(
                 returncode=4,
@@ -94,12 +94,30 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
 
         with patch.object(module, "prepare_build_handoff") as prepare_mock:
             with self.assertRaisesRegex(
-                RuntimeError,
+                module.ExecutionReadinessError,
                 "device_preflight blocked: multiple authorized Android devices are connected; rerun with --serial",
-            ):
+            ) as raised:
                 module.check_execution_readiness(runner=runner)
 
+        self.assertEqual(raised.exception.blocker_scope, "device")
         prepare_mock.assert_not_called()
+
+    def test_endpoint_failure_is_classified_after_device_preflight(self):
+        def runner(argv, *, check, capture_output, text):
+            return SimpleNamespace(returncode=0, stdout='{"status":"ready"}\n', stderr="")
+
+        with patch.object(
+            module,
+            "prepare_build_handoff",
+            side_effect=RuntimeError("backend did not respond"),
+        ):
+            with self.assertRaisesRegex(
+                module.ExecutionReadinessError,
+                "endpoint_preflight blocked: backend did not respond",
+            ) as raised:
+                module.check_execution_readiness(runner=runner)
+
+        self.assertEqual(raised.exception.blocker_scope, "endpoint")
 
 
 if __name__ == "__main__":
