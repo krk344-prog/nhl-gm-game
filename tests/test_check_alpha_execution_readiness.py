@@ -30,9 +30,16 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
     def test_reports_ready_without_running_qualification_or_build(self):
         calls = []
 
-        def runner(argv, *, check):
-            calls.append(list(argv))
-            return SimpleNamespace(returncode=0)
+        def runner(argv, *, check, capture_output, text):
+            calls.append(
+                {
+                    "argv": list(argv),
+                    "check": check,
+                    "capture_output": capture_output,
+                    "text": text,
+                }
+            )
+            return SimpleNamespace(returncode=0, stdout='{"status":"ready"}\n', stderr="")
 
         with patch.object(module, "prepare_build_handoff", return_value=self.handoff) as prepare_mock:
             result = module.check_execution_readiness(
@@ -45,7 +52,17 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
         self.assertTrue(result["device_ready"])
         self.assertTrue(result["endpoint_ready"])
         self.assertEqual(result["api_base_url"], self.handoff["api_base_url"])
-        self.assertEqual(calls, [[sys.executable, module.DEVICE_PREFLIGHT_SCRIPT, "--serial", "device-123"]])
+        self.assertEqual(
+            calls,
+            [
+                {
+                    "argv": [sys.executable, module.DEVICE_PREFLIGHT_SCRIPT, "--serial", "device-123"],
+                    "check": False,
+                    "capture_output": True,
+                    "text": True,
+                }
+            ],
+        )
         prepare_mock.assert_called_once_with(
             api_base_url=self.handoff["api_base_url"],
             season_id="2026-27",
@@ -68,11 +85,18 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
         )
 
     def test_device_failure_stops_before_endpoint_preflight(self):
-        def runner(argv, *, check):
-            return SimpleNamespace(returncode=4)
+        def runner(argv, *, check, capture_output, text):
+            return SimpleNamespace(
+                returncode=4,
+                stdout='{"status":"block","error":"multiple authorized Android devices are connected; rerun with --serial"}\n',
+                stderr="",
+            )
 
         with patch.object(module, "prepare_build_handoff") as prepare_mock:
-            with self.assertRaisesRegex(RuntimeError, "device_preflight failed with exit code 4"):
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "device_preflight blocked: multiple authorized Android devices are connected; rerun with --serial",
+            ):
                 module.check_execution_readiness(runner=runner)
 
         prepare_mock.assert_not_called()
