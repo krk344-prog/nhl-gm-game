@@ -38,6 +38,19 @@ def validate_source_readiness() -> str:
         raise ExecutionReadinessError("source", f"source_preflight blocked: {exc}") from exc
 
 
+def read_source_commit() -> str:
+    """Return the exact clean PR #13 commit being certified by the readiness check."""
+    try:
+        commit = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
+        ).strip()
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise ExecutionReadinessError("source", f"source_preflight blocked: {exc}") from exc
+    if len(commit) != 40 or any(character not in "0123456789abcdefABCDEF" for character in commit):
+        raise ExecutionReadinessError("source", "source_preflight blocked: could not determine exact Git commit")
+    return commit.lower()
+
+
 def check_execution_readiness(
     *,
     api_base_url: str | None = None,
@@ -49,6 +62,7 @@ def check_execution_readiness(
     """Validate source + device + endpoint prerequisites without qualifying, building, installing, or launching."""
 
     validate_source_readiness()
+    source_commit = read_source_commit()
 
     device_argv = [sys.executable, DEVICE_PREFLIGHT_SCRIPT]
     if serial:
@@ -99,13 +113,14 @@ def check_execution_readiness(
         "ready": True,
         "source_ready": True,
         "source_branch": PR_BRANCH,
+        "source_commit": source_commit,
         "device_ready": True,
         "endpoint_ready": True,
         "api_base_url": handoff["api_base_url"],
         "season_id": handoff["season_id"],
         "endpoint_source": handoff["endpoint_source"],
         "next_command_argv": release_argv,
-        "next_action": "Run next_command_argv to execute qualification, exact release build, verified install, launch, backend recheck, and evidence prefill on this same device.",
+        "next_action": "Run next_command_argv from this same clean source commit to execute qualification, exact release build, verified install, launch, backend recheck, and evidence prefill on this same device; rerun readiness if the source commit changes.",
     }
 
 
