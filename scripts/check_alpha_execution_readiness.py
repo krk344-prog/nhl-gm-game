@@ -15,6 +15,14 @@ DEVICE_PREFLIGHT_SCRIPT = "scripts/check_alpha_android_device.py"
 RELEASE_HANDOFF_SCRIPT = "scripts/run_alpha_release_handoff.py"
 
 
+class ExecutionReadinessError(RuntimeError):
+    """A privacy-safe blocker with an explicit execution stage for automation triage."""
+
+    def __init__(self, blocker_scope: str, message: str) -> None:
+        super().__init__(message)
+        self.blocker_scope = blocker_scope
+
+
 def check_execution_readiness(
     *,
     api_base_url: str | None = None,
@@ -43,14 +51,19 @@ def check_execution_readiness(
             payload = {}
         reason = payload.get("error") if isinstance(payload, dict) else None
         if reason:
-            raise RuntimeError(f"device_preflight blocked: {reason}")
-        raise RuntimeError(f"device_preflight failed with exit code {device_result.returncode}")
+            raise ExecutionReadinessError("device", f"device_preflight blocked: {reason}")
+        raise ExecutionReadinessError(
+            "device", f"device_preflight failed with exit code {device_result.returncode}"
+        )
 
-    handoff = prepare_build_handoff(
-        api_base_url=api_base_url,
-        season_id=season_id,
-        timeout=timeout,
-    )
+    try:
+        handoff = prepare_build_handoff(
+            api_base_url=api_base_url,
+            season_id=season_id,
+            timeout=timeout,
+        )
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise ExecutionReadinessError("endpoint", f"endpoint_preflight blocked: {exc}") from exc
 
     release_argv = [
         sys.executable,
@@ -92,8 +105,21 @@ def main(argv: list[str] | None = None) -> int:
             timeout=args.timeout,
             serial=args.serial,
         )
+    except ExecutionReadinessError as exc:
+        print(
+            json.dumps(
+                {
+                    "ready": False,
+                    "blocker_scope": exc.blocker_scope,
+                    "error": str(exc),
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 1
     except (OSError, ValueError, RuntimeError) as exc:
-        print(json.dumps({"ready": False, "error": str(exc)}, indent=2))
+        print(json.dumps({"ready": False, "blocker_scope": "unknown", "error": str(exc)}, indent=2))
         return 1
 
     print(json.dumps(payload, indent=2, sort_keys=True))
