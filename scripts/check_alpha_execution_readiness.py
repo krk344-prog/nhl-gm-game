@@ -9,6 +9,7 @@ import subprocess
 import sys
 from typing import Callable
 
+from build_alpha_apk_local import PR_BRANCH, ROOT, validate_repository_state
 from prepare_alpha_build import prepare_build_handoff
 
 DEVICE_PREFLIGHT_SCRIPT = "scripts/check_alpha_android_device.py"
@@ -23,6 +24,20 @@ class ExecutionReadinessError(RuntimeError):
         self.blocker_scope = blocker_scope
 
 
+def validate_source_readiness() -> str:
+    """Fail early unless the facilitator checkout can produce an identity-safe PR #13 build."""
+    try:
+        branch = subprocess.check_output(
+            ["git", "branch", "--show-current"], cwd=ROOT, text=True
+        ).strip()
+        porcelain_status = subprocess.check_output(
+            ["git", "status", "--porcelain"], cwd=ROOT, text=True
+        )
+        return validate_repository_state(branch, porcelain_status)
+    except (OSError, subprocess.CalledProcessError, RuntimeError) as exc:
+        raise ExecutionReadinessError("source", f"source_preflight blocked: {exc}") from exc
+
+
 def check_execution_readiness(
     *,
     api_base_url: str | None = None,
@@ -31,7 +46,9 @@ def check_execution_readiness(
     serial: str | None = None,
     runner: Callable[..., subprocess.CompletedProcess] = subprocess.run,
 ) -> dict[str, object]:
-    """Validate device + endpoint prerequisites without qualifying, building, installing, or launching."""
+    """Validate source + device + endpoint prerequisites without qualifying, building, installing, or launching."""
+
+    validate_source_readiness()
 
     device_argv = [sys.executable, DEVICE_PREFLIGHT_SCRIPT]
     if serial:
@@ -80,6 +97,8 @@ def check_execution_readiness(
 
     return {
         "ready": True,
+        "source_ready": True,
+        "source_branch": PR_BRANCH,
         "device_ready": True,
         "endpoint_ready": True,
         "api_base_url": handoff["api_base_url"],
