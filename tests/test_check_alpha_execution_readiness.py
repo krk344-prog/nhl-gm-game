@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import sys
 import unittest
+from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -57,11 +58,13 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
         self.assertTrue(result["source_ready"])
         self.assertEqual(result["source_branch"], module.PR_BRANCH)
         self.assertEqual(result["source_commit"], self.commit)
+        self.assertTrue(str(result["checked_at_utc"]).endswith("Z"))
+        datetime.fromisoformat(str(result["checked_at_utc"]).replace("Z", "+00:00"))
         self.assertTrue(result["device_ready"])
         self.assertTrue(result["endpoint_ready"])
         self.assertEqual(result["api_base_url"], self.handoff["api_base_url"])
         self.assertIn("same clean source commit", result["next_action"])
-        self.assertIn("rerun readiness if the source commit changes", result["next_action"])
+        self.assertIn("readiness timestamp is no longer current", result["next_action"])
         self.assertEqual(
             calls,
             [
