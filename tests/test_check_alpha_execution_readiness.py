@@ -169,6 +169,26 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
         self.assertEqual(raised.exception.blocker_scope, "device")
         prepare_mock.assert_not_called()
 
+    def test_device_success_requires_parseable_ready_payload_before_endpoint_preflight(self):
+        cases = [
+            ("not-json\n", "invalid JSON"),
+            ('{"status":"block"}\n', "did not confirm ready status"),
+            ('{"status":"unknown"}\n', "did not confirm ready status"),
+        ]
+        for stdout, expected_error in cases:
+            with self.subTest(stdout=stdout):
+                def runner(argv, *, check, capture_output, text):
+                    return SimpleNamespace(returncode=0, stdout=stdout, stderr="")
+
+                with patch.object(module, "validate_source_readiness", return_value=module.PR_BRANCH):
+                    with patch.object(module, "read_source_commit", return_value=self.commit):
+                        with patch.object(module, "prepare_build_handoff") as prepare_mock:
+                            with self.assertRaisesRegex(module.ExecutionReadinessError, expected_error) as raised:
+                                module.check_execution_readiness(runner=runner)
+
+                self.assertEqual(raised.exception.blocker_scope, "device")
+                prepare_mock.assert_not_called()
+
     def test_endpoint_failure_is_classified_after_device_preflight(self):
         def runner(argv, *, check, capture_output, text):
             return SimpleNamespace(returncode=0, stdout='{"status":"ready"}\n', stderr="")
