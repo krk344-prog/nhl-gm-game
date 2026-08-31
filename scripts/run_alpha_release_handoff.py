@@ -108,6 +108,7 @@ def run_release_handoff(
     timeout: float = 5.0,
     serial: str | None = None,
     evidence_directory: str | None = None,
+    expected_source_commit: str | None = None,
     runner: Callable[..., subprocess.CompletedProcess] = subprocess.run,
     record_exists: Callable[[str], bool] = lambda path: Path(path).is_file(),
     artifact_exists: Callable[[str], bool] = lambda path: Path(path).is_dir(),
@@ -117,9 +118,17 @@ def run_release_handoff(
 ) -> dict[str, object]:
     """Preflight one device, then qualify, build, install, launch, and recheck the backend."""
 
-    commit = check_output(["git", "rev-parse", "HEAD"], text=True).strip()
-    if not commit:
+    commit = check_output(["git", "rev-parse", "HEAD"], text=True).strip().lower()
+    if len(commit) != 40 or any(character not in "0123456789abcdef" for character in commit):
         raise RuntimeError("could not determine the exact PR #13 commit for release handoff")
+    if expected_source_commit:
+        expected = expected_source_commit.strip().lower()
+        if len(expected) != 40 or any(character not in "0123456789abcdef" for character in expected):
+            raise RuntimeError("expected source commit is not a valid 40-character Git SHA")
+        if commit != expected:
+            raise RuntimeError(
+                f"source commit changed after execution readiness: expected {expected}, current {commit}; rerun readiness"
+            )
 
     device_argv = [sys.executable, DEVICE_PREFLIGHT_SCRIPT]
     if serial:
@@ -224,6 +233,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--season-id", default="2026-27")
     parser.add_argument("--timeout", type=float, default=5.0)
     parser.add_argument("--serial", help="adb serial to select when multiple authorized Android devices are connected")
+    parser.add_argument("--expected-source-commit", help="exact Git commit previously certified by execution readiness")
     parser.add_argument(
         "--evidence-directory",
         default=PRIVATE_EVIDENCE_DIRECTORY,
@@ -238,6 +248,7 @@ def main(argv: list[str] | None = None) -> int:
             timeout=args.timeout,
             serial=args.serial,
             evidence_directory=args.evidence_directory,
+            expected_source_commit=args.expected_source_commit,
         )
     except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError, json.JSONDecodeError) as exc:
         print(json.dumps({"ready": False, "error": str(exc)}, indent=2))
