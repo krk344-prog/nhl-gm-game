@@ -7,6 +7,7 @@ import argparse
 import json
 import subprocess
 import sys
+from datetime import datetime, timezone
 from typing import Callable
 
 from build_alpha_apk_local import PR_BRANCH, ROOT, validate_repository_state
@@ -109,8 +110,11 @@ def check_execution_readiness(
     if serial:
         release_argv.extend(["--serial", serial])
 
+    checked_at_utc = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
     return {
         "ready": True,
+        "checked_at_utc": checked_at_utc,
         "source_ready": True,
         "source_branch": PR_BRANCH,
         "source_commit": source_commit,
@@ -120,7 +124,7 @@ def check_execution_readiness(
         "season_id": handoff["season_id"],
         "endpoint_source": handoff["endpoint_source"],
         "next_command_argv": release_argv,
-        "next_action": "Run next_command_argv from this same clean source commit to execute qualification, exact release build, verified install, launch, backend recheck, and evidence prefill on this same device; rerun readiness if the source commit changes.",
+        "next_action": "Run next_command_argv promptly from this same clean source commit to execute qualification, exact release build, verified install, launch, backend recheck, and evidence prefill on this same device; rerun readiness if the source commit changes or the readiness timestamp is no longer current.",
     }
 
 
