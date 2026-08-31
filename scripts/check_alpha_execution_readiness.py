@@ -106,6 +106,8 @@ def check_execution_readiness(
         str(handoff["season_id"]),
         "--timeout",
         str(timeout),
+        "--expected-source-commit",
+        source_commit,
     ]
     if serial:
         release_argv.extend(["--serial", serial])
@@ -124,7 +126,7 @@ def check_execution_readiness(
         "season_id": handoff["season_id"],
         "endpoint_source": handoff["endpoint_source"],
         "next_command_argv": release_argv,
-        "next_action": "Run next_command_argv promptly from this same clean source commit to execute qualification, exact release build, verified install, launch, backend recheck, and evidence prefill on this same device; rerun readiness if the source commit changes or the readiness timestamp is no longer current.",
+        "next_action": "Run next_command_argv promptly to execute qualification, exact release build, verified install, launch, backend recheck, and evidence prefill on this same device. The command is pinned to this certified source commit and will fail closed if the checkout changes; rerun readiness if the source commit changes or the readiness timestamp is no longer current.",
     }
 
 
