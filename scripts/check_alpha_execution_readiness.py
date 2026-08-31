@@ -52,6 +52,17 @@ def read_source_commit() -> str:
     return commit.lower()
 
 
+def confirm_source_unchanged(source_commit: str) -> None:
+    """Recheck source identity immediately before returning an overall ready result."""
+    validate_source_readiness()
+    current_commit = read_source_commit()
+    if current_commit != source_commit:
+        raise ExecutionReadinessError(
+            "source",
+            "source_preflight blocked: source changed during readiness checks; rerun readiness",
+        )
+
+
 def check_execution_readiness(
     *,
     api_base_url: str | None = None,
@@ -102,6 +113,10 @@ def check_execution_readiness(
         )
     except (OSError, ValueError, RuntimeError) as exc:
         raise ExecutionReadinessError("endpoint", f"endpoint_preflight blocked: {exc}") from exc
+
+    # Device and endpoint checks can take long enough for the checkout to change underneath them.
+    # Reconfirm the clean branch and exact commit before publishing an overall ready result.
+    confirm_source_unchanged(source_commit)
 
     checked_at_utc = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
