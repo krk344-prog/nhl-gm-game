@@ -63,7 +63,8 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
         self.assertTrue(result["device_ready"])
         self.assertTrue(result["endpoint_ready"])
         self.assertEqual(result["api_base_url"], self.handoff["api_base_url"])
-        self.assertIn("same clean source commit", result["next_action"])
+        self.assertIn("pinned to this certified source commit", result["next_action"])
+        self.assertIn("fail closed if the checkout changes", result["next_action"])
         self.assertIn("readiness timestamp is no longer current", result["next_action"])
         self.assertEqual(
             calls,
@@ -92,6 +93,8 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
                 "2026-27",
                 "--timeout",
                 "5.0",
+                "--expected-source-commit",
+                self.commit,
                 "--serial",
                 "device-123",
             ],
