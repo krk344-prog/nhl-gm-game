@@ -75,17 +75,23 @@ def check_execution_readiness(
         capture_output=True,
         text=True,
     )
+    detail = (device_result.stdout or device_result.stderr or "").strip()
+    try:
+        device_payload = json.loads(detail) if detail else {}
+    except json.JSONDecodeError as exc:
+        raise ExecutionReadinessError(
+            "device", "device_preflight blocked: device checker returned invalid JSON"
+        ) from exc
     if device_result.returncode != 0:
-        detail = (device_result.stdout or device_result.stderr or "").strip()
-        try:
-            payload = json.loads(detail) if detail else {}
-        except json.JSONDecodeError:
-            payload = {}
-        reason = payload.get("error") if isinstance(payload, dict) else None
+        reason = device_payload.get("error") if isinstance(device_payload, dict) else None
         if reason:
             raise ExecutionReadinessError("device", f"device_preflight blocked: {reason}")
         raise ExecutionReadinessError(
             "device", f"device_preflight failed with exit code {device_result.returncode}"
+        )
+    if not isinstance(device_payload, dict) or device_payload.get("status") != "ready":
+        raise ExecutionReadinessError(
+            "device", "device_preflight blocked: device checker did not confirm ready status"
         )
 
     try:
