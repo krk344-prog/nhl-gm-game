@@ -97,6 +97,8 @@ def check_execution_readiness(
     except (OSError, ValueError, RuntimeError) as exc:
         raise ExecutionReadinessError("endpoint", f"endpoint_preflight blocked: {exc}") from exc
 
+    checked_at_utc = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
     release_argv = [
         sys.executable,
         RELEASE_HANDOFF_SCRIPT,
@@ -108,11 +110,11 @@ def check_execution_readiness(
         str(timeout),
         "--expected-source-commit",
         source_commit,
+        "--readiness-checked-at",
+        checked_at_utc,
     ]
     if serial:
         release_argv.extend(["--serial", serial])
-
-    checked_at_utc = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
     return {
         "ready": True,
@@ -126,7 +128,7 @@ def check_execution_readiness(
         "season_id": handoff["season_id"],
         "endpoint_source": handoff["endpoint_source"],
         "next_command_argv": release_argv,
-        "next_action": "Run next_command_argv promptly to execute qualification, exact release build, verified install, launch, backend recheck, and evidence prefill on this same device. The command is pinned to this certified source commit and will fail closed if the checkout changes; rerun readiness if the source commit changes or the readiness timestamp is no longer current.",
+        "next_action": "Run next_command_argv promptly to execute qualification, exact release build, verified install, launch, backend recheck, and evidence prefill on this same device. The command is pinned to this certified source commit and readiness timestamp and will fail closed if the checkout changes or readiness is stale; rerun readiness after any delay or environment change.",
     }
 
 
