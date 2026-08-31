@@ -7,6 +7,7 @@ import argparse
 import json
 import subprocess
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable, Sequence
 
@@ -28,6 +29,8 @@ DEVICE_SMOKE_PRIVATE_FILENAME = "technical-alpha-device-smoke.json"
 STAGE3_CAPTURE_PRIVATE_FILENAME = "technical-alpha-stage3-capture.json"
 APPLICATION_PACKAGE = "com.krk344.nhlgmgame"
 BUILD_TYPE = "standalone-release-apk"
+READINESS_MAX_AGE = timedelta(minutes=30)
+READINESS_FUTURE_TOLERANCE = timedelta(minutes=1)
 DEVICE_SMOKE_ROUTE = [
     "New Game",
     "Select Franchise",
@@ -51,6 +54,25 @@ def _read_apk_checksum(path: str) -> str:
     if len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest):
         raise RuntimeError("Technical Alpha APK checksum is not a valid SHA-256 digest")
     return digest
+
+
+def _validate_readiness_timestamp(value: str | None, *, now: datetime | None = None) -> datetime:
+    if not value:
+        raise RuntimeError("execution readiness timestamp is required; rerun readiness")
+    if not value.endswith("Z"):
+        raise RuntimeError("execution readiness timestamp must be canonical UTC ending in Z; rerun readiness")
+    try:
+        checked_at = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise RuntimeError("execution readiness timestamp is invalid; rerun readiness") from exc
+    if checked_at.tzinfo is None:
+        raise RuntimeError("execution readiness timestamp must include UTC timezone; rerun readiness")
+    current = now or datetime.now(timezone.utc)
+    if checked_at > current + READINESS_FUTURE_TOLERANCE:
+        raise RuntimeError("execution readiness timestamp is in the future; rerun readiness")
+    if current - checked_at > READINESS_MAX_AGE:
+        raise RuntimeError("execution readiness is stale; rerun readiness before release handoff")
+    return checked_at
 
 
 def _write_prefilled_record(template_path: str, output_path: str, identity: dict[str, object]) -> str:
@@ -109,12 +131,14 @@ def run_release_handoff(
     serial: str | None = None,
     evidence_directory: str | None = None,
     expected_source_commit: str | None = None,
+    readiness_checked_at: str | None = None,
     runner: Callable[..., subprocess.CompletedProcess] = subprocess.run,
     record_exists: Callable[[str], bool] = lambda path: Path(path).is_file(),
     artifact_exists: Callable[[str], bool] = lambda path: Path(path).is_dir(),
     checksum_reader: Callable[[str], str] = _read_apk_checksum,
     evidence_writer: Callable[[str, str, dict[str, object]], str] = _write_prefilled_record,
     check_output: Callable[..., str] = subprocess.check_output,
+    now: datetime | None = None,
 ) -> dict[str, object]:
     """Preflight one device, then qualify, build, install, launch, and recheck the backend."""
 
@@ -129,6 +153,7 @@ def run_release_handoff(
             raise RuntimeError(
                 f"source commit changed after execution readiness: expected {expected}, current {commit}; rerun readiness"
             )
+        _validate_readiness_timestamp(readiness_checked_at, now=now)
 
     device_argv = [sys.executable, DEVICE_PREFLIGHT_SCRIPT]
     if serial:
@@ -234,6 +259,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--timeout", type=float, default=5.0)
     parser.add_argument("--serial", help="adb serial to select when multiple authorized Android devices are connected")
     parser.add_argument("--expected-source-commit", help="exact Git commit previously certified by execution readiness")
+    parser.add_argument("--readiness-checked-at", help="canonical UTC timestamp emitted by execution readiness")
     parser.add_argument(
         "--evidence-directory",
         default=PRIVATE_EVIDENCE_DIRECTORY,
@@ -249,6 +275,7 @@ def main(argv: list[str] | None = None) -> int:
             serial=args.serial,
             evidence_directory=args.evidence_directory,
             expected_source_commit=args.expected_source_commit,
+            readiness_checked_at=args.readiness_checked_at,
         )
     except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError, json.JSONDecodeError) as exc:
         print(json.dumps({"ready": False, "error": str(exc)}, indent=2))
