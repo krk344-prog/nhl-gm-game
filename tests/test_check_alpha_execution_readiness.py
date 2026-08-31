@@ -52,8 +52,8 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
                         runner=runner,
                     )
 
-        source_mock.assert_called_once_with()
-        commit_mock.assert_called_once_with()
+        self.assertEqual(source_mock.call_count, 2)
+        self.assertEqual(commit_mock.call_count, 2)
         self.assertTrue(result["ready"])
         self.assertTrue(result["source_ready"])
         self.assertEqual(result["source_branch"], module.PR_BRANCH)
@@ -207,6 +207,31 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
                         module.check_execution_readiness(runner=runner)
 
         self.assertEqual(raised.exception.blocker_scope, "endpoint")
+
+    def test_source_change_during_device_and_endpoint_checks_blocks_ready_result(self):
+        def runner(argv, *, check, capture_output, text):
+            return SimpleNamespace(returncode=0, stdout='{"status":"ready"}\n', stderr="")
+
+        with patch.object(module, "validate_source_readiness", return_value=module.PR_BRANCH) as source_mock:
+            with patch.object(module, "read_source_commit", side_effect=[self.commit, "b" * 40]) as commit_mock:
+                with patch.object(module, "prepare_build_handoff", return_value=self.handoff) as prepare_mock:
+                    with self.assertRaisesRegex(
+                        module.ExecutionReadinessError,
+                        "source changed during readiness checks; rerun readiness",
+                    ) as raised:
+                        module.check_execution_readiness(
+                            api_base_url=self.handoff["api_base_url"],
+                            runner=runner,
+                        )
+
+        self.assertEqual(raised.exception.blocker_scope, "source")
+        self.assertEqual(source_mock.call_count, 2)
+        self.assertEqual(commit_mock.call_count, 2)
+        prepare_mock.assert_called_once_with(
+            api_base_url=self.handoff["api_base_url"],
+            season_id="2026-27",
+            timeout=5.0,
+        )
 
 
 if __name__ == "__main__":
