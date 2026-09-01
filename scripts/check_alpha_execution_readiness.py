@@ -87,6 +87,12 @@ def validate_device_ready_payload(payload: object) -> None:
                 "device", f"device_preflight blocked: selected-device metadata is missing {field}"
             )
 
+    sdk_level = str(selected_device["sdk_level"]).strip()
+    if not sdk_level.isdigit() or int(sdk_level) <= 0:
+        raise ExecutionReadinessError(
+            "device", "device_preflight blocked: selected-device metadata has an invalid sdk_level"
+        )
+
 
 def check_execution_readiness(
     *,
