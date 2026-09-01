@@ -63,6 +63,31 @@ def confirm_source_unchanged(source_commit: str) -> None:
         )
 
 
+def validate_device_ready_payload(payload: object) -> None:
+    """Require complete privacy-safe device evidence before endpoint work begins."""
+    if not isinstance(payload, dict) or payload.get("status") != "ready":
+        raise ExecutionReadinessError(
+            "device", "device_preflight blocked: device checker did not confirm ready status"
+        )
+
+    authorized_count = payload.get("authorized_device_count")
+    selected_device = payload.get("selected_device")
+    if not isinstance(authorized_count, int) or isinstance(authorized_count, bool) or authorized_count < 1:
+        raise ExecutionReadinessError(
+            "device", "device_preflight blocked: device checker did not provide a valid authorized-device count"
+        )
+    if not isinstance(selected_device, dict):
+        raise ExecutionReadinessError(
+            "device", "device_preflight blocked: device checker did not provide selected-device metadata"
+        )
+    for field in ("model", "android_version", "sdk_level"):
+        value = selected_device.get(field)
+        if not isinstance(value, str) or not value.strip():
+            raise ExecutionReadinessError(
+                "device", f"device_preflight blocked: selected-device metadata is missing {field}"
+            )
+
+
 def check_execution_readiness(
     *,
     api_base_url: str | None = None,
@@ -100,10 +125,7 @@ def check_execution_readiness(
         raise ExecutionReadinessError(
             "device", f"device_preflight failed with exit code {device_result.returncode}"
         )
-    if not isinstance(device_payload, dict) or device_payload.get("status") != "ready":
-        raise ExecutionReadinessError(
-            "device", "device_preflight blocked: device checker did not confirm ready status"
-        )
+    validate_device_ready_payload(device_payload)
 
     try:
         handoff = prepare_build_handoff(
