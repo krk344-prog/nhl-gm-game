@@ -258,8 +258,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--season-id", default="2026-27")
     parser.add_argument("--timeout", type=float, default=5.0)
     parser.add_argument("--serial", help="adb serial to select when multiple authorized Android devices are connected")
-    parser.add_argument("--expected-source-commit", help="exact Git commit previously certified by execution readiness")
-    parser.add_argument("--readiness-checked-at", help="canonical UTC timestamp emitted by execution readiness")
+    parser.add_argument(
+        "--expected-source-commit",
+        required=True,
+        help="exact Git commit previously certified by execution readiness",
+    )
+    parser.add_argument(
+        "--readiness-checked-at",
+        required=True,
+        help="canonical UTC timestamp emitted by execution readiness",
+    )
     parser.add_argument(
         "--evidence-directory",
         default=PRIVATE_EVIDENCE_DIRECTORY,
