@@ -132,6 +132,10 @@ def check_execution_readiness(
             "device", f"device_preflight failed with exit code {device_result.returncode}"
         )
     validate_device_ready_payload(device_payload)
+    selected_device = {
+        field: str(device_payload["selected_device"][field]).strip()
+        for field in ("model", "android_version", "sdk_level")
+    }
 
     try:
         handoff = prepare_build_handoff(
@@ -172,6 +176,7 @@ def check_execution_readiness(
         "source_branch": PR_BRANCH,
         "source_commit": source_commit,
         "device_ready": True,
+        "selected_device": selected_device,
         "endpoint_ready": True,
         "api_base_url": handoff["api_base_url"],
         "season_id": handoff["season_id"],
