@@ -28,6 +28,10 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
             "endpoint_source": "explicit",
         }
         self.commit = "a" * 40
+        self.ready_device_stdout = (
+            '{"status":"ready","authorized_device_count":1,'
+            '"selected_device":{"model":"Pixel 10 XL","android_version":"16","sdk_level":"36"}}\n'
+        )
 
     def test_reports_ready_without_running_qualification_or_build(self):
         calls = []
@@ -41,7 +45,7 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
                     "text": text,
                 }
             )
-            return SimpleNamespace(returncode=0, stdout='{"status":"ready"}\n', stderr="")
+            return SimpleNamespace(returncode=0, stdout=self.ready_device_stdout, stderr="")
 
         with patch.object(module, "validate_source_readiness", return_value=module.PR_BRANCH) as source_mock:
             with patch.object(module, "read_source_commit", return_value=self.commit) as commit_mock:
@@ -106,7 +110,7 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
 
         def runner(*args, **kwargs):
             runner_calls.append((args, kwargs))
-            return SimpleNamespace(returncode=0, stdout='{"status":"ready"}\n', stderr="")
+            return SimpleNamespace(returncode=0, stdout=self.ready_device_stdout, stderr="")
 
         with patch.object(
             module,
@@ -131,7 +135,7 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
 
         def runner(*args, **kwargs):
             runner_calls.append((args, kwargs))
-            return SimpleNamespace(returncode=0, stdout='{"status":"ready"}\n', stderr="")
+            return SimpleNamespace(returncode=0, stdout=self.ready_device_stdout, stderr="")
 
         with patch.object(module, "validate_source_readiness", return_value=module.PR_BRANCH):
             with patch.object(
@@ -169,11 +173,21 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
         self.assertEqual(raised.exception.blocker_scope, "device")
         prepare_mock.assert_not_called()
 
-    def test_device_success_requires_parseable_ready_payload_before_endpoint_preflight(self):
+    def test_device_success_requires_complete_ready_payload_before_endpoint_preflight(self):
         cases = [
             ("not-json\n", "invalid JSON"),
             ('{"status":"block"}\n', "did not confirm ready status"),
             ('{"status":"unknown"}\n', "did not confirm ready status"),
+            ('{"status":"ready"}\n', "valid authorized-device count"),
+            (
+                '{"status":"ready","authorized_device_count":1}\n',
+                "did not provide selected-device metadata",
+            ),
+            (
+                '{"status":"ready","authorized_device_count":1,'
+                '"selected_device":{"model":"Pixel","android_version":"16","sdk_level":""}}\n',
+                "selected-device metadata is missing sdk_level",
+            ),
         ]
         for stdout, expected_error in cases:
             with self.subTest(stdout=stdout):
@@ -191,7 +205,7 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
 
     def test_endpoint_failure_is_classified_after_device_preflight(self):
         def runner(argv, *, check, capture_output, text):
-            return SimpleNamespace(returncode=0, stdout='{"status":"ready"}\n', stderr="")
+            return SimpleNamespace(returncode=0, stdout=self.ready_device_stdout, stderr="")
 
         with patch.object(module, "validate_source_readiness", return_value=module.PR_BRANCH):
             with patch.object(module, "read_source_commit", return_value=self.commit):
@@ -210,7 +224,7 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
 
     def test_source_change_during_device_and_endpoint_checks_blocks_ready_result(self):
         def runner(argv, *, check, capture_output, text):
-            return SimpleNamespace(returncode=0, stdout='{"status":"ready"}\n', stderr="")
+            return SimpleNamespace(returncode=0, stdout=self.ready_device_stdout, stderr="")
 
         with patch.object(module, "validate_source_readiness", return_value=module.PR_BRANCH) as source_mock:
             with patch.object(module, "read_source_commit", side_effect=[self.commit, "b" * 40]) as commit_mock:
