@@ -14,7 +14,7 @@ from build_alpha_apk_local import PR_BRANCH, ROOT, validate_repository_state
 from prepare_alpha_build import prepare_build_handoff
 
 DEVICE_PREFLIGHT_SCRIPT = "scripts/check_alpha_android_device.py"
-RELEASE_HANDOFF_SCRIPT = "scripts/run_alpha_release_handoff.py"
+RELEASE_HANDOFF_SCRIPT = "scripts/run_alpha_certified_release_handoff.py"
 
 
 class ExecutionReadinessError(RuntimeError):
@@ -165,6 +165,12 @@ def check_execution_readiness(
         source_commit,
         "--readiness-checked-at",
         checked_at_utc,
+        "--expected-device-model",
+        selected_device["model"],
+        "--expected-android-version",
+        selected_device["android_version"],
+        "--expected-sdk-level",
+        selected_device["sdk_level"],
     ]
     if serial:
         release_argv.extend(["--serial", serial])
@@ -182,7 +188,7 @@ def check_execution_readiness(
         "season_id": handoff["season_id"],
         "endpoint_source": handoff["endpoint_source"],
         "next_command_argv": release_argv,
-        "next_action": "Run next_command_argv promptly to execute qualification, exact release build, verified install, launch, backend recheck, and evidence prefill on this same device. The command is pinned to this certified source commit and readiness timestamp and will fail closed if the checkout changes or readiness is stale; rerun readiness after any delay or environment change.",
+        "next_action": "Run next_command_argv promptly to execute qualification, exact release build, verified install, launch, backend recheck, and evidence prefill on this same certified device. The command is pinned to this source commit, readiness timestamp, and privacy-safe device identity and will fail closed if the checkout, device, or readiness state changes; rerun readiness after any delay or environment change.",
     }
 
 
