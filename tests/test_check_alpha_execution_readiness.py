@@ -67,8 +67,8 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
         self.assertTrue(result["device_ready"])
         self.assertTrue(result["endpoint_ready"])
         self.assertEqual(result["api_base_url"], self.handoff["api_base_url"])
-        self.assertIn("pinned to this certified source commit and readiness timestamp", result["next_action"])
-        self.assertIn("fail closed if the checkout changes or readiness is stale", result["next_action"])
+        self.assertIn("pinned to this source commit, readiness timestamp, and privacy-safe device identity", result["next_action"])
+        self.assertIn("fail closed if the checkout, device, or readiness state changes", result["next_action"])
         self.assertEqual(
             calls,
             [
@@ -100,6 +100,12 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
                 self.commit,
                 "--readiness-checked-at",
                 result["checked_at_utc"],
+                "--expected-device-model",
+                "Pixel 10 XL",
+                "--expected-android-version",
+                "16",
+                "--expected-sdk-level",
+                "36",
                 "--serial",
                 "device-123",
             ],
