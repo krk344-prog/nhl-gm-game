@@ -26,9 +26,11 @@ class AlphaCertifiedDeviceHandoffTests(unittest.TestCase):
         return runner
 
     def test_matching_certified_device_proceeds_to_guarded_handoff(self):
+        identity = "b" * 64
         device_payload = (
             '{"status":"ready","authorized_device_count":1,'
-            '"selected_device":{"model":"Pixel 10 XL","android_version":"16","sdk_level":"36"}}'
+            '"selected_device":{"model":"Pixel 10 XL","android_version":"16","sdk_level":"36"},'
+            f'"device_identity":"{identity}"}}'
         )
         expected = {"ready": True}
         with patch.object(module, "run_release_handoff", return_value=expected) as handoff:
@@ -39,22 +41,25 @@ class AlphaCertifiedDeviceHandoffTests(unittest.TestCase):
                 serial=None,
                 evidence_directory=".alpha-private",
                 expected_source_commit="a" * 40,
-                readiness_checked_at="2026-09-01T16:00:00Z",
+                readiness_checked_at="2026-09-02T07:00:00Z",
                 expected_device_model="Pixel 10 XL",
                 expected_android_version="16",
                 expected_sdk_level="36",
+                device_identity_key="11" * 32,
+                expected_device_identity=identity,
                 runner=self._runner(device_payload),
             )
         self.assertEqual(result, expected)
         handoff.assert_called_once()
 
-    def test_changed_device_blocks_before_guarded_handoff(self):
+    def test_same_model_but_different_device_identity_blocks(self):
         device_payload = (
             '{"status":"ready","authorized_device_count":1,'
-            '"selected_device":{"model":"Pixel 9","android_version":"16","sdk_level":"36"}}'
+            '"selected_device":{"model":"Pixel 10 XL","android_version":"16","sdk_level":"36"},'
+            f'"device_identity":"{"c" * 64}"}}'
         )
         with patch.object(module, "run_release_handoff") as handoff:
-            with self.assertRaisesRegex(RuntimeError, "certified device changed"):
+            with self.assertRaisesRegex(RuntimeError, "device identity changed"):
                 module.run_certified_handoff(
                     api_base_url="http://192.168.1.20:8000/api/v1",
                     season_id="2026-27",
@@ -62,10 +67,12 @@ class AlphaCertifiedDeviceHandoffTests(unittest.TestCase):
                     serial=None,
                     evidence_directory=".alpha-private",
                     expected_source_commit="a" * 40,
-                    readiness_checked_at="2026-09-01T16:00:00Z",
+                    readiness_checked_at="2026-09-02T07:00:00Z",
                     expected_device_model="Pixel 10 XL",
                     expected_android_version="16",
                     expected_sdk_level="36",
+                    device_identity_key="11" * 32,
+                    expected_device_identity="b" * 64,
                     runner=self._runner(device_payload),
                 )
         handoff.assert_not_called()
