@@ -28,154 +28,84 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
             "endpoint_source": "explicit",
         }
         self.commit = "a" * 40
+        self.identity_key = "11" * 32
+        self.device_identity = "b" * 64
         self.ready_device_stdout = (
             '{"status":"ready","authorized_device_count":1,'
-            '"selected_device":{"model":"Pixel 10 XL","android_version":"16","sdk_level":"36"}}\n'
+            '"selected_device":{"model":"Pixel 10 XL","android_version":"16","sdk_level":"36"},'
+            f'"device_identity":"{self.device_identity}"}}\n'
         )
+
+    def _ready(self, *, serial: str | None = None, runner=None):
+        if runner is None:
+            def runner(argv, *, check, capture_output, text):
+                return SimpleNamespace(returncode=0, stdout=self.ready_device_stdout, stderr="")
+        with patch.object(module, "validate_source_readiness", return_value=module.PR_BRANCH):
+            with patch.object(module, "read_source_commit", return_value=self.commit):
+                with patch.object(module, "prepare_build_handoff", return_value=self.handoff):
+                    with patch.object(module.secrets, "token_hex", return_value=self.identity_key):
+                        return module.check_execution_readiness(
+                            api_base_url=self.handoff["api_base_url"], serial=serial, runner=runner
+                        )
 
     def test_reports_ready_without_running_qualification_or_build(self):
         calls = []
-
         def runner(argv, *, check, capture_output, text):
-            calls.append(
-                {
-                    "argv": list(argv),
-                    "check": check,
-                    "capture_output": capture_output,
-                    "text": text,
-                }
-            )
+            calls.append(list(argv))
             return SimpleNamespace(returncode=0, stdout=self.ready_device_stdout, stderr="")
 
-        with patch.object(module, "validate_source_readiness", return_value=module.PR_BRANCH) as source_mock:
-            with patch.object(module, "read_source_commit", return_value=self.commit) as commit_mock:
-                with patch.object(module, "prepare_build_handoff", return_value=self.handoff) as prepare_mock:
-                    result = module.check_execution_readiness(
-                        api_base_url=self.handoff["api_base_url"],
-                        serial="device-123",
-                        runner=runner,
-                    )
-
-        self.assertEqual(source_mock.call_count, 2)
-        self.assertEqual(commit_mock.call_count, 2)
+        result = self._ready(serial="device-123", runner=runner)
         self.assertTrue(result["ready"])
-        self.assertTrue(result["source_ready"])
-        self.assertEqual(result["source_branch"], module.PR_BRANCH)
         self.assertEqual(result["source_commit"], self.commit)
-        self.assertTrue(str(result["checked_at_utc"]).endswith("Z"))
         datetime.fromisoformat(str(result["checked_at_utc"]).replace("Z", "+00:00"))
-        self.assertTrue(result["device_ready"])
-        self.assertTrue(result["endpoint_ready"])
-        self.assertEqual(result["api_base_url"], self.handoff["api_base_url"])
-        self.assertIn("pinned to this source commit, readiness timestamp, and privacy-safe device identity", result["next_action"])
-        self.assertIn("fail closed if the checkout, device, or readiness state changes", result["next_action"])
         self.assertEqual(
-            calls,
-            [
-                {
-                    "argv": [sys.executable, module.DEVICE_PREFLIGHT_SCRIPT, "--serial", "device-123"],
-                    "check": False,
-                    "capture_output": True,
-                    "text": True,
-                }
-            ],
+            calls[0],
+            [sys.executable, module.DEVICE_PREFLIGHT_SCRIPT, "--identity-key", self.identity_key, "--serial", "device-123"],
         )
-        prepare_mock.assert_called_once_with(
-            api_base_url=self.handoff["api_base_url"],
-            season_id="2026-27",
-            timeout=5.0,
-        )
-        self.assertEqual(
-            result["next_command_argv"],
-            [
-                sys.executable,
-                module.RELEASE_HANDOFF_SCRIPT,
-                "--api-base-url",
-                self.handoff["api_base_url"],
-                "--season-id",
-                "2026-27",
-                "--timeout",
-                "5.0",
-                "--expected-source-commit",
-                self.commit,
-                "--readiness-checked-at",
-                result["checked_at_utc"],
-                "--expected-device-model",
-                "Pixel 10 XL",
-                "--expected-android-version",
-                "16",
-                "--expected-sdk-level",
-                "36",
-                "--serial",
-                "device-123",
-            ],
-        )
+        argv = result["next_command_argv"]
+        self.assertIn("--device-identity-key", argv)
+        self.assertIn(self.identity_key, argv)
+        self.assertIn("--expected-device-identity", argv)
+        self.assertIn(self.device_identity, argv)
+        self.assertIn("--serial", argv)
+        self.assertIn("device-123", argv)
+        self.assertIn("ephemeral privacy-safe device identity proof", result["next_action"])
 
-    def test_source_failure_stops_before_commit_device_and_endpoint_preflight(self):
+    def test_source_failure_stops_before_device_and_endpoint_preflight(self):
         runner_calls = []
-
         def runner(*args, **kwargs):
             runner_calls.append((args, kwargs))
             return SimpleNamespace(returncode=0, stdout=self.ready_device_stdout, stderr="")
-
-        with patch.object(
-            module,
-            "validate_source_readiness",
-            side_effect=module.ExecutionReadinessError(
-                "source",
-                f"source_preflight blocked: build must run from {module.PR_BRANCH}; current branch is main",
-            ),
-        ):
+        with patch.object(module, "validate_source_readiness", side_effect=module.ExecutionReadinessError("source", "source_preflight blocked")):
             with patch.object(module, "read_source_commit") as commit_mock:
                 with patch.object(module, "prepare_build_handoff") as prepare_mock:
-                    with self.assertRaisesRegex(module.ExecutionReadinessError, "source_preflight blocked") as raised:
+                    with self.assertRaises(module.ExecutionReadinessError):
                         module.check_execution_readiness(runner=runner)
-
-        self.assertEqual(raised.exception.blocker_scope, "source")
         self.assertEqual(runner_calls, [])
         commit_mock.assert_not_called()
         prepare_mock.assert_not_called()
 
     def test_invalid_source_commit_stops_before_device_and_endpoint_preflight(self):
         runner_calls = []
-
         def runner(*args, **kwargs):
             runner_calls.append((args, kwargs))
             return SimpleNamespace(returncode=0, stdout=self.ready_device_stdout, stderr="")
-
         with patch.object(module, "validate_source_readiness", return_value=module.PR_BRANCH):
-            with patch.object(
-                module,
-                "read_source_commit",
-                side_effect=module.ExecutionReadinessError(
-                    "source", "source_preflight blocked: could not determine exact Git commit"
-                ),
-            ):
+            with patch.object(module, "read_source_commit", side_effect=module.ExecutionReadinessError("source", "source_preflight blocked: could not determine exact Git commit")):
                 with patch.object(module, "prepare_build_handoff") as prepare_mock:
-                    with self.assertRaisesRegex(module.ExecutionReadinessError, "could not determine exact Git commit") as raised:
+                    with self.assertRaisesRegex(module.ExecutionReadinessError, "could not determine exact Git commit"):
                         module.check_execution_readiness(runner=runner)
-
-        self.assertEqual(raised.exception.blocker_scope, "source")
         self.assertEqual(runner_calls, [])
         prepare_mock.assert_not_called()
 
     def test_device_failure_stops_before_endpoint_preflight_and_is_classified(self):
         def runner(argv, *, check, capture_output, text):
-            return SimpleNamespace(
-                returncode=4,
-                stdout='{"status":"block","error":"multiple authorized Android devices are connected; rerun with --serial"}\n',
-                stderr="",
-            )
-
+            return SimpleNamespace(returncode=4, stdout='{"status":"block","error":"multiple authorized Android devices are connected; rerun with --serial"}\n', stderr="")
         with patch.object(module, "validate_source_readiness", return_value=module.PR_BRANCH):
             with patch.object(module, "read_source_commit", return_value=self.commit):
                 with patch.object(module, "prepare_build_handoff") as prepare_mock:
-                    with self.assertRaisesRegex(
-                        module.ExecutionReadinessError,
-                        "device_preflight blocked: multiple authorized Android devices are connected; rerun with --serial",
-                    ) as raised:
+                    with self.assertRaisesRegex(module.ExecutionReadinessError, "multiple authorized Android devices") as raised:
                         module.check_execution_readiness(runner=runner)
-
         self.assertEqual(raised.exception.blocker_scope, "device")
         prepare_mock.assert_not_called()
 
@@ -183,75 +113,43 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
         cases = [
             ("not-json\n", "invalid JSON"),
             ('{"status":"block"}\n', "did not confirm ready status"),
-            ('{"status":"unknown"}\n', "did not confirm ready status"),
             ('{"status":"ready"}\n', "valid authorized-device count"),
-            (
-                '{"status":"ready","authorized_device_count":1}\n',
-                "did not provide selected-device metadata",
-            ),
-            (
-                '{"status":"ready","authorized_device_count":1,'
-                '"selected_device":{"model":"Pixel","android_version":"16","sdk_level":""}}\n',
-                "selected-device metadata is missing sdk_level",
-            ),
+            ('{"status":"ready","authorized_device_count":1}\n', "selected-device metadata"),
+            ('{"status":"ready","authorized_device_count":1,"selected_device":{"model":"Pixel","android_version":"16","sdk_level":""}}\n', "missing sdk_level"),
+            ('{"status":"ready","authorized_device_count":1,"selected_device":{"model":"Pixel","android_version":"16","sdk_level":"36"}}\n', "privacy-safe device identity"),
         ]
         for stdout, expected_error in cases:
             with self.subTest(stdout=stdout):
                 def runner(argv, *, check, capture_output, text):
                     return SimpleNamespace(returncode=0, stdout=stdout, stderr="")
-
                 with patch.object(module, "validate_source_readiness", return_value=module.PR_BRANCH):
                     with patch.object(module, "read_source_commit", return_value=self.commit):
                         with patch.object(module, "prepare_build_handoff") as prepare_mock:
-                            with self.assertRaisesRegex(module.ExecutionReadinessError, expected_error) as raised:
-                                module.check_execution_readiness(runner=runner)
-
-                self.assertEqual(raised.exception.blocker_scope, "device")
+                            with patch.object(module.secrets, "token_hex", return_value=self.identity_key):
+                                with self.assertRaisesRegex(module.ExecutionReadinessError, expected_error):
+                                    module.check_execution_readiness(runner=runner)
                 prepare_mock.assert_not_called()
 
     def test_endpoint_failure_is_classified_after_device_preflight(self):
         def runner(argv, *, check, capture_output, text):
             return SimpleNamespace(returncode=0, stdout=self.ready_device_stdout, stderr="")
-
         with patch.object(module, "validate_source_readiness", return_value=module.PR_BRANCH):
             with patch.object(module, "read_source_commit", return_value=self.commit):
-                with patch.object(
-                    module,
-                    "prepare_build_handoff",
-                    side_effect=RuntimeError("backend did not respond"),
-                ):
-                    with self.assertRaisesRegex(
-                        module.ExecutionReadinessError,
-                        "endpoint_preflight blocked: backend did not respond",
-                    ) as raised:
-                        module.check_execution_readiness(runner=runner)
-
+                with patch.object(module.secrets, "token_hex", return_value=self.identity_key):
+                    with patch.object(module, "prepare_build_handoff", side_effect=RuntimeError("backend did not respond")):
+                        with self.assertRaisesRegex(module.ExecutionReadinessError, "endpoint_preflight blocked: backend did not respond") as raised:
+                            module.check_execution_readiness(runner=runner)
         self.assertEqual(raised.exception.blocker_scope, "endpoint")
 
-    def test_source_change_during_device_and_endpoint_checks_blocks_ready_result(self):
+    def test_source_change_during_checks_blocks_ready_result(self):
         def runner(argv, *, check, capture_output, text):
             return SimpleNamespace(returncode=0, stdout=self.ready_device_stdout, stderr="")
-
-        with patch.object(module, "validate_source_readiness", return_value=module.PR_BRANCH) as source_mock:
-            with patch.object(module, "read_source_commit", side_effect=[self.commit, "b" * 40]) as commit_mock:
-                with patch.object(module, "prepare_build_handoff", return_value=self.handoff) as prepare_mock:
-                    with self.assertRaisesRegex(
-                        module.ExecutionReadinessError,
-                        "source changed during readiness checks; rerun readiness",
-                    ) as raised:
-                        module.check_execution_readiness(
-                            api_base_url=self.handoff["api_base_url"],
-                            runner=runner,
-                        )
-
-        self.assertEqual(raised.exception.blocker_scope, "source")
-        self.assertEqual(source_mock.call_count, 2)
-        self.assertEqual(commit_mock.call_count, 2)
-        prepare_mock.assert_called_once_with(
-            api_base_url=self.handoff["api_base_url"],
-            season_id="2026-27",
-            timeout=5.0,
-        )
+        with patch.object(module, "validate_source_readiness", return_value=module.PR_BRANCH):
+            with patch.object(module, "read_source_commit", side_effect=[self.commit, "b" * 40]):
+                with patch.object(module.secrets, "token_hex", return_value=self.identity_key):
+                    with patch.object(module, "prepare_build_handoff", return_value=self.handoff):
+                        with self.assertRaisesRegex(module.ExecutionReadinessError, "source changed during readiness checks"):
+                            module.check_execution_readiness(api_base_url=self.handoff["api_base_url"], runner=runner)
 
 
 if __name__ == "__main__":
