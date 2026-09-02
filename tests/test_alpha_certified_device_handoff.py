@@ -53,10 +53,11 @@ class AlphaCertifiedDeviceHandoffTests(unittest.TestCase):
         handoff.assert_called_once()
 
     def test_same_model_but_different_device_identity_blocks(self):
+        changed_identity = "c" * 64
         device_payload = (
             '{"status":"ready","authorized_device_count":1,'
             '"selected_device":{"model":"Pixel 10 XL","android_version":"16","sdk_level":"36"},'
-            f'"device_identity":"{"c" * 64}"}}'
+            f'"device_identity":"{changed_identity}"}}'
         )
         with patch.object(module, "run_release_handoff") as handoff:
             with self.assertRaisesRegex(RuntimeError, "device identity changed"):
