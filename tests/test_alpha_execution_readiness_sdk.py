@@ -27,6 +27,7 @@ class AlphaExecutionReadinessSdkTests(unittest.TestCase):
                 "android_version": "16",
                 "sdk_level": sdk_level,
             },
+            "device_identity": "b" * 64,
         }
 
     def test_numeric_sdk_level_is_accepted(self):
