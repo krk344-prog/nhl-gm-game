@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import secrets
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -93,6 +94,14 @@ def validate_device_ready_payload(payload: object) -> None:
             "device", "device_preflight blocked: selected-device metadata has an invalid sdk_level"
         )
 
+    device_identity = payload.get("device_identity")
+    if not isinstance(device_identity, str) or len(device_identity) != 64 or any(
+        character not in "0123456789abcdefABCDEF" for character in device_identity
+    ):
+        raise ExecutionReadinessError(
+            "device", "device_preflight blocked: device checker did not provide a valid privacy-safe device identity"
+        )
+
 
 def check_execution_readiness(
     *,
@@ -106,8 +115,9 @@ def check_execution_readiness(
 
     validate_source_readiness()
     source_commit = read_source_commit()
+    identity_key = secrets.token_hex(32)
 
-    device_argv = [sys.executable, DEVICE_PREFLIGHT_SCRIPT]
+    device_argv = [sys.executable, DEVICE_PREFLIGHT_SCRIPT, "--identity-key", identity_key]
     if serial:
         device_argv.extend(["--serial", serial])
 
@@ -136,6 +146,7 @@ def check_execution_readiness(
         field: str(device_payload["selected_device"][field]).strip()
         for field in ("model", "android_version", "sdk_level")
     }
+    device_identity = str(device_payload["device_identity"]).lower()
 
     try:
         handoff = prepare_build_handoff(
@@ -146,8 +157,6 @@ def check_execution_readiness(
     except (OSError, ValueError, RuntimeError) as exc:
         raise ExecutionReadinessError("endpoint", f"endpoint_preflight blocked: {exc}") from exc
 
-    # Device and endpoint checks can take long enough for the checkout to change underneath them.
-    # Reconfirm the clean branch and exact commit before publishing an overall ready result.
     confirm_source_unchanged(source_commit)
 
     checked_at_utc = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -171,6 +180,10 @@ def check_execution_readiness(
         selected_device["android_version"],
         "--expected-sdk-level",
         selected_device["sdk_level"],
+        "--device-identity-key",
+        identity_key,
+        "--expected-device-identity",
+        device_identity,
     ]
     if serial:
         release_argv.extend(["--serial", serial])
@@ -188,7 +201,7 @@ def check_execution_readiness(
         "season_id": handoff["season_id"],
         "endpoint_source": handoff["endpoint_source"],
         "next_command_argv": release_argv,
-        "next_action": "Run next_command_argv promptly to execute qualification, exact release build, verified install, launch, backend recheck, and evidence prefill on this same certified device. The command is pinned to this source commit, readiness timestamp, and privacy-safe device identity and will fail closed if the checkout, device, or readiness state changes; rerun readiness after any delay or environment change.",
+        "next_action": "Run next_command_argv promptly to execute qualification, exact release build, verified install, launch, backend recheck, and evidence prefill on this same certified device. The command is pinned to this source commit, readiness timestamp, and an ephemeral privacy-safe device identity proof and will fail closed if the checkout, device, or readiness state changes; rerun readiness after any delay or environment change.",
     }
 
 
