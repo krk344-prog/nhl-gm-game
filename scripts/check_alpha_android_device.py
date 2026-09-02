@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import hmac
 import json
 import shutil
 import subprocess
@@ -57,8 +59,19 @@ def select_device(devices: list[AdbDevice], requested_serial: str | None = None)
     return selected
 
 
+def _device_identity(serial: str, identity_key: str) -> str:
+    try:
+        key = bytes.fromhex(identity_key)
+    except ValueError as exc:
+        raise RuntimeError("device identity key must be hexadecimal") from exc
+    if len(key) < 16:
+        raise RuntimeError("device identity key must contain at least 16 bytes")
+    return hmac.new(key, serial.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
 def inspect_device(
     requested_serial: str | None = None,
+    identity_key: str | None = None,
     *,
     which=shutil.which,
     check_output=subprocess.check_output,
@@ -82,7 +95,7 @@ def inspect_device(
     if not model or not android_version or not sdk_level:
         raise RuntimeError("adb connected, but required device metadata could not be read")
 
-    return {
+    payload: dict[str, object] = {
         "status": "ready",
         "authorized_device_count": sum(device.state == "device" for device in devices),
         "selected_device": {
@@ -92,14 +105,21 @@ def inspect_device(
         },
         "next_action": "install the checksum-verified APK on this exact device",
     }
+    if identity_key:
+        payload["device_identity"] = _device_identity(selected.serial, identity_key)
+    return payload
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--serial", help="adb serial to select when multiple authorized devices are connected")
+    parser.add_argument(
+        "--identity-key",
+        help="optional ephemeral hexadecimal key used to emit a privacy-safe HMAC device identity",
+    )
     args = parser.parse_args(argv)
     try:
-        print(json.dumps(inspect_device(args.serial), indent=2))
+        print(json.dumps(inspect_device(args.serial, args.identity_key), indent=2))
         return 0
     except (RuntimeError, OSError, subprocess.CalledProcessError) as exc:
         print(json.dumps({"status": "block", "error": str(exc)}, indent=2))
