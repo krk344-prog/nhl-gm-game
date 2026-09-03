@@ -188,8 +188,20 @@ def check_execution_readiness(
     if serial:
         release_argv.extend(["--serial", serial])
 
+    public_summary = {
+        "ready": True,
+        "checked_at_utc": checked_at_utc,
+        "source_ready": True,
+        "source_branch": PR_BRANCH,
+        "source_commit": source_commit,
+        "device_ready": True,
+        "endpoint_ready": True,
+        "season_id": handoff["season_id"],
+    }
+
     return {
         "ready": True,
+        "output_sensitivity": "private",
         "checked_at_utc": checked_at_utc,
         "source_ready": True,
         "source_branch": PR_BRANCH,
@@ -201,7 +213,8 @@ def check_execution_readiness(
         "season_id": handoff["season_id"],
         "endpoint_source": handoff["endpoint_source"],
         "next_command_argv": release_argv,
-        "next_action": "Run next_command_argv promptly to execute qualification, exact release build, verified install, launch, backend recheck, and evidence prefill on this same certified device. The command is pinned to this source commit, readiness timestamp, and an ephemeral privacy-safe device identity proof and will fail closed if the checkout, device, or readiness state changes; rerun readiness after any delay or environment change.",
+        "public_summary": public_summary,
+        "next_action": "Keep this full readiness payload private because next_command_argv contains an ephemeral device-identity key and may contain a local endpoint or device selector. Share only public_summary publicly. Run next_command_argv promptly to execute qualification, exact release build, verified install, launch, backend recheck, and evidence prefill on this same certified device. The command is pinned to this source commit, readiness timestamp, and an ephemeral privacy-safe device identity proof and will fail closed if the checkout, device, or readiness state changes; rerun readiness after any delay or environment change.",
     }
 
 
