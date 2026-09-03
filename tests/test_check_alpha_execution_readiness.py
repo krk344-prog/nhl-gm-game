@@ -69,7 +69,18 @@ class CheckAlphaExecutionReadinessTests(unittest.TestCase):
         self.assertIn(self.device_identity, argv)
         self.assertIn("--serial", argv)
         self.assertIn("device-123", argv)
-        self.assertIn("ephemeral privacy-safe device identity proof", result["next_action"])
+        self.assertEqual(result["output_sensitivity"], "private")
+        public_summary = result["public_summary"]
+        self.assertTrue(public_summary["ready"])
+        self.assertEqual(public_summary["source_commit"], self.commit)
+        self.assertNotIn("api_base_url", public_summary)
+        self.assertNotIn("selected_device", public_summary)
+        self.assertNotIn("next_command_argv", public_summary)
+        self.assertNotIn(self.identity_key, str(public_summary))
+        self.assertNotIn(self.device_identity, str(public_summary))
+        self.assertNotIn("device-123", str(public_summary))
+        self.assertIn("Keep this full readiness payload private", result["next_action"])
+        self.assertIn("Share only public_summary publicly", result["next_action"])
 
     def test_source_failure_stops_before_device_and_endpoint_preflight(self):
         runner_calls = []
