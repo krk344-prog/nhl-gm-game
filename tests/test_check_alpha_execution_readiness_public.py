@@ -22,7 +22,7 @@ spec.loader.exec_module(module)
 
 
 class PublicExecutionReadinessTests(unittest.TestCase):
-    def test_ready_result_emits_only_private_checkers_public_summary(self):
+    def test_ready_result_emits_only_wrapper_allowlisted_public_fields(self):
         private_payload = {
             "ready": True,
             "output_sensitivity": "private",
@@ -31,10 +31,17 @@ class PublicExecutionReadinessTests(unittest.TestCase):
             "next_command_argv": ["python", "handoff.py", "--device-identity-key", "secret-key"],
             "public_summary": {
                 "ready": True,
+                "checked_at_utc": "2026-09-04T09:00:00Z",
                 "source_ready": True,
+                "source_branch": "agent/alpha-rules-integration-v1",
+                "source_commit": "a" * 40,
                 "device_ready": True,
                 "endpoint_ready": True,
                 "season_id": "2026-27",
+                # Simulate an accidental future addition to the private checker's public_summary.
+                "api_base_url": "http://192.168.1.20:8000/api/v1",
+                "device_selector": "private-device-selector",
+                "device_identity_key": "secret-key",
             },
         }
 
@@ -44,10 +51,13 @@ class PublicExecutionReadinessTests(unittest.TestCase):
 
         returncode, result = module.public_readiness_status(runner=runner)
         self.assertEqual(returncode, 0)
-        self.assertEqual(result, private_payload["public_summary"])
+        self.assertEqual(set(result), set(module.PUBLIC_SUMMARY_FIELDS))
+        self.assertTrue(result["ready"])
+        self.assertEqual(result["season_id"], "2026-27")
         rendered = json.dumps(result)
         self.assertNotIn("192.168.1.20", rendered)
         self.assertNotIn("Pixel 10 XL", rendered)
+        self.assertNotIn("private-device-selector", rendered)
         self.assertNotIn("secret-key", rendered)
 
     def test_failure_does_not_echo_private_diagnostic(self):
