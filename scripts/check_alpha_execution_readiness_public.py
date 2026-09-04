@@ -16,12 +16,27 @@ import sys
 from typing import Callable
 
 PRIVATE_READINESS_SCRIPT = "scripts/check_alpha_execution_readiness.py"
+PUBLIC_SUMMARY_FIELDS = (
+    "ready",
+    "checked_at_utc",
+    "source_ready",
+    "source_branch",
+    "source_commit",
+    "device_ready",
+    "endpoint_ready",
+    "season_id",
+)
 PUBLIC_NEXT_ACTIONS = {
     "source": "Resolve the source checkout blocker and rerun readiness.",
     "device": "Resolve the Android device preflight blocker and rerun readiness.",
     "endpoint": "Resolve the tester endpoint preflight blocker and rerun readiness.",
     "unknown": "Resolve the facilitator preflight blocker and rerun readiness.",
 }
+
+
+def _sanitize_public_summary(summary: dict[str, object]) -> dict[str, object]:
+    """Copy only the wrapper-owned public contract; ignore any future private additions."""
+    return {field: summary[field] for field in PUBLIC_SUMMARY_FIELDS if field in summary}
 
 
 def public_readiness_status(
@@ -71,7 +86,9 @@ def public_readiness_status(
     if result.returncode == 0 and isinstance(payload, dict):
         summary = payload.get("public_summary")
         if isinstance(summary, dict) and summary.get("ready") is True:
-            return 0, dict(summary)
+            public_summary = _sanitize_public_summary(summary)
+            if public_summary.get("ready") is True:
+                return 0, public_summary
 
     blocker_scope = payload.get("blocker_scope") if isinstance(payload, dict) else None
     if blocker_scope not in PUBLIC_NEXT_ACTIONS:
