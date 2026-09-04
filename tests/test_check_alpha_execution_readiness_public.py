@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -37,7 +38,8 @@ class PublicExecutionReadinessTests(unittest.TestCase):
             },
         }
 
-        def runner(argv, *, check, capture_output, text):
+        def runner(argv, *, check, capture_output, text, timeout):
+            self.assertGreaterEqual(timeout, 20.0)
             return SimpleNamespace(returncode=0, stdout=json.dumps(private_payload), stderr="")
 
         returncode, result = module.public_readiness_status(runner=runner)
@@ -55,7 +57,7 @@ class PublicExecutionReadinessTests(unittest.TestCase):
             "error": "endpoint_preflight blocked: http://192.168.1.20:8000/api/v1 did not respond",
         }
 
-        def runner(argv, *, check, capture_output, text):
+        def runner(argv, *, check, capture_output, text, timeout):
             return SimpleNamespace(returncode=1, stdout=json.dumps(private_error), stderr="")
 
         returncode, result = module.public_readiness_status(
@@ -72,13 +74,29 @@ class PublicExecutionReadinessTests(unittest.TestCase):
         self.assertIn("rerun readiness", result["next_action"])
 
     def test_invalid_private_output_fails_closed_without_echoing_it(self):
-        def runner(argv, *, check, capture_output, text):
+        def runner(argv, *, check, capture_output, text, timeout):
             return SimpleNamespace(returncode=2, stdout="not-json private detail", stderr="")
 
         returncode, result = module.public_readiness_status(runner=runner)
         self.assertEqual(returncode, 1)
         self.assertEqual(result["blocker_scope"], "unknown")
         self.assertNotIn("not-json", json.dumps(result))
+
+    def test_private_checker_timeout_fails_closed_without_private_detail(self):
+        def runner(argv, *, check, capture_output, text, timeout):
+            raise subprocess.TimeoutExpired(argv, timeout, output="private endpoint detail")
+
+        returncode, result = module.public_readiness_status(
+            api_base_url="http://192.168.1.20:8000/api/v1",
+            serial="private-device-selector",
+            runner=runner,
+        )
+        self.assertEqual(returncode, 1)
+        self.assertEqual(result["blocker_scope"], "unknown")
+        rendered = json.dumps(result)
+        self.assertNotIn("192.168.1.20", rendered)
+        self.assertNotIn("private-device-selector", rendered)
+        self.assertNotIn("private endpoint detail", rendered)
 
 
 if __name__ == "__main__":
