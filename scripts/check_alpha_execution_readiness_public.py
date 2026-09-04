@@ -46,7 +46,22 @@ def public_readiness_status(
     if serial:
         argv.extend(["--serial", serial])
 
-    result = runner(argv, check=False, capture_output=True, text=True)
+    process_timeout = max(timeout + 15.0, 20.0)
+    try:
+        result = runner(
+            argv,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=process_timeout,
+        )
+    except subprocess.TimeoutExpired:
+        return 1, {
+            "ready": False,
+            "blocker_scope": "unknown",
+            "next_action": PUBLIC_NEXT_ACTIONS["unknown"],
+        }
+
     detail = (result.stdout or result.stderr or "").strip()
     try:
         payload = json.loads(detail) if detail else {}
