@@ -1,0 +1,189 @@
+#!/usr/bin/env python3
+"""Reconcile Technical Alpha device and Stage 3 evidence before Kyle approval.
+
+A first-session observation is intentionally optional at this pre-pilot gate. Kyle's
+explicit approval is required before the 3–5 person pilot begins, so readiness must
+not depend on evidence that can only be collected from an actual tester session.
+When a first-session record is supplied later, it is still validated and reconciled
+against the exact package identity.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from pathlib import Path
+from typing import Any
+
+from scripts.validate_alpha_device_smoke import validate_record as validate_device_record
+from scripts.validate_alpha_first_session_observation import validate_observation
+from scripts.validate_alpha_stage3_capture import validate_record as validate_stage3_record
+
+APPLICATION_PACKAGE = "com.krk344.nhlgmgame"
+
+DEVICE_PASSES = (
+    "artifact_verifier_passed",
+    "apk_installed",
+    "launch_confirmed",
+    "health_passed",
+    "season_context_passed",
+    "franchise_selection_passed",
+    "advance_day_passed",
+    "roster_passed",
+    "standings_passed",
+    "trade_passed",
+    "trade_history_passed",
+    "save_reload_passed",
+    "debug_report_passed",
+    "reset_passed",
+)
+
+COMMIT_SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
+APK_SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+
+
+def _load(path: Path, label: str) -> tuple[dict[str, Any] | None, list[str]]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return None, [f"{label}_unreadable:{exc}"]
+    if not isinstance(value, dict):
+        return None, [f"{label}_must_be_object"]
+    return value, []
+
+
+def _normalized(value: Any) -> str:
+    return value.strip().lower() if isinstance(value, str) else ""
+
+
+def validate(
+    device: dict[str, Any],
+    stage3: dict[str, Any],
+    first_session: dict[str, Any] | None = None,
+) -> list[str]:
+    errors: list[str] = []
+
+    # Re-run the authoritative physical-device validator at the final approval gate.
+    # This prevents stale, malformed, non-release, or unreachable-endpoint device
+    # evidence from becoming approval-ready merely because its identity still matches.
+    errors.extend(f"device:{error}" for error in validate_device_record(device))
+
+    for field in DEVICE_PASSES:
+        if device.get(field) is not True:
+            errors.append(f"device_not_passed:{field}")
+
+    if device.get("blockers") not in (None, []):
+        errors.append("device_blockers_present")
+
+    # Re-run the authoritative Stage 3 validator at the final approval gate rather
+    # than trusting only its top-level decision and identity fields. This keeps the
+    # required captures, preconditions, UI checks, privacy boundary, and sign-offs
+    # fail-closed during the final reconciliation step.
+    errors.extend(f"stage3:{error}" for error in validate_stage3_record(stage3))
+
+    if stage3.get("stage3_decision") != "COMPLETE_UI_REVIEW_PENDING":
+        errors.append("stage3_not_complete")
+    if stage3.get("blockers") not in (None, []):
+        errors.append("stage3_blockers_present")
+    if stage3.get("open_major_defects") not in (None, []):
+        errors.append("stage3_major_defects_present")
+
+    if first_session is not None:
+        errors.extend(f"first_session:{error}" for error in validate_observation(first_session))
+
+    device_commit = _normalized(device.get("commit_sha"))
+    stage3_commit = _normalized(stage3.get("commit_sha"))
+    commits = [device_commit, stage3_commit]
+    if first_session is not None:
+        session_package = first_session.get("package_identity", {})
+        commits.append(_normalized(session_package.get("commit_sha")))
+    if not all(COMMIT_SHA_PATTERN.fullmatch(value) for value in commits):
+        errors.append("invalid_format:commit_sha")
+    if not all(commits) or len(set(commits)) != 1:
+        errors.append("identity_mismatch:commit_sha")
+
+    device_apk = _normalized(device.get("apk_sha256"))
+    stage3_apk = _normalized(stage3.get("apk_sha256"))
+    apk_hashes = [device_apk, stage3_apk]
+    if first_session is not None:
+        session_package = first_session.get("package_identity", {})
+        apk_hashes.append(_normalized(session_package.get("apk_sha256")))
+    if not all(APK_SHA256_PATTERN.fullmatch(value) for value in apk_hashes):
+        errors.append("invalid_format:apk_sha256")
+    if not all(apk_hashes) or len(set(apk_hashes)) != 1:
+        errors.append("identity_mismatch:apk_sha256")
+
+    package_ids = [device.get("application_package"), stage3.get("application_package")]
+    if first_session is not None:
+        session_package = first_session.get("package_identity", {})
+        package_ids.append(session_package.get("android_package"))
+    if any(package_id != APPLICATION_PACKAGE for package_id in package_ids):
+        errors.append("identity_mismatch:application_package")
+
+    device_endpoint = _normalized(device.get("api_base_url"))
+    stage3_endpoint = _normalized(stage3.get("api_base_url"))
+    endpoints = [device_endpoint, stage3_endpoint]
+    if first_session is not None:
+        session_package = first_session.get("package_identity", {})
+        endpoints.append(_normalized(session_package.get("api_base_url")))
+    if not all(endpoints) or len(set(endpoints)) != 1:
+        errors.append("identity_mismatch:api_base_url")
+
+    if stage3.get("build_type") != "standalone-release-apk":
+        errors.append("invalid:build_type")
+
+    return errors
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("device_record", type=Path)
+    parser.add_argument("stage3_record", type=Path)
+    parser.add_argument(
+        "first_session_record",
+        type=Path,
+        nargs="?",
+        help="Optional post-approval tester-session record; not required to request Kyle approval.",
+    )
+    args = parser.parse_args()
+
+    device, device_errors = _load(args.device_record, "device")
+    stage3, stage3_errors = _load(args.stage3_record, "stage3")
+    load_errors = device_errors + stage3_errors
+
+    first_session = None
+    if args.first_session_record is not None:
+        first_session, first_session_errors = _load(args.first_session_record, "first_session")
+        load_errors += first_session_errors
+
+    if load_errors:
+        print(json.dumps({"ready_for_kyle_approval": False, "errors": load_errors}, indent=2))
+        return 2
+
+    assert device is not None and stage3 is not None
+    errors = validate(device, stage3, first_session)
+    print(
+        json.dumps(
+            {
+                "ready_for_kyle_approval": not errors,
+                "errors": errors,
+                "merge_authorized": False,
+                "pilot_authorized": False,
+                "first_session_observation_required_for_pilot": True,
+                "next_action": (
+                    "Request Kyle approval; do not merge or start the pilot yet."
+                    if not errors
+                    else "Close every listed pre-pilot evidence gap before requesting Kyle approval."
+                ),
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
+    return 0 if not errors else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

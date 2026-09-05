@@ -1,0 +1,215 @@
+#!/usr/bin/env python3
+"""Verify a downloaded Technical Alpha artifact before installation.
+
+This tool is intentionally dependency-free so a facilitator can run it from a
+clean Python environment after downloading and extracting the GitHub Actions
+artifact.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import ipaddress
+import json
+from pathlib import Path
+from urllib.parse import urlparse
+from zipfile import BadZipFile, ZipFile
+
+
+REQUIRED_ARTIFACTS = {
+    "nhl-gm-technical-alpha.apk": "nhl-gm-technical-alpha.apk.sha256",
+    "nhl-gm-android-export.tar.gz": "nhl-gm-android-export.sha256",
+}
+BUILD_MANIFEST = "technical-alpha-build.txt"
+APK_BUNDLE_PATH = "assets/index.android.bundle"
+APK_REQUIRED_MEMBERS = ("AndroidManifest.xml", "classes.dex")
+FORBIDDEN_BUNDLE_ENDPOINTS = (
+    b"http://localhost",
+    b"https://localhost",
+    b"http://127.",
+    b"https://127.",
+    b"http://0.0.0.0",
+    b"https://0.0.0.0",
+)
+
+
+class VerificationError(ValueError):
+    """Raised when an artifact cannot be approved for installation."""
+
+
+def _validate_non_loopback_url(value: str) -> str:
+    parsed = urlparse(value)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise VerificationError("expected API URL must be an absolute http(s) URL")
+    if not parsed.path.rstrip("/").endswith("/api/v1"):
+        raise VerificationError("expected API URL must include the /api/v1 base path")
+
+    hostname = parsed.hostname.lower()
+    if hostname == "localhost":
+        raise VerificationError("loopback API endpoints are not valid for tester APKs")
+    try:
+        address = ipaddress.ip_address(hostname)
+    except ValueError:
+        address = None
+    if address is not None and (address.is_loopback or address.is_unspecified):
+        raise VerificationError("loopback or unspecified API endpoints are not valid for tester APKs")
+    return value.rstrip("/")
+
+
+def _read_build_manifest(path: Path) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if "=" not in line:
+            raise VerificationError(f"invalid build manifest line: {line!r}")
+        key, value = line.split("=", 1)
+        if key in values:
+            raise VerificationError(f"duplicate build manifest key: {key}")
+        values[key] = value
+    required = {"commit", "api_base_url", "build_type"}
+    if set(values) != required:
+        raise VerificationError(
+            f"build manifest keys must be exactly {sorted(required)}; found {sorted(values)}"
+        )
+    return values
+
+
+def _verify_checksum(directory: Path, artifact_name: str, checksum_name: str) -> str:
+    artifact = directory / artifact_name
+    checksum_file = directory / checksum_name
+    if not artifact.is_file():
+        raise VerificationError(f"missing artifact: {artifact_name}")
+    if not checksum_file.is_file():
+        raise VerificationError(f"missing checksum file: {checksum_name}")
+
+    parts = checksum_file.read_text(encoding="utf-8").strip().split()
+    if len(parts) != 2:
+        raise VerificationError(f"invalid checksum manifest: {checksum_name}")
+    expected_hash, recorded_name = parts
+    recorded_name = recorded_name.lstrip("*")
+    if Path(recorded_name).name != recorded_name or recorded_name != artifact_name:
+        raise VerificationError(
+            f"checksum manifest must reference portable filename {artifact_name!r}"
+        )
+
+    actual_hash = hashlib.sha256(artifact.read_bytes()).hexdigest()
+    if actual_hash.lower() != expected_hash.lower():
+        raise VerificationError(f"checksum mismatch for {artifact_name}")
+    return actual_hash
+
+
+def _reject_forbidden_bundle_endpoints(bundle: bytes) -> None:
+    lowered = bundle.lower()
+    for forbidden in FORBIDDEN_BUNDLE_ENDPOINTS:
+        if forbidden in lowered:
+            raise VerificationError(
+                "APK embedded application bundle contains a stale loopback or unspecified endpoint"
+            )
+
+
+def _verify_embedded_bundle(apk: Path, expected_api_base_url: str) -> tuple[int, dict[str, int]]:
+    try:
+        with ZipFile(apk) as archive:
+            corrupt_member = archive.testzip()
+            if corrupt_member is not None:
+                raise VerificationError(
+                    f"APK ZIP integrity check failed for member: {corrupt_member}"
+                )
+
+            required_member_sizes: dict[str, int] = {}
+            for member in APK_REQUIRED_MEMBERS:
+                try:
+                    member_info = archive.getinfo(member)
+                except KeyError as exc:
+                    raise VerificationError(f"APK is missing required Android member: {member}") from exc
+                if member_info.file_size <= 0:
+                    raise VerificationError(f"APK required Android member is empty: {member}")
+                required_member_sizes[member] = member_info.file_size
+
+            info = archive.getinfo(APK_BUNDLE_PATH)
+            if info.file_size <= 0:
+                raise VerificationError("embedded JavaScript application bundle is empty")
+            bundle = archive.read(info)
+            if expected_api_base_url.encode("utf-8") not in bundle:
+                raise VerificationError(
+                    "APK embedded application bundle does not contain the expected API endpoint"
+                )
+            _reject_forbidden_bundle_endpoints(bundle)
+            return info.file_size, required_member_sizes
+    except KeyError as exc:
+        raise VerificationError(
+            "APK is not standalone: embedded JavaScript application bundle is missing"
+        ) from exc
+    except BadZipFile as exc:
+        raise VerificationError("APK is not a valid ZIP package") from exc
+
+
+def verify_artifact(directory: Path, expected_commit: str, expected_api_base_url: str) -> dict[str, object]:
+    directory = directory.resolve()
+    if not directory.is_dir():
+        raise VerificationError(f"artifact directory does not exist: {directory}")
+
+    expected_api_base_url = _validate_non_loopback_url(expected_api_base_url)
+    manifest_path = directory / BUILD_MANIFEST
+    if not manifest_path.is_file():
+        raise VerificationError(f"missing build manifest: {BUILD_MANIFEST}")
+    manifest = _read_build_manifest(manifest_path)
+
+    if manifest["commit"] != expected_commit:
+        raise VerificationError(
+            f"build commit {manifest['commit']!r} does not match expected commit {expected_commit!r}"
+        )
+    embedded_url = _validate_non_loopback_url(manifest["api_base_url"])
+    if embedded_url != expected_api_base_url:
+        raise VerificationError(
+            f"build API URL {embedded_url!r} does not match expected URL {expected_api_base_url!r}"
+        )
+    if manifest["build_type"] != "standalone-release-apk":
+        raise VerificationError(f"unsupported build type: {manifest['build_type']!r}")
+
+    checksums = {
+        artifact: _verify_checksum(directory, artifact, checksum)
+        for artifact, checksum in REQUIRED_ARTIFACTS.items()
+    }
+    bundle_size, required_member_sizes = _verify_embedded_bundle(
+        directory / "nhl-gm-technical-alpha.apk", expected_api_base_url
+    )
+    return {
+        "status": "pass",
+        "commit": expected_commit,
+        "api_base_url": expected_api_base_url,
+        "build_type": manifest["build_type"],
+        "embedded_bundle_bytes": bundle_size,
+        "embedded_endpoint_verified": True,
+        "forbidden_bundle_endpoints_absent": True,
+        "apk_zip_integrity_verified": True,
+        "apk_required_members_verified": required_member_sizes,
+        "checksums": checksums,
+    }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("artifact_directory", type=Path)
+    parser.add_argument("--expected-commit", required=True)
+    parser.add_argument("--expected-api-base-url", required=True)
+    args = parser.parse_args()
+
+    try:
+        result = verify_artifact(
+            args.artifact_directory,
+            args.expected_commit,
+            args.expected_api_base_url,
+        )
+    except (OSError, VerificationError) as exc:
+        print(json.dumps({"status": "fail", "error": str(exc)}, sort_keys=True))
+        return 1
+    print(json.dumps(result, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

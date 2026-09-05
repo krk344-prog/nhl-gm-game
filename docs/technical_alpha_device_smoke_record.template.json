@@ -1,0 +1,27 @@
+{
+  "commit_sha": "REPLACE_WITH_EXACT_COMMIT_SHA",
+  "api_base_url": "http://REPLACE_WITH_APPROVED_HOST:8000/api/v1",
+  "application_package": "com.krk344.nhlgmgame",
+  "build_type": "standalone-release-apk",
+  "device_model": "REPLACE_WITH_DEVICE_MODEL",
+  "android_version": "REPLACE_WITH_ANDROID_VERSION",
+  "apk_sha256": "REPLACE_WITH_64_CHARACTER_APK_SHA256",
+  "tested_at": "REPLACE_WITH_ISO_8601_TIMESTAMP",
+  "artifact_verifier_passed": false,
+  "apk_installed": false,
+  "launch_confirmed": false,
+  "health_passed": false,
+  "season_context_passed": false,
+  "franchise_selection_passed": false,
+  "advance_day_passed": false,
+  "roster_passed": false,
+  "standings_passed": false,
+  "trade_passed": false,
+  "trade_history_passed": false,
+  "save_reload_passed": false,
+  "debug_report_passed": false,
+  "reset_passed": false,
+  "blockers": [
+    "Remove this entry only after every required check passes"
+  ]
+}

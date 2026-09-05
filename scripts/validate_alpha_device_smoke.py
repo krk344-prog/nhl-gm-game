@@ -1,0 +1,268 @@
+#!/usr/bin/env python3
+"""Validate a Technical Alpha exact-package device smoke record.
+
+The validator is dependency-free and intentionally conservative. It accepts a JSON
+record created by the facilitator after installing the checksum-verified APK and
+running the approved pilot route. Any missing, failed, loopback-bound, stale,
+future-dated, weakly timestamped, wrong-package, or non-release-build evidence
+blocks the record from being treated as pilot-ready.
+"""
+
+from __future__ import annotations
+
+import argparse
+import ipaddress
+import json
+import sys
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Any
+from urllib.parse import urlparse
+
+APPLICATION_PACKAGE = "com.krk344.nhlgmgame"
+BUILD_TYPE = "standalone-release-apk"
+
+REQUIRED_TRUE_FIELDS = (
+    "artifact_verifier_passed",
+    "apk_installed",
+    "launch_confirmed",
+    "health_passed",
+    "season_context_passed",
+    "franchise_selection_passed",
+    "advance_day_passed",
+    "roster_passed",
+    "standings_passed",
+    "trade_passed",
+    "trade_history_passed",
+    "save_reload_passed",
+    "debug_report_passed",
+    "reset_passed",
+)
+
+REQUIRED_TEXT_FIELDS = (
+    "commit_sha",
+    "api_base_url",
+    "application_package",
+    "build_type",
+    "device_model",
+    "android_version",
+    "apk_sha256",
+    "tested_at",
+)
+
+MAX_EVIDENCE_AGE = timedelta(days=7)
+
+DOCUMENTATION_NETWORKS = tuple(
+    ipaddress.ip_network(network)
+    for network in (
+        "192.0.2.0/24",
+        "198.51.100.0/24",
+        "203.0.113.0/24",
+        "2001:db8::/32",
+    )
+)
+
+
+def _is_loopback_host(host: str | None) -> bool:
+    if not host:
+        return True
+    normalized = host.strip().lower().rstrip(".")
+    if normalized == "localhost" or normalized.endswith(".localhost"):
+        return True
+    if normalized in {"0.0.0.0", "::1"}:
+        return True
+    try:
+        return ipaddress.ip_address(normalized).is_loopback
+    except ValueError:
+        return False
+
+
+def _is_unspecified_host(host: str | None) -> bool:
+    if not host:
+        return True
+    normalized = host.strip().lower().rstrip(".")
+    try:
+        return ipaddress.ip_address(normalized).is_unspecified
+    except ValueError:
+        return False
+
+
+def _is_multicast_host(host: str | None) -> bool:
+    if not host:
+        return False
+    normalized = host.strip().lower().rstrip(".")
+    try:
+        return ipaddress.ip_address(normalized).is_multicast
+    except ValueError:
+        return False
+
+
+def _is_link_local_host(host: str | None) -> bool:
+    if not host:
+        return False
+    normalized = host.strip().lower().rstrip(".")
+    try:
+        return ipaddress.ip_address(normalized).is_link_local
+    except ValueError:
+        return False
+
+
+def _is_reserved_host(host: str | None) -> bool:
+    if not host:
+        return False
+    normalized = host.strip().lower().rstrip(".")
+    try:
+        return ipaddress.ip_address(normalized).is_reserved
+    except ValueError:
+        return False
+
+
+def _is_broadcast_host(host: str | None) -> bool:
+    if not host:
+        return False
+    normalized = host.strip().lower().rstrip(".")
+    return normalized == "255.255.255.255"
+
+
+def _is_documentation_host(host: str | None) -> bool:
+    if not host:
+        return False
+    normalized = host.strip().lower().rstrip(".")
+    try:
+        address = ipaddress.ip_address(normalized)
+    except ValueError:
+        return False
+    return any(address in network for network in DOCUMENTATION_NETWORKS if address.version == network.version)
+
+
+def _parse_timezone_aware_iso_timestamp(value: str) -> datetime | None:
+    normalized = value.strip()
+    if normalized.endswith("Z"):
+        normalized = f"{normalized[:-1]}+00:00"
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        return None
+    return parsed
+
+
+def validate_record(record: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+
+    for field in REQUIRED_TEXT_FIELDS:
+        value = record.get(field)
+        if not isinstance(value, str) or not value.strip():
+            errors.append(f"missing_or_blank:{field}")
+
+    commit_sha = record.get("commit_sha")
+    if isinstance(commit_sha, str) and commit_sha.strip():
+        normalized_commit = commit_sha.strip().lower()
+        if len(normalized_commit) != 40 or any(ch not in "0123456789abcdef" for ch in normalized_commit):
+            errors.append("invalid:commit_sha")
+
+    application_package = record.get("application_package")
+    if isinstance(application_package, str) and application_package.strip():
+        if application_package != APPLICATION_PACKAGE:
+            errors.append("invalid:application_package")
+
+    build_type = record.get("build_type")
+    if isinstance(build_type, str) and build_type.strip():
+        if build_type != BUILD_TYPE:
+            errors.append("invalid:build_type")
+
+    apk_sha256 = record.get("apk_sha256")
+    if isinstance(apk_sha256, str) and apk_sha256.strip():
+        normalized_digest = apk_sha256.strip().lower()
+        if len(normalized_digest) != 64 or any(ch not in "0123456789abcdef" for ch in normalized_digest):
+            errors.append("invalid:apk_sha256")
+
+    tested_at = record.get("tested_at")
+    if isinstance(tested_at, str) and tested_at.strip():
+        parsed_tested_at = _parse_timezone_aware_iso_timestamp(tested_at)
+        if parsed_tested_at is None:
+            errors.append("invalid:tested_at")
+        else:
+            tested_at_utc = parsed_tested_at.astimezone(timezone.utc)
+            now_utc = datetime.now(timezone.utc)
+            if tested_at_utc > now_utc:
+                errors.append("future:tested_at")
+            elif now_utc - tested_at_utc > MAX_EVIDENCE_AGE:
+                errors.append("stale:tested_at")
+
+    api_base_url = record.get("api_base_url")
+    if isinstance(api_base_url, str) and api_base_url.strip():
+        if api_base_url != api_base_url.strip():
+            errors.append("noncanonical:api_base_url")
+        parsed = urlparse(api_base_url.strip())
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+            errors.append("invalid:api_base_url")
+        else:
+            if _is_loopback_host(parsed.hostname):
+                errors.append("loopback:api_base_url")
+            elif (
+                _is_unspecified_host(parsed.hostname)
+                or _is_multicast_host(parsed.hostname)
+                or _is_link_local_host(parsed.hostname)
+                or _is_reserved_host(parsed.hostname)
+                or _is_broadcast_host(parsed.hostname)
+                or _is_documentation_host(parsed.hostname)
+            ):
+                errors.append("unreachable:api_base_url")
+            try:
+                endpoint_port = parsed.port
+            except ValueError:
+                errors.append("invalid_port:api_base_url")
+            else:
+                if endpoint_port is None:
+                    errors.append("missing_port:api_base_url")
+                elif endpoint_port == 0:
+                    errors.append("invalid_port:api_base_url")
+            if parsed.path.rstrip("/") != "/api/v1":
+                errors.append("invalid_api_path:api_base_url")
+            if parsed.username is not None or parsed.password is not None or parsed.params or parsed.query or parsed.fragment:
+                errors.append("noncanonical:api_base_url")
+
+    for field in REQUIRED_TRUE_FIELDS:
+        if record.get(field) is not True:
+            errors.append(f"not_passed:{field}")
+
+    blockers = record.get("blockers")
+    if blockers not in (None, [], ""):
+        errors.append("blockers_present")
+
+    return errors
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("record", type=Path, help="Path to the device-smoke JSON record")
+    args = parser.parse_args()
+
+    try:
+        payload = json.loads(args.record.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(json.dumps({"status": "block", "errors": [f"record_unreadable:{exc}"]}, indent=2))
+        return 2
+
+    if not isinstance(payload, dict):
+        print(json.dumps({"status": "block", "errors": ["record_must_be_object"]}, indent=2))
+        return 2
+
+    errors = validate_record(payload)
+    result = {
+        "status": "pass" if not errors else "block",
+        "errors": errors,
+        "commit_sha": payload.get("commit_sha"),
+        "api_base_url": payload.get("api_base_url"),
+        "application_package": payload.get("application_package"),
+        "build_type": payload.get("build_type"),
+        "device_model": payload.get("device_model"),
+    }
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0 if not errors else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
