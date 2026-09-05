@@ -81,6 +81,9 @@ class AlphaPilotReadinessValidatorTests(unittest.TestCase):
             },
         }
 
+    def test_matching_pre_pilot_evidence_is_ready_without_tester_session(self):
+        self.assertEqual([], validate(self._device(), self._stage3()))
+
     def test_matching_complete_evidence_is_ready_for_approval(self):
         self.assertEqual(
             [], validate(self._device(), self._stage3(), self._first_session())
@@ -165,7 +168,7 @@ class AlphaPilotReadinessValidatorTests(unittest.TestCase):
             validate(device, self._stage3(), self._first_session()),
         )
 
-    def test_coached_or_incomplete_first_session_blocks(self):
+    def test_coached_or_incomplete_first_session_blocks_when_supplied(self):
         first_session = self._first_session()
         first_session["observation"][
             "coaching_withheld_until_first_interpretation"
