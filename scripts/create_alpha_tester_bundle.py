@@ -73,6 +73,7 @@ BEFORE YOU START
 2. Install nhl-gm-technical-alpha.apk. Android may ask you to allow installation from this source.
 3. Open NHL GM and tell the organizer if the game shows an offline message.
 4. Do not share this package, network details, screenshots, or save files publicly.
+5. Open LAUNCH-CARD.txt with the organizer and do not start unless its live backend status is marked READY.
 
 TEST ROUTE
 1. Start a new game.
@@ -90,6 +91,37 @@ TEST ROUTE
 
 REPORTING A PROBLEM
 Use BUG-REPORT.txt. Record what you were doing, what you expected, what happened, and whether it happens again. Do not include your name, device serial number, network address, save file, or password.
+"""
+
+
+def _launch_card(commit: str, endpoint_class: str, apk_sha256: str) -> str:
+    return f"""NHL GM — TESTER LAUNCH CARD
+
+BUILD: {commit}
+PACKAGE FILE: {APK_NAME}
+APK SHA-256: {apk_sha256}
+NETWORK CLASS: {endpoint_class}
+UI STATUS: UI Review Pending
+
+LIVE SESSION STATUS — FACILITATOR MUST COMPLETE IMMEDIATELY BEFORE START
+Backend: [ READY | UNAVAILABLE | MAINTENANCE ]
+Verified at: [ DATE/TIME ]
+Anonymous tester ID: [ T## ]
+Private bug-report destination: [ PRIVATE DESTINATION ]
+Most important known limitation: [ ONE SENTENCE ]
+
+START TEST CONTROL
+Start Test is ENABLED only when Backend is marked READY above.
+If Backend is UNAVAILABLE or MAINTENANCE, Start Test is DISABLED: stop, keep the supplied network settings unchanged, and ask the facilitator to restore and requalify the backend.
+
+REQUIRED ROUTE
+New Game -> Select Franchise -> Advance Day -> Roster -> Standings -> Trade -> Trade History -> Save -> Reload -> Generate Debug Report -> Reset
+
+DISCLOSURE
+This Technical Alpha uses eight original fictional franchises and an 82-game test schedule. It is not official NHL data or a representation of the current NHL league structure or schedule. Major front-office systems remain incomplete, and test saves may be reset or invalidated by later builds.
+
+PRIVACY
+Do not post a device identifier, local-network address, SQLite database, authentication data, personal information, or unreviewed save/debug files publicly.
 """
 
 
@@ -166,6 +198,10 @@ def create_tester_bundle(
                 archive.write(artifact_directory / name, f"{BUNDLE_ROOT}/{name}")
             archive.writestr(f"{BUNDLE_ROOT}/START-HERE.txt", _start_here(commit))
             archive.writestr(
+                f"{BUNDLE_ROOT}/LAUNCH-CARD.txt",
+                _launch_card(commit, endpoint_class, apk_sha256),
+            )
+            archive.writestr(
                 f"{BUNDLE_ROOT}/BUG-REPORT.txt",
                 _bug_report(commit, build_type, endpoint_class, apk_sha256),
             )
@@ -182,6 +218,7 @@ def create_tester_bundle(
         f"{BUNDLE_ROOT}/{APK_NAME}",
         f"{BUNDLE_ROOT}/{APK_CHECKSUM_NAME}",
         f"{BUNDLE_ROOT}/START-HERE.txt",
+        f"{BUNDLE_ROOT}/LAUNCH-CARD.txt",
         f"{BUNDLE_ROOT}/BUG-REPORT.txt",
         f"{BUNDLE_ROOT}/BUILD-INFO.txt",
     ]
