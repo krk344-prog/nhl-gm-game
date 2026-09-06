@@ -51,6 +51,11 @@ class AlphaLaunchCardValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(LaunchCardError, "timezone offset or Z"):
             validate_launch_card(self._write(text))
 
+    def test_future_timestamp_beyond_clock_skew_is_rejected(self):
+        text = READY_CARD.replace("2026-09-06T07:30:00-04:00", "2999-01-01T00:00:00Z")
+        with self.assertRaisesRegex(LaunchCardError, "future-dated"):
+            validate_launch_card(self._write(text))
+
 
 if __name__ == "__main__":
     unittest.main()
