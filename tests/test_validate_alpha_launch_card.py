@@ -46,6 +46,11 @@ class AlphaLaunchCardValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(LaunchCardError, "T## format"):
             validate_launch_card(self._write(READY_CARD.replace("T01", "Kyle")))
 
+    def test_timestamp_without_timezone_is_rejected(self):
+        text = READY_CARD.replace("2026-09-06T07:30:00-04:00", "2026-09-06T07:30:00")
+        with self.assertRaisesRegex(LaunchCardError, "timezone offset or Z"):
+            validate_launch_card(self._write(text))
+
 
 if __name__ == "__main__":
     unittest.main()
