@@ -66,6 +66,8 @@ class CreateAlphaTesterBundleTests(unittest.TestCase):
                 self.assertIn("privacy-reviewed output", start_here)
                 self.assertIn("returns to Day 1", start_here)
                 self.assertIn("LAUNCH-CARD.txt", start_here)
+                self.assertIn("first route step that failed", start_here)
+                self.assertIn("one controlled retry", start_here)
                 self.assertLess(start_here.index("Open Trade History"), start_here.index("Save the game"))
                 self.assertLess(start_here.index("Save the game"), start_here.index("Reload the saved game"))
                 self.assertIn(f"BUILD: {commit}", launch_card)
@@ -84,6 +86,11 @@ class CreateAlphaTesterBundleTests(unittest.TestCase):
                 self.assertIn("Package: com.krk344.nhlgmgame", bug_report)
                 self.assertIn("Endpoint class: private-lan", bug_report)
                 self.assertIn("APK SHA-256: abc", bug_report)
+                self.assertIn("First failed route step:", bug_report)
+                self.assertIn(
+                    "Controlled retry result (Pass / Same failure / Different failure / Not safe to retry):",
+                    bug_report,
+                )
                 self.assertIn("endpoint_class=private-lan", build_info)
                 self.assertNotIn(api_url, start_here)
                 self.assertNotIn(api_url, launch_card)
