@@ -47,6 +47,9 @@ class CreateAlphaTesterBundleTests(unittest.TestCase):
                 start_here = archive.read(
                     "NHL-GM-First-Playable/START-HERE.txt"
                 ).decode("utf-8")
+                launch_card = archive.read(
+                    "NHL-GM-First-Playable/LAUNCH-CARD.txt"
+                ).decode("utf-8")
                 bug_report = archive.read(
                     "NHL-GM-First-Playable/BUG-REPORT.txt"
                 ).decode("utf-8")
@@ -62,8 +65,18 @@ class CreateAlphaTesterBundleTests(unittest.TestCase):
                 self.assertIn("Generate the debug report", start_here)
                 self.assertIn("privacy-reviewed output", start_here)
                 self.assertIn("returns to Day 1", start_here)
+                self.assertIn("LAUNCH-CARD.txt", start_here)
                 self.assertLess(start_here.index("Open Trade History"), start_here.index("Save the game"))
                 self.assertLess(start_here.index("Save the game"), start_here.index("Reload the saved game"))
+                self.assertIn(f"BUILD: {commit}", launch_card)
+                self.assertIn("PACKAGE FILE: nhl-gm-technical-alpha.apk", launch_card)
+                self.assertIn("APK SHA-256: abc", launch_card)
+                self.assertIn("NETWORK CLASS: private-lan", launch_card)
+                self.assertIn("Backend: [ READY | UNAVAILABLE | MAINTENANCE ]", launch_card)
+                self.assertIn("Start Test is ENABLED only when Backend is marked READY", launch_card)
+                self.assertIn("Start Test is DISABLED", launch_card)
+                self.assertIn("Trade History", launch_card)
+                self.assertIn("UI STATUS: UI Review Pending", launch_card)
                 self.assertIn("Anonymous tester code (T## only; no name):", bug_report)
                 self.assertNotIn("Anonymous tester code:\n", bug_report)
                 self.assertIn(f"Build: {commit[:12]}", bug_report)
@@ -73,6 +86,7 @@ class CreateAlphaTesterBundleTests(unittest.TestCase):
                 self.assertIn("APK SHA-256: abc", bug_report)
                 self.assertIn("endpoint_class=private-lan", build_info)
                 self.assertNotIn(api_url, start_here)
+                self.assertNotIn(api_url, launch_card)
                 self.assertNotIn(api_url, bug_report)
                 self.assertNotIn(api_url, build_info)
 
