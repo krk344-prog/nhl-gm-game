@@ -90,7 +90,7 @@ TEST ROUTE
 12. Reset the game and confirm it returns to Day 1.
 
 REPORTING A PROBLEM
-Use BUG-REPORT.txt. Record what you were doing, what you expected, what happened, and whether it happens again. Do not include your name, device serial number, network address, save file, or password.
+Use BUG-REPORT.txt. Record the first route step that failed, what you expected, what happened, and the result of one controlled retry. Do not include your name, device serial number, network address, save file, or password.
 """
 
 
@@ -135,11 +135,12 @@ Package: com.krk344.nhlgmgame
 Endpoint class: {endpoint_class}
 APK SHA-256: {apk_sha256}
 Phone model and Android version:
+First failed route step:
 Screen or step:
 What I was trying to do:
 What I expected:
 What happened instead:
-Can I repeat it? Yes / No / Unsure
+Controlled retry result (Pass / Same failure / Different failure / Not safe to retry):
 Did the game close or freeze?
 Did progress disappear after reopening?
 Screenshot available? Yes / No
