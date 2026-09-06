@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
@@ -22,6 +22,7 @@ _FIELD_PATTERNS = {
     "known_limitation": re.compile(r"^Most important known limitation:\s*(.+)$", re.MULTILINE),
 }
 _PLACEHOLDER_MARKERS = ("[", "]", "PRIVATE DESTINATION", "ONE SENTENCE", "DATE/TIME")
+_MAX_CLOCK_SKEW = timedelta(minutes=5)
 
 
 def _field(text: str, name: str) -> str:
@@ -47,6 +48,8 @@ def validate_launch_card(path: Path) -> dict[str, str]:
         raise LaunchCardError("Verified at must be an ISO-8601 date/time") from exc
     if verified_datetime.tzinfo is None or verified_datetime.utcoffset() is None:
         raise LaunchCardError("Verified at must include a timezone offset or Z")
+    if verified_datetime.astimezone(timezone.utc) > datetime.now(timezone.utc) + _MAX_CLOCK_SKEW:
+        raise LaunchCardError("Verified at must not be future-dated beyond the allowed clock skew")
 
     tester_id = _field(text, "tester_id")
     if re.fullmatch(r"T\d{2}", tester_id) is None:
