@@ -42,9 +42,11 @@ def validate_launch_card(path: Path) -> dict[str, str]:
 
     verified_at = _field(text, "verified_at")
     try:
-        datetime.fromisoformat(verified_at.replace("Z", "+00:00"))
+        verified_datetime = datetime.fromisoformat(verified_at.replace("Z", "+00:00"))
     except ValueError as exc:
         raise LaunchCardError("Verified at must be an ISO-8601 date/time") from exc
+    if verified_datetime.tzinfo is None or verified_datetime.utcoffset() is None:
+        raise LaunchCardError("Verified at must include a timezone offset or Z")
 
     tester_id = _field(text, "tester_id")
     if re.fullmatch(r"T\d{2}", tester_id) is None:
