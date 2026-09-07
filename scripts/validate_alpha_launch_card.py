@@ -23,6 +23,7 @@ _FIELD_PATTERNS = {
 }
 _PLACEHOLDER_MARKERS = ("[", "]", "PRIVATE DESTINATION", "ONE SENTENCE", "DATE/TIME")
 _MAX_CLOCK_SKEW = timedelta(minutes=5)
+_MAX_VERIFICATION_AGE = timedelta(minutes=30)
 
 
 def _field(text: str, name: str) -> str:
@@ -35,7 +36,7 @@ def _field(text: str, name: str) -> str:
     return value
 
 
-def validate_launch_card(path: Path) -> dict[str, str]:
+def validate_launch_card(path: Path, *, now: datetime | None = None) -> dict[str, str]:
     text = path.read_text(encoding="utf-8")
     backend = _field(text, "backend").upper()
     if backend != "READY":
@@ -48,8 +49,16 @@ def validate_launch_card(path: Path) -> dict[str, str]:
         raise LaunchCardError("Verified at must be an ISO-8601 date/time") from exc
     if verified_datetime.tzinfo is None or verified_datetime.utcoffset() is None:
         raise LaunchCardError("Verified at must include a timezone offset or Z")
-    if verified_datetime.astimezone(timezone.utc) > datetime.now(timezone.utc) + _MAX_CLOCK_SKEW:
+
+    current_time = now or datetime.now(timezone.utc)
+    if current_time.tzinfo is None or current_time.utcoffset() is None:
+        raise LaunchCardError("validation time must include a timezone offset")
+    current_utc = current_time.astimezone(timezone.utc)
+    verified_utc = verified_datetime.astimezone(timezone.utc)
+    if verified_utc > current_utc + _MAX_CLOCK_SKEW:
         raise LaunchCardError("Verified at must not be future-dated beyond the allowed clock skew")
+    if current_utc - verified_utc > _MAX_VERIFICATION_AGE:
+        raise LaunchCardError("Verified at is stale; re-check the backend before testing starts")
 
     tester_id = _field(text, "tester_id")
     if re.fullmatch(r"T\d{2}", tester_id) is None:
