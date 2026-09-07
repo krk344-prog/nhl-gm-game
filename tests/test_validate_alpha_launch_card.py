@@ -63,6 +63,11 @@ class AlphaLaunchCardValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(LaunchCardError, "stale; re-check the backend"):
             validate_launch_card(self._write(text), now=READY_NOW)
 
+    def test_duplicate_authoritative_field_is_rejected(self):
+        text = READY_CARD + "\nBackend: UNAVAILABLE\n"
+        with self.assertRaisesRegex(LaunchCardError, "must appear exactly once: backend"):
+            validate_launch_card(self._write(text), now=READY_NOW)
+
 
 if __name__ == "__main__":
     unittest.main()
