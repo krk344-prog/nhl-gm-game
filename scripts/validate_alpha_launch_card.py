@@ -27,10 +27,12 @@ _MAX_VERIFICATION_AGE = timedelta(minutes=30)
 
 
 def _field(text: str, name: str) -> str:
-    match = _FIELD_PATTERNS[name].search(text)
-    if not match:
+    matches = _FIELD_PATTERNS[name].findall(text)
+    if not matches:
         raise LaunchCardError(f"missing launch-card field: {name}")
-    value = match.group(1).strip()
+    if len(matches) != 1:
+        raise LaunchCardError(f"launch-card field must appear exactly once: {name}")
+    value = matches[0].strip()
     if not value or any(marker in value for marker in _PLACEHOLDER_MARKERS):
         raise LaunchCardError(f"launch-card field is incomplete: {name}")
     return value
