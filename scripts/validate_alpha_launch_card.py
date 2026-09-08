@@ -23,6 +23,15 @@ _FIELD_PATTERNS = {
     "known_limitation": re.compile(r"^Most important known limitation:\s*(.+)$", re.MULTILINE),
 }
 _PLACEHOLDER_MARKERS = ("[", "]", "PRIVATE DESTINATION", "ONE SENTENCE", "DATE/TIME")
+_INVALID_LIMITATION_VALUES = {
+    "n/a",
+    "na",
+    "no known limitations",
+    "no limitations",
+    "none",
+    "none known",
+    "not applicable",
+}
 _MAX_CLOCK_SKEW = timedelta(minutes=5)
 _MAX_VERIFICATION_AGE = timedelta(minutes=30)
 
@@ -72,7 +81,10 @@ def validate_launch_card(path: Path, *, now: datetime | None = None) -> dict[str
         raise LaunchCardError("Anonymous tester ID must use the T## format")
 
     _field(text, "bug_destination")
-    _field(text, "known_limitation")
+    known_limitation = _field(text, "known_limitation")
+    normalized_limitation = known_limitation.strip().rstrip(".").strip().casefold()
+    if normalized_limitation in _INVALID_LIMITATION_VALUES:
+        raise LaunchCardError("Most important known limitation must disclose a concrete Alpha limitation")
 
     return {
         "status": "pass",
