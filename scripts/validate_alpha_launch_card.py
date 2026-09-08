@@ -14,6 +14,7 @@ class LaunchCardError(ValueError):
     """Raised when a tester launch card is not safe to use."""
 
 
+_TITLE_PATTERN = re.compile(r"^NHL GM — TESTER LAUNCH CARD\s*$", re.MULTILINE)
 _FIELD_PATTERNS = {
     "backend": re.compile(r"^Backend:\s*(.+)$", re.MULTILINE),
     "verified_at": re.compile(r"^Verified at:\s*(.+)$", re.MULTILINE),
@@ -40,6 +41,10 @@ def _field(text: str, name: str) -> str:
 
 def validate_launch_card(path: Path, *, now: datetime | None = None) -> dict[str, str]:
     text = path.read_text(encoding="utf-8")
+    title_matches = _TITLE_PATTERN.findall(text)
+    if len(title_matches) != 1:
+        raise LaunchCardError("launch card must contain exactly one authoritative NHL GM tester title")
+
     backend = _field(text, "backend").upper()
     if backend != "READY":
         raise LaunchCardError("backend must be explicitly READY before testing starts")
