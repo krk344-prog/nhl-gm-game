@@ -75,6 +75,14 @@ class AlphaLaunchCardValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(LaunchCardError, "must appear exactly once: backend"):
             validate_launch_card(self._write(text), now=READY_NOW)
 
+    def test_known_limitation_must_be_concrete(self):
+        text = READY_CARD.replace(
+            "Trade logic is simplified for this Alpha.",
+            "No known limitations.",
+        )
+        with self.assertRaisesRegex(LaunchCardError, "concrete Alpha limitation"):
+            validate_launch_card(self._write(text), now=READY_NOW)
+
 
 if __name__ == "__main__":
     unittest.main()
