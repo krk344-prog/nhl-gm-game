@@ -33,6 +33,13 @@ class AlphaLaunchCardValidationTests(unittest.TestCase):
         self.assertNotIn("bug_destination", result)
         self.assertNotIn("known_limitation", result)
 
+    def test_wrong_or_duplicate_title_is_rejected(self):
+        wrong_title = READY_CARD.replace("NHL GM — TESTER LAUNCH CARD", "NHL GM — NOTES")
+        with self.assertRaisesRegex(LaunchCardError, "exactly one authoritative"):
+            validate_launch_card(self._write(wrong_title), now=READY_NOW)
+        with self.assertRaisesRegex(LaunchCardError, "exactly one authoritative"):
+            validate_launch_card(self._write(READY_CARD + "\nNHL GM — TESTER LAUNCH CARD\n"), now=READY_NOW)
+
     def test_unavailable_backend_fails_closed(self):
         with self.assertRaisesRegex(LaunchCardError, "explicitly READY"):
             validate_launch_card(self._write(READY_CARD.replace("Backend: READY", "Backend: UNAVAILABLE")), now=READY_NOW)
