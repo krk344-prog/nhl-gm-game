@@ -35,6 +35,25 @@ class AlphaEndpointQualificationTests(unittest.TestCase):
         self.assertTrue(result.ready)
         self.assertEqual(result.attempts, 2)
         self.assertEqual(result.passed_attempts, 2)
+        self.assertEqual(result.endpoint_class, "non-loopback-qualified")
+
+    def test_loopback_qualification_is_explicitly_development_only(self):
+        times = iter([0.0, 0.0])
+        stable = self._result()
+
+        with patch(
+            "scripts.qualify_alpha_endpoint.run_preflight",
+            return_value=stable,
+        ):
+            result = qualify_endpoint(
+                stable.api_base_url,
+                duration_seconds=0.0,
+                allow_loopback=True,
+                clock=lambda: next(times),
+                sleeper=lambda _: None,
+            )
+
+        self.assertEqual(result.endpoint_class, "loopback-development")
 
     def test_backend_identity_change_blocks_qualification(self):
         stable = self._result()
