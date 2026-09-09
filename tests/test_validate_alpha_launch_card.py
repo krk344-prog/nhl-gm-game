@@ -55,6 +55,13 @@ class AlphaLaunchCardValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(LaunchCardError, "T## format"):
             validate_launch_card(self._write(READY_CARD.replace("T01", "Kyle")), now=READY_NOW)
 
+    def test_tester_id_must_belong_to_authorized_pilot_cohort(self):
+        for tester_id in ("T00", "T06", "T99"):
+            with self.subTest(tester_id=tester_id):
+                text = READY_CARD.replace("Anonymous tester ID: T01", f"Anonymous tester ID: {tester_id}")
+                with self.assertRaisesRegex(LaunchCardError, "authorized T01–T05 pilot cohort"):
+                    validate_launch_card(self._write(text), now=READY_NOW)
+
     def test_timestamp_without_timezone_is_rejected(self):
         text = READY_CARD.replace("2026-09-06T07:30:00-04:00", "2026-09-06T07:30:00")
         with self.assertRaisesRegex(LaunchCardError, "timezone offset or Z"):
