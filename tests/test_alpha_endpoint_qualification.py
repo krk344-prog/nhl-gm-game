@@ -38,7 +38,7 @@ class AlphaEndpointQualificationTests(unittest.TestCase):
         self.assertEqual(result.endpoint_class, "non-loopback-qualified")
 
     def test_loopback_qualification_is_explicitly_development_only(self):
-        times = iter([0.0, 0.0])
+        times = iter([0.0, 0.0, 0.0])
         stable = self._result()
 
         with patch(
