@@ -32,6 +32,7 @@ _INVALID_LIMITATION_VALUES = {
     "none known",
     "not applicable",
 }
+_ALLOWED_TESTER_IDS = {f"T{index:02d}" for index in range(1, 6)}
 _MAX_CLOCK_SKEW = timedelta(minutes=5)
 _MAX_VERIFICATION_AGE = timedelta(minutes=30)
 
@@ -79,6 +80,8 @@ def validate_launch_card(path: Path, *, now: datetime | None = None) -> dict[str
     tester_id = _field(text, "tester_id")
     if re.fullmatch(r"T\d{2}", tester_id) is None:
         raise LaunchCardError("Anonymous tester ID must use the T## format")
+    if tester_id not in _ALLOWED_TESTER_IDS:
+        raise LaunchCardError("Anonymous tester ID must identify the authorized T01–T05 pilot cohort")
 
     _field(text, "bug_destination")
     known_limitation = _field(text, "known_limitation")
