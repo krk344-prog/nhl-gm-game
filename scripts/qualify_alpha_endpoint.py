@@ -80,7 +80,7 @@ def qualify_endpoint(
     return EndpointQualification(
         api_base_url=selected_api_base_url,
         endpoint_class=(
-            "loopback-development" if allow_loopback else "non-loopback-qualified"
+            "loopback-development" if allow_loopback else "facilitator-qualified"
         ),
         duration_seconds=round(clock() - started, 3),
         interval_seconds=interval_seconds,
