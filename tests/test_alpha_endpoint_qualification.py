@@ -35,7 +35,7 @@ class AlphaEndpointQualificationTests(unittest.TestCase):
         self.assertTrue(result.ready)
         self.assertEqual(result.attempts, 2)
         self.assertEqual(result.passed_attempts, 2)
-        self.assertEqual(result.endpoint_class, "non-loopback-qualified")
+        self.assertEqual(result.endpoint_class, "facilitator-qualified")
         self.assertFalse(result.tester_reachability_proven)
 
     def test_loopback_qualification_is_explicitly_development_only(self):
