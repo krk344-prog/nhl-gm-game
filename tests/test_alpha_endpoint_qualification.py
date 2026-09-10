@@ -17,7 +17,7 @@ class AlphaEndpointQualificationTests(unittest.TestCase):
         )
 
     def test_matching_backend_identity_passes_qualification(self):
-        times = iter([0.0, 0.0, 30.0, 30.0])
+        times = iter([0.0, 0.0, 300.0, 300.0])
         stable = self._result()
 
         with patch(
@@ -26,8 +26,8 @@ class AlphaEndpointQualificationTests(unittest.TestCase):
         ):
             result = qualify_endpoint(
                 stable.api_base_url,
-                duration_seconds=30.0,
-                interval_seconds=30.0,
+                duration_seconds=300.0,
+                interval_seconds=300.0,
                 clock=lambda: next(times),
                 sleeper=lambda _: None,
             )
@@ -37,6 +37,16 @@ class AlphaEndpointQualificationTests(unittest.TestCase):
         self.assertEqual(result.passed_attempts, 2)
         self.assertEqual(result.endpoint_class, "facilitator-qualified")
         self.assertFalse(result.tester_reachability_proven)
+
+    def test_direct_api_rejects_short_facilitator_qualification(self):
+        with patch("scripts.qualify_alpha_endpoint.run_preflight") as preflight:
+            with self.assertRaisesRegex(ValueError, "at least 300 seconds"):
+                qualify_endpoint(
+                    "http://192.168.1.25:8000/api/v1",
+                    duration_seconds=299.0,
+                )
+
+        preflight.assert_not_called()
 
     def test_cli_rejects_short_facilitator_qualification(self):
         with patch("scripts.qualify_alpha_endpoint.run_preflight") as preflight:
@@ -73,7 +83,7 @@ class AlphaEndpointQualificationTests(unittest.TestCase):
     def test_backend_identity_change_blocks_qualification(self):
         stable = self._result()
         changed = self._result(api_version="unexpected-version")
-        times = iter([0.0, 0.0, 30.0])
+        times = iter([0.0, 0.0, 300.0])
 
         with patch(
             "scripts.qualify_alpha_endpoint.run_preflight",
@@ -82,8 +92,8 @@ class AlphaEndpointQualificationTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "identity changed"):
                 qualify_endpoint(
                     stable.api_base_url,
-                    duration_seconds=30.0,
-                    interval_seconds=30.0,
+                    duration_seconds=300.0,
+                    interval_seconds=300.0,
                     clock=lambda: next(times),
                     sleeper=lambda _: None,
                 )
