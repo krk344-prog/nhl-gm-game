@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch
 
 from scripts.check_alpha_backend import PreflightResult
-from scripts.qualify_alpha_endpoint import qualify_endpoint
+from scripts.qualify_alpha_endpoint import main, qualify_endpoint
 
 
 class AlphaEndpointQualificationTests(unittest.TestCase):
@@ -37,6 +37,19 @@ class AlphaEndpointQualificationTests(unittest.TestCase):
         self.assertEqual(result.passed_attempts, 2)
         self.assertEqual(result.endpoint_class, "facilitator-qualified")
         self.assertFalse(result.tester_reachability_proven)
+
+    def test_cli_rejects_short_facilitator_qualification(self):
+        with patch("scripts.qualify_alpha_endpoint.run_preflight") as preflight:
+            exit_code = main(
+                [
+                    "http://192.168.1.25:8000/api/v1",
+                    "--duration-seconds",
+                    "299",
+                ]
+            )
+
+        self.assertEqual(exit_code, 1)
+        preflight.assert_not_called()
 
     def test_loopback_qualification_is_explicitly_development_only(self):
         times = iter([0.0, 0.0, 0.0])
