@@ -36,6 +36,7 @@ class AlphaEndpointQualificationTests(unittest.TestCase):
         self.assertEqual(result.attempts, 2)
         self.assertEqual(result.passed_attempts, 2)
         self.assertEqual(result.endpoint_class, "non-loopback-qualified")
+        self.assertFalse(result.tester_reachability_proven)
 
     def test_loopback_qualification_is_explicitly_development_only(self):
         times = iter([0.0, 0.0, 0.0])
@@ -54,6 +55,7 @@ class AlphaEndpointQualificationTests(unittest.TestCase):
             )
 
         self.assertEqual(result.endpoint_class, "loopback-development")
+        self.assertFalse(result.tester_reachability_proven)
 
     def test_backend_identity_change_blocks_qualification(self):
         stable = self._result()
