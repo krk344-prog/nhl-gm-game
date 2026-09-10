@@ -48,6 +48,11 @@ def qualify_endpoint(
         raise ValueError("duration_seconds must be non-negative")
     if interval_seconds <= 0:
         raise ValueError("interval_seconds must be positive")
+    if not allow_loopback and duration_seconds < MIN_FACILITATOR_QUALIFICATION_SECONDS:
+        raise ValueError(
+            "Facilitator qualification requires at least "
+            f"{int(MIN_FACILITATOR_QUALIFICATION_SECONDS)} seconds of continuity evidence"
+        )
 
     selected_api_base_url = api_base_url.rstrip("/")
     started = clock()
@@ -92,15 +97,11 @@ def qualify_endpoint(
         season_id=season_id,
         qualified_at_utc=qualified_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
         ready=True,
-        # This process proves continuity only from the facilitator host. Separate
-        # Android-device evidence is required before the endpoint can be called
-        # tester-reachable.
         tester_reachability_proven=False,
     )
 
 
 def write_qualification_record(result: EndpointQualification, output: str | Path) -> Path:
-    """Persist the exact qualification evidence used for the pilot build handoff."""
     path = Path(output)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(asdict(result), indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -114,34 +115,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--interval-seconds", type=float, default=30.0)
     parser.add_argument("--timeout", type=float, default=5.0)
     parser.add_argument("--season-id", default="2026-27")
-    parser.add_argument(
-        "--output",
-        help="Write the successful qualification record to this JSON path.",
-    )
+    parser.add_argument("--output", help="Write the successful qualification record to this JSON path.")
     parser.add_argument(
         "--allow-loopback",
         action="store_true",
         help="Allow localhost only for development or automated tests.",
     )
     args = parser.parse_args(argv)
-
-    if (
-        not args.allow_loopback
-        and args.duration_seconds < MIN_FACILITATOR_QUALIFICATION_SECONDS
-    ):
-        print(
-            json.dumps(
-                {
-                    "ready": False,
-                    "error": (
-                        "Facilitator qualification requires at least "
-                        f"{int(MIN_FACILITATOR_QUALIFICATION_SECONDS)} seconds of continuity evidence"
-                    ),
-                },
-                indent=2,
-            )
-        )
-        return 1
 
     try:
         result = qualify_endpoint(
