@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MOBILE = ROOT / "mobile"
 OUTPUT = ROOT / "dist" / "technical-alpha"
 QUALIFICATION_MAX_AGE_SECONDS = 1800.0
+MIN_FACILITATOR_QUALIFICATION_SECONDS = 300.0
 
 
 def validate_api_base_url(value: str) -> str:
@@ -43,7 +44,7 @@ def validate_qualification_record(
     now: datetime | None = None,
     max_age_seconds: float = QUALIFICATION_MAX_AGE_SECONDS,
 ) -> dict[str, object]:
-    """Require fresh tester-reachable qualification for the exact endpoint being packaged."""
+    """Require fresh facilitator qualification for the exact endpoint being packaged."""
     record_path = Path(path)
     if not record_path.is_file():
         raise RuntimeError(f"endpoint qualification record not found: {record_path}")
@@ -55,8 +56,21 @@ def validate_qualification_record(
         raise RuntimeError("endpoint qualification record must contain a JSON object")
     if payload.get("ready") is not True:
         raise RuntimeError("endpoint qualification record is not ready=true")
-    if payload.get("endpoint_class") != "tester-reachable":
-        raise RuntimeError("endpoint qualification record is not tester-reachable evidence")
+    if payload.get("endpoint_class") != "facilitator-qualified":
+        raise RuntimeError("endpoint qualification record is not facilitator-qualified evidence")
+    if payload.get("tester_reachability_proven") is not False:
+        raise RuntimeError(
+            "pre-build qualification must not claim tester reachability before physical-device validation"
+        )
+    try:
+        duration_seconds = float(payload.get("duration_seconds"))
+    except (TypeError, ValueError) as exc:
+        raise RuntimeError("endpoint qualification record has invalid duration_seconds") from exc
+    if duration_seconds < MIN_FACILITATOR_QUALIFICATION_SECONDS:
+        raise RuntimeError(
+            "facilitator qualification must contain at least "
+            f"{int(MIN_FACILITATOR_QUALIFICATION_SECONDS)} seconds of continuity evidence"
+        )
 
     expected_endpoint = validate_api_base_url(api_base_url)
     record_endpoint = str(payload.get("api_base_url") or "").rstrip("/")
