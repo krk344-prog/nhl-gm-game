@@ -26,6 +26,7 @@ class EndpointQualification:
     season_id: str
     qualified_at_utc: str
     ready: bool
+    tester_reachability_proven: bool
 
 
 def qualify_endpoint(
@@ -88,6 +89,10 @@ def qualify_endpoint(
         season_id=season_id,
         qualified_at_utc=qualified_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
         ready=True,
+        # This process proves continuity only from the facilitator host. Separate
+        # Android-device evidence is required before the endpoint can be called
+        # tester-reachable.
+        tester_reachability_proven=False,
     )
 
 
