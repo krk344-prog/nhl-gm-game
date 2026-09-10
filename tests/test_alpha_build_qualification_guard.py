@@ -14,7 +14,7 @@ class AlphaBuildQualificationGuardTests(unittest.TestCase):
     def _record(self, **overrides):
         payload = {
             "api_base_url": self.ENDPOINT,
-            "endpoint_class": "tester-reachable",
+            "endpoint_class": "facilitator-qualified",
             "duration_seconds": 900.0,
             "interval_seconds": 30.0,
             "attempts": 31,
@@ -22,6 +22,7 @@ class AlphaBuildQualificationGuardTests(unittest.TestCase):
             "season_id": "2026-27",
             "qualified_at_utc": (self.NOW - timedelta(minutes=5)).isoformat().replace("+00:00", "Z"),
             "ready": True,
+            "tester_reachability_proven": False,
         }
         payload.update(overrides)
         return payload
@@ -31,12 +32,25 @@ class AlphaBuildQualificationGuardTests(unittest.TestCase):
         path.write_text(json.dumps(payload), encoding="utf-8")
         return path
 
-    def test_fresh_matching_qualification_allows_build_handoff(self):
+    def test_fresh_matching_facilitator_qualification_allows_build_handoff(self):
         with tempfile.TemporaryDirectory() as directory:
             path = self._write(directory, self._record())
             result = validate_qualification_record(path, self.ENDPOINT, now=self.NOW)
         self.assertTrue(result["ready"])
         self.assertEqual(result["api_base_url"], self.ENDPOINT)
+        self.assertFalse(result["tester_reachability_proven"])
+
+    def test_obsolete_tester_reachable_classification_blocks_build_handoff(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = self._write(directory, self._record(endpoint_class="tester-reachable"))
+            with self.assertRaisesRegex(RuntimeError, "facilitator-qualified"):
+                validate_qualification_record(path, self.ENDPOINT, now=self.NOW)
+
+    def test_short_facilitator_qualification_blocks_build_handoff(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = self._write(directory, self._record(duration_seconds=299.0))
+            with self.assertRaisesRegex(RuntimeError, "at least 300"):
+                validate_qualification_record(path, self.ENDPOINT, now=self.NOW)
 
     def test_different_endpoint_blocks_build_handoff(self):
         with tempfile.TemporaryDirectory() as directory:
