@@ -15,6 +15,9 @@ from typing import Callable
 from scripts.check_alpha_backend import PreflightResult, run_preflight
 
 
+MIN_FACILITATOR_QUALIFICATION_SECONDS = 300.0
+
+
 @dataclass(frozen=True)
 class EndpointQualification:
     api_base_url: str
@@ -121,6 +124,24 @@ def main(argv: list[str] | None = None) -> int:
         help="Allow localhost only for development or automated tests.",
     )
     args = parser.parse_args(argv)
+
+    if (
+        not args.allow_loopback
+        and args.duration_seconds < MIN_FACILITATOR_QUALIFICATION_SECONDS
+    ):
+        print(
+            json.dumps(
+                {
+                    "ready": False,
+                    "error": (
+                        "Facilitator qualification requires at least "
+                        f"{int(MIN_FACILITATOR_QUALIFICATION_SECONDS)} seconds of continuity evidence"
+                    ),
+                },
+                indent=2,
+            )
+        )
+        return 1
 
     try:
         result = qualify_endpoint(
