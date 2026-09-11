@@ -17,6 +17,7 @@ BUILD_SCRIPT = "scripts/build_alpha_apk_local.py"
 QUALIFICATION_SCRIPT = "scripts/qualify_alpha_endpoint.py"
 QUALIFICATION_RECORD = "artifacts/alpha-endpoint-qualification.json"
 QUALIFICATION_MINIMUM_SECONDS = 300
+QUALIFICATION_BUILD_WINDOW_SECONDS = 1800
 
 
 def prepare_build_handoff(
@@ -79,6 +80,7 @@ def prepare_build_handoff(
         "qualification_script": QUALIFICATION_SCRIPT,
         "qualification_record": QUALIFICATION_RECORD,
         "qualification_minimum_seconds": QUALIFICATION_MINIMUM_SECONDS,
+        "qualification_build_window_seconds": QUALIFICATION_BUILD_WINDOW_SECONDS,
         "qualification_argv": qualification_command,
         "qualification_command": shlex.join(qualification_command),
         "build_script": BUILD_SCRIPT,
@@ -86,7 +88,8 @@ def prepare_build_handoff(
         "build_command": shlex.join(build_command),
         "next_action": (
             "Run qualification_command first and allow the required five-minute continuity soak to complete. "
-            "Confirm qualification_record exists and ready=true, then run build_command before the qualification expires."
+            "Confirm qualification_record exists and ready=true, then start build_command within 30 minutes "
+            "of qualification so the evidence is still fresh."
         ),
     }
 
