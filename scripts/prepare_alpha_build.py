@@ -55,6 +55,8 @@ def prepare_build_handoff(
         selected_api_base_url,
         "--season-id",
         season_id,
+        "--duration-seconds",
+        str(QUALIFICATION_MINIMUM_SECONDS),
         "--output",
         QUALIFICATION_RECORD,
     ]
