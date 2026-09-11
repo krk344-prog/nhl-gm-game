@@ -14,11 +14,12 @@ class AlphaBuildHandoffContractTests(unittest.TestCase):
 
         def preflight(api_base_url, **_kwargs):
             return PreflightResult(
-                ready=True,
                 api_base_url=api_base_url,
+                health_status="ok",
+                api_version="v1",
                 season_id="2026-27",
                 regular_season_games=84,
-                checks={},
+                ready=True,
             )
 
         payload = prepare_build_handoff(api_base_url=endpoint, preflight=preflight)
