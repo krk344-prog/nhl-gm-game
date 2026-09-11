@@ -67,17 +67,20 @@ class PrepareAlphaBuildTests(unittest.TestCase):
             payload["qualification_record"],
             "artifacts/alpha-endpoint-qualification.json",
         )
+        self.assertEqual(payload["qualification_minimum_seconds"], 300)
         self.assertEqual(
-            payload["qualification_argv"][-5:],
+            payload["qualification_argv"][-7:],
             [
-                "http://192.168.1.20:8000/api/v1",
                 "--season-id",
                 "2026-27",
+                "--duration-seconds",
+                "300",
                 "--output",
                 "artifacts/alpha-endpoint-qualification.json",
             ],
         )
         self.assertIn("qualify_alpha_endpoint.py", payload["qualification_command"])
+        self.assertIn("--duration-seconds 300", payload["qualification_command"])
         self.assertIn("qualification_command first", payload["next_action"])
         self.assertIn("qualification_record exists", payload["next_action"])
         self.assertIn("ready=true", payload["next_action"])
