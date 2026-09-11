@@ -86,6 +86,10 @@ class PrepareAlphaBuildTests(unittest.TestCase):
         self.assertIn("qualification_record exists", payload["next_action"])
         self.assertIn("ready=true", payload["next_action"])
         self.assertIn("within 30 minutes", payload["next_action"])
+        self.assertIn("rerun qualification_command", payload["next_action"])
+        self.assertIn("do not reuse stale qualification evidence", payload["next_action"])
+        self.assertIn("30-minute build window expires", payload["expired_qualification_recovery"])
+        self.assertIn("newly generated", payload["expired_qualification_recovery"])
 
     def test_discovered_endpoint_is_selected_preflighted_and_locked(self):
         payload = module.prepare_build_handoff(
