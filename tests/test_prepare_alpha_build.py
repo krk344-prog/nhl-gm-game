@@ -68,6 +68,7 @@ class PrepareAlphaBuildTests(unittest.TestCase):
             "artifacts/alpha-endpoint-qualification.json",
         )
         self.assertEqual(payload["qualification_minimum_seconds"], 300)
+        self.assertEqual(payload["qualification_build_window_seconds"], 1800)
         self.assertEqual(
             payload["qualification_argv"][-6:],
             [
@@ -84,6 +85,7 @@ class PrepareAlphaBuildTests(unittest.TestCase):
         self.assertIn("qualification_command first", payload["next_action"])
         self.assertIn("qualification_record exists", payload["next_action"])
         self.assertIn("ready=true", payload["next_action"])
+        self.assertIn("within 30 minutes", payload["next_action"])
 
     def test_discovered_endpoint_is_selected_preflighted_and_locked(self):
         payload = module.prepare_build_handoff(
