@@ -86,10 +86,15 @@ def prepare_build_handoff(
         "build_script": BUILD_SCRIPT,
         "build_argv": build_command,
         "build_command": shlex.join(build_command),
+        "expired_qualification_recovery": (
+            "If the 30-minute build window expires, rerun qualification_command and use the newly generated "
+            "qualification_record before starting build_command."
+        ),
         "next_action": (
             "Run qualification_command first and allow the required five-minute continuity soak to complete. "
             "Confirm qualification_record exists and ready=true, then start build_command within 30 minutes "
-            "of qualification so the evidence is still fresh."
+            "of qualification so the evidence is still fresh. If that window expires, rerun qualification_command "
+            "before building; do not reuse stale qualification evidence."
         ),
     }
 
