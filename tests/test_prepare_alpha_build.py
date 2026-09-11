@@ -69,7 +69,7 @@ class PrepareAlphaBuildTests(unittest.TestCase):
         )
         self.assertEqual(payload["qualification_minimum_seconds"], 300)
         self.assertEqual(
-            payload["qualification_argv"][-7:],
+            payload["qualification_argv"][-6:],
             [
                 "--season-id",
                 "2026-27",
