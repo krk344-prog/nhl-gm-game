@@ -16,6 +16,7 @@ PR_BRANCH = "agent/alpha-rules-integration-v1"
 BUILD_SCRIPT = "scripts/build_alpha_apk_local.py"
 QUALIFICATION_SCRIPT = "scripts/qualify_alpha_endpoint.py"
 QUALIFICATION_RECORD = "artifacts/alpha-endpoint-qualification.json"
+QUALIFICATION_MINIMUM_SECONDS = 300
 
 
 def prepare_build_handoff(
@@ -75,13 +76,15 @@ def prepare_build_handoff(
         "ref": PR_BRANCH,
         "qualification_script": QUALIFICATION_SCRIPT,
         "qualification_record": QUALIFICATION_RECORD,
+        "qualification_minimum_seconds": QUALIFICATION_MINIMUM_SECONDS,
         "qualification_argv": qualification_command,
         "qualification_command": shlex.join(qualification_command),
         "build_script": BUILD_SCRIPT,
         "build_argv": build_command,
         "build_command": shlex.join(build_command),
         "next_action": (
-            "Run qualification_command first. Confirm qualification_record exists and ready=true, then run build_command before the qualification expires."
+            "Run qualification_command first and allow the required five-minute continuity soak to complete. "
+            "Confirm qualification_record exists and ready=true, then run build_command before the qualification expires."
         ),
     }
 
