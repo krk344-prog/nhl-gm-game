@@ -12,6 +12,7 @@ import argparse
 import hashlib
 import ipaddress
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 from zipfile import BadZipFile, ZipFile
@@ -57,6 +58,20 @@ def _validate_non_loopback_url(value: str) -> str:
     return value.rstrip("/")
 
 
+def _validate_qualification_timestamp(value: str) -> str:
+    if not value.strip():
+        raise VerificationError("build manifest qualified_at_utc must not be empty")
+    try:
+        qualified_at = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise VerificationError("build manifest qualified_at_utc must be a valid ISO-8601 timestamp") from exc
+    if qualified_at.tzinfo is None or qualified_at.utcoffset() is None:
+        raise VerificationError("build manifest qualified_at_utc must be timezone-aware")
+    if qualified_at.utcoffset() != timezone.utc.utcoffset(qualified_at):
+        raise VerificationError("build manifest qualified_at_utc must use UTC")
+    return value
+
+
 def _read_build_manifest(path: Path) -> dict[str, str]:
     values: dict[str, str] = {}
     for raw_line in path.read_text(encoding="utf-8").splitlines():
@@ -74,8 +89,7 @@ def _read_build_manifest(path: Path) -> dict[str, str]:
         raise VerificationError(
             f"build manifest keys must be exactly {sorted(required)}; found {sorted(values)}"
         )
-    if not values["qualified_at_utc"].strip():
-        raise VerificationError("build manifest qualified_at_utc must not be empty")
+    _validate_qualification_timestamp(values["qualified_at_utc"])
     return values
 
 
