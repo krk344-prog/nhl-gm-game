@@ -86,8 +86,12 @@ class PrepareAlphaBuildTests(unittest.TestCase):
         self.assertIn("qualification_record exists", payload["next_action"])
         self.assertIn("ready=true", payload["next_action"])
         self.assertIn("within 30 minutes", payload["next_action"])
+        self.assertIn("same api_base_url", payload["endpoint_lock"])
+        self.assertIn("discard the prior qualification record", payload["endpoint_lock"])
+        self.assertIn("same api_base_url", payload["next_action"])
+        self.assertIn("endpoint changes", payload["next_action"])
         self.assertIn("rerun qualification_command", payload["next_action"])
-        self.assertIn("do not reuse stale qualification evidence", payload["next_action"])
+        self.assertIn("do not reuse stale evidence", payload["next_action"])
         self.assertIn("30-minute build window expires", payload["expired_qualification_recovery"])
         self.assertIn("newly generated", payload["expired_qualification_recovery"])
 
