@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 from check_alpha_android_device import inspect_device, parse_adb_devices, select_device
+from check_alpha_backend import run_preflight
 from verify_alpha_artifact import VerificationError, verify_artifact
 
 APK_NAME = "nhl-gm-technical-alpha.apk"
@@ -24,12 +25,20 @@ def install_verified_apk(
     *,
     check_output=subprocess.check_output,
     run=subprocess.run,
+    preflight=run_preflight,
 ) -> dict[str, object]:
     verification = verify_artifact(
         artifact_directory,
         expected_commit,
         expected_api_base_url,
     )
+
+    # Qualification proves a bounded continuity window before packaging, but the
+    # backend can disappear after the APK is built. Revalidate the exact embedded
+    # endpoint immediately before touching a tester device so an install is not
+    # performed against an already-dead Alpha backend.
+    preflight(expected_api_base_url)
+
     device_summary = inspect_device(
         requested_serial,
         check_output=check_output,
@@ -64,6 +73,7 @@ def install_verified_apk(
         "apk_sha256": verification["checksums"][APK_NAME],
         "android_package": ANDROID_PACKAGE,
         "device": device_summary["selected_device"],
+        "backend_revalidated_before_install": True,
         "installation_confirmed": True,
         "next_action": "launch the installed app and complete the guided Technical Alpha smoke route",
     }
