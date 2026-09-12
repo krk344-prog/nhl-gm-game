@@ -12,7 +12,7 @@ import argparse
 import hashlib
 import ipaddress
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 from zipfile import BadZipFile, ZipFile
@@ -25,6 +25,7 @@ REQUIRED_ARTIFACTS = {
 BUILD_MANIFEST = "technical-alpha-build.txt"
 APK_BUNDLE_PATH = "assets/index.android.bundle"
 APK_REQUIRED_MEMBERS = ("AndroidManifest.xml", "classes.dex")
+QUALIFICATION_CLOCK_SKEW_TOLERANCE = timedelta(minutes=5)
 FORBIDDEN_BUNDLE_ENDPOINTS = (
     b"http://localhost",
     b"https://localhost",
@@ -69,6 +70,8 @@ def _validate_qualification_timestamp(value: str) -> str:
         raise VerificationError("build manifest qualified_at_utc must be timezone-aware")
     if qualified_at.utcoffset() != timezone.utc.utcoffset(qualified_at):
         raise VerificationError("build manifest qualified_at_utc must use UTC")
+    if qualified_at > datetime.now(timezone.utc) + QUALIFICATION_CLOCK_SKEW_TOLERANCE:
+        raise VerificationError("build manifest qualified_at_utc must not be in the future")
     return value
 
 
