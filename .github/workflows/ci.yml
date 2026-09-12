@@ -1,9 +1,19 @@
 name: Alpha validation
 
+concurrency:
+  group: alpha-validation-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [main, "codex/**"]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      api_base_url:
+        description: "Python API base URL embedded in the tester APK (for example http://192.168.1.25:8000/api/v1)"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -23,6 +33,10 @@ jobs:
 
   android-bundle:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TECHNICAL_ALPHA_API_URL: ${{ inputs.api_base_url || 'http://127.0.0.1:8000/api/v1' }}
+      TECHNICAL_ALPHA_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -30,6 +44,34 @@ jobs:
           node-version: "20"
           cache: npm
           cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Validate configured Alpha API URL
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          case "$TECHNICAL_ALPHA_API_URL" in
+            http://*|https://*) ;;
+            *) echo "api_base_url must begin with http:// or https://" >&2; exit 1 ;;
+          esac
+          case "$TECHNICAL_ALPHA_API_URL" in
+            *\?*|*\#*) echo "api_base_url must not contain a query string or fragment." >&2; exit 1 ;;
+          esac
+          normalized_api_url="${TECHNICAL_ALPHA_API_URL%/}"
+          case "$normalized_api_url" in
+            */api/v1) ;;
+            *) echo "api_base_url must end with /api/v1 so the packaged app reaches the authoritative API route." >&2; exit 1 ;;
+          esac
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            endpoint_host="${TECHNICAL_ALPHA_API_URL#*://}"
+            endpoint_host="${endpoint_host%%/*}"
+            endpoint_host="${endpoint_host%%:*}"
+            case "$endpoint_host" in
+              localhost|127.*|0.0.0.0|::1) echo "Manual tester builds require a non-loopback API endpoint reachable from the Android device." >&2; exit 1 ;;
+            esac
+          fi
       - name: Install mobile dependencies
         working-directory: mobile
         run: npm ci
@@ -37,4 +79,140 @@ jobs:
         working-directory: mobile
         env:
           EXPO_NO_TELEMETRY: "1"
+          EXPO_PUBLIC_API_URL: ${{ env.TECHNICAL_ALPHA_API_URL }}
         run: npx expo export --platform android --output-dir /tmp/nhl-gm-android
+      - name: Generate clean native Android project
+        working-directory: mobile
+        env:
+          EXPO_NO_TELEMETRY: "1"
+          EXPO_PUBLIC_API_URL: ${{ env.TECHNICAL_ALPHA_API_URL }}
+        run: npx expo prebuild --platform android --clean --non-interactive --no-install
+      - name: Build standalone Technical Alpha release APK
+        working-directory: mobile/android
+        env:
+          EXPO_PUBLIC_API_URL: ${{ env.TECHNICAL_ALPHA_API_URL }}
+        run: |
+          attempt=1
+          while true; do
+            if ./gradlew assembleRelease --no-daemon --console=plain; then
+              break
+            fi
+            if [ "$attempt" -ge 3 ]; then
+              echo "Gradle release build failed after $attempt attempts." >&2
+              exit 1
+            fi
+            echo "Gradle release build attempt $attempt failed; retrying after a transient-download backoff." >&2
+            attempt=$((attempt + 1))
+            sleep 10
+          done
+      - name: Verify embedded application bundle
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          apk = Path("mobile/android/app/build/outputs/apk/release/app-release.apk")
+          if not apk.is_file():
+              raise SystemExit(f"release APK missing: {apk}")
+          with ZipFile(apk) as archive:
+              info = archive.getinfo("assets/index.android.bundle")
+              if info.file_size <= 0:
+                  raise SystemExit("embedded JavaScript bundle is empty")
+          print(f"verified embedded bundle in {apk}")
+          PY
+      - name: Package tester artifacts with portable integrity manifests
+        working-directory: /tmp
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          tar -czf nhl-gm-android-export.tar.gz nhl-gm-android
+          cp "$GITHUB_WORKSPACE/mobile/android/app/build/outputs/apk/release/app-release.apk" nhl-gm-technical-alpha.apk
+          sha256sum nhl-gm-android-export.tar.gz > nhl-gm-android-export.sha256
+          sha256sum nhl-gm-technical-alpha.apk > nhl-gm-technical-alpha.apk.sha256
+          printf 'commit=%s\napi_base_url=%s\nbuild_type=standalone-release-apk\n' \
+            "$TECHNICAL_ALPHA_SOURCE_SHA" "$TECHNICAL_ALPHA_API_URL" > technical-alpha-build.txt
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            python "$GITHUB_WORKSPACE/scripts/create_alpha_tester_bundle.py" \
+              /tmp /tmp/nhl-gm-first-playable-tester.zip \
+              --expected-commit "$TECHNICAL_ALPHA_SOURCE_SHA" \
+              --expected-api-base-url "$TECHNICAL_ALPHA_API_URL"
+          fi
+      - name: Upload Technical Alpha Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nhl-gm-technical-alpha-android-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            /tmp/nhl-gm-android-export.tar.gz
+            /tmp/nhl-gm-android-export.sha256
+            /tmp/nhl-gm-technical-alpha.apk
+            /tmp/nhl-gm-technical-alpha.apk.sha256
+            /tmp/technical-alpha-build.txt
+            /tmp/nhl-gm-first-playable-tester.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  android-emulator-smoke:
+    needs: android-bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enable KVM group permissions
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Download exact release APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: nhl-gm-technical-alpha-android-${{ github.event.pull_request.head.sha || github.sha }}
+          path: /tmp/technical-alpha
+      - name: Install and validate exact release APK in Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: |
+            set -eu
+            test -s /tmp/technical-alpha/nhl-gm-technical-alpha.apk
+            adb wait-for-device
+            adb logcat -c
+            adb logcat -v threadtime > /tmp/technical-alpha-emulator-logcat.txt 2>&1 &
+            adb install -r /tmp/technical-alpha/nhl-gm-technical-alpha.apk
+            adb shell monkey -p com.krk344.nhlgmgame -c android.intent.category.LAUNCHER 1
+            sh -c 'attempt=0; until adb shell pidof com.krk344.nhlgmgame >/dev/null 2>&1; do attempt=$((attempt + 1)); if [ "$attempt" -ge 60 ]; then echo "application process did not start" >&2; exit 1; fi; sleep 1; done'
+            sleep 30
+            timeout 20s adb shell dumpsys activity activities > /tmp/technical-alpha-emulator-activities.txt
+            adb shell pidof com.krk344.nhlgmgame >/dev/null
+            pkill -f '[a]db logcat -v threadtime' >/dev/null 2>&1 || true
+            test -s /tmp/technical-alpha-emulator-logcat.txt
+            python scripts/validate_alpha_emulator_launch.py /tmp/technical-alpha-emulator-logcat.txt /tmp/technical-alpha-emulator-activities.txt
+            sh -c 'attempt=0; rm -f /tmp/technical-alpha-emulator-launch.png; while [ "$attempt" -lt 3 ]; do attempt=$((attempt + 1)); if timeout 20s adb exec-out screencap -p > /tmp/technical-alpha-emulator-launch.png && [ -s /tmp/technical-alpha-emulator-launch.png ]; then exit 0; fi; rm -f /tmp/technical-alpha-emulator-launch.png; echo "screenshot capture attempt $attempt failed; retrying" >&2; sleep 5; done; echo "emulator screenshot capture failed after 3 bounded attempts" >&2; exit 1'
+            python -c 'from pathlib import Path; data=Path("/tmp/technical-alpha-emulator-launch.png").read_bytes(); assert data.startswith(b"\x89PNG\r\n\x1a\n"), "emulator screenshot is not a valid PNG"'
+      - name: Capture emulator diagnostics after failure
+        if: failure()
+        run: |
+          # The emulator-runner tears the emulator down before this host step.
+          # Preserve any evidence captured inside the runner instead of replacing
+          # it with post-teardown "no devices/emulators found" output.
+          if [ ! -s /tmp/technical-alpha-emulator-logcat.txt ]; then
+            timeout 20s adb logcat -d > /tmp/technical-alpha-emulator-logcat.txt 2>&1 || true
+          fi
+          if [ ! -s /tmp/technical-alpha-emulator-activities.txt ]; then
+            timeout 20s adb shell dumpsys activity activities > /tmp/technical-alpha-emulator-activities.txt 2>&1 || true
+          fi
+          if [ ! -s /tmp/technical-alpha-emulator-launch.png ]; then
+            timeout 20s adb exec-out screencap -p > /tmp/technical-alpha-emulator-launch.png 2>/dev/null || true
+          fi
+      - name: Upload emulator launch evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nhl-gm-technical-alpha-emulator-smoke-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            /tmp/technical-alpha-emulator-launch.png
+            /tmp/technical-alpha-emulator-logcat.txt
+            /tmp/technical-alpha-emulator-activities.txt
+          if-no-files-found: warn
+          retention-days: 14

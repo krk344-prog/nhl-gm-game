@@ -68,7 +68,7 @@ def main():
 
     api_command = [
         sys.executable,
-        str(ROOT / "src" / "nhl_gm_api.py"),
+        str(ROOT / "src" / "season_context_api.py"),
         "--host",
         "0.0.0.0",
         "--port",

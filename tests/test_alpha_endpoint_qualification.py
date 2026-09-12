@@ -1,0 +1,103 @@
+import unittest
+from unittest.mock import patch
+
+from scripts.check_alpha_backend import PreflightResult
+from scripts.qualify_alpha_endpoint import main, qualify_endpoint
+
+
+class AlphaEndpointQualificationTests(unittest.TestCase):
+    def _result(self, *, api_version="0.2.0-alpha"):
+        return PreflightResult(
+            api_base_url="http://192.168.1.25:8000/api/v1",
+            health_status="ok",
+            api_version=api_version,
+            season_id="2026-27",
+            regular_season_games=84,
+            ready=True,
+        )
+
+    def test_matching_backend_identity_passes_qualification(self):
+        times = iter([0.0, 0.0, 300.0, 300.0])
+        stable = self._result()
+
+        with patch(
+            "scripts.qualify_alpha_endpoint.run_preflight",
+            side_effect=[stable, stable],
+        ):
+            result = qualify_endpoint(
+                stable.api_base_url,
+                duration_seconds=300.0,
+                interval_seconds=300.0,
+                clock=lambda: next(times),
+                sleeper=lambda _: None,
+            )
+
+        self.assertTrue(result.ready)
+        self.assertEqual(result.attempts, 2)
+        self.assertEqual(result.passed_attempts, 2)
+        self.assertEqual(result.endpoint_class, "facilitator-qualified")
+        self.assertFalse(result.tester_reachability_proven)
+
+    def test_direct_api_rejects_short_facilitator_qualification(self):
+        with patch("scripts.qualify_alpha_endpoint.run_preflight") as preflight:
+            with self.assertRaisesRegex(ValueError, "at least 300 seconds"):
+                qualify_endpoint(
+                    "http://192.168.1.25:8000/api/v1",
+                    duration_seconds=299.0,
+                )
+
+        preflight.assert_not_called()
+
+    def test_cli_rejects_short_facilitator_qualification(self):
+        with patch("scripts.qualify_alpha_endpoint.run_preflight") as preflight:
+            exit_code = main(
+                [
+                    "http://192.168.1.25:8000/api/v1",
+                    "--duration-seconds",
+                    "299",
+                ]
+            )
+
+        self.assertEqual(exit_code, 1)
+        preflight.assert_not_called()
+
+    def test_loopback_qualification_is_explicitly_development_only(self):
+        times = iter([0.0, 0.0, 0.0])
+        stable = self._result()
+
+        with patch(
+            "scripts.qualify_alpha_endpoint.run_preflight",
+            return_value=stable,
+        ):
+            result = qualify_endpoint(
+                stable.api_base_url,
+                duration_seconds=0.0,
+                allow_loopback=True,
+                clock=lambda: next(times),
+                sleeper=lambda _: None,
+            )
+
+        self.assertEqual(result.endpoint_class, "loopback-development")
+        self.assertFalse(result.tester_reachability_proven)
+
+    def test_backend_identity_change_blocks_qualification(self):
+        stable = self._result()
+        changed = self._result(api_version="unexpected-version")
+        times = iter([0.0, 0.0, 300.0])
+
+        with patch(
+            "scripts.qualify_alpha_endpoint.run_preflight",
+            side_effect=[stable, changed],
+        ):
+            with self.assertRaisesRegex(RuntimeError, "identity changed"):
+                qualify_endpoint(
+                    stable.api_base_url,
+                    duration_seconds=300.0,
+                    interval_seconds=300.0,
+                    clock=lambda: next(times),
+                    sleeper=lambda _: None,
+                )
+
+
+if __name__ == "__main__":
+    unittest.main()
