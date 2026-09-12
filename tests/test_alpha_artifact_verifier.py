@@ -11,6 +11,7 @@ class AlphaArtifactVerifierTests(unittest.TestCase):
     def _write_valid_artifact(self, directory: Path) -> tuple[str, str]:
         commit = "abc123def456"
         api_url = "http://192.168.1.25:8000/api/v1"
+        qualified_at_utc = "2026-09-12T07:00:00+00:00"
         apk = directory / "nhl-gm-technical-alpha.apk"
         with ZipFile(apk, "w") as archive:
             archive.writestr(
@@ -32,7 +33,12 @@ class AlphaArtifactVerifierTests(unittest.TestCase):
                 f"{digest}  {name}\n", encoding="utf-8"
             )
         (directory / "technical-alpha-build.txt").write_text(
-            f"commit={commit}\napi_base_url={api_url}\nbuild_type=standalone-release-apk\n",
+            (
+                f"commit={commit}\n"
+                f"api_base_url={api_url}\n"
+                "build_type=standalone-release-apk\n"
+                f"qualified_at_utc={qualified_at_utc}\n"
+            ),
             encoding="utf-8",
         )
         return commit, api_url
@@ -54,6 +60,7 @@ class AlphaArtifactVerifierTests(unittest.TestCase):
             self.assertEqual(result["status"], "pass")
             self.assertEqual(result["commit"], commit)
             self.assertEqual(result["api_base_url"], api_url)
+            self.assertEqual(result["qualified_at_utc"], "2026-09-12T07:00:00+00:00")
             self.assertGreater(result["embedded_bundle_bytes"], 0)
             self.assertTrue(result["embedded_endpoint_verified"])
             self.assertTrue(result["apk_zip_integrity_verified"])
@@ -65,6 +72,18 @@ class AlphaArtifactVerifierTests(unittest.TestCase):
                 set(result["checksums"]),
                 {"nhl-gm-technical-alpha.apk", "nhl-gm-android-export.tar.gz"},
             )
+
+    def test_rejects_manifest_without_qualification_timestamp(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            directory = Path(temp_dir)
+            commit, api_url = self._write_valid_artifact(directory)
+            (directory / "technical-alpha-build.txt").write_text(
+                f"commit={commit}\napi_base_url={api_url}\nbuild_type=standalone-release-apk\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(VerificationError, "build manifest keys"):
+                verify_artifact(directory, commit, api_url)
 
     def test_rejects_build_for_different_endpoint(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -109,7 +128,12 @@ class AlphaArtifactVerifierTests(unittest.TestCase):
             directory = Path(temp_dir)
             commit, api_url = self._write_valid_artifact(directory)
             (directory / "technical-alpha-build.txt").write_text(
-                f"commit={commit}\napi_base_url={api_url}\nbuild_type=debug-apk\n",
+                (
+                    f"commit={commit}\n"
+                    f"api_base_url={api_url}\n"
+                    "build_type=debug-apk\n"
+                    "qualified_at_utc=2026-09-12T07:00:00+00:00\n"
+                ),
                 encoding="utf-8",
             )
 
