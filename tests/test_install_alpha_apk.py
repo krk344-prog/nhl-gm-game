@@ -50,6 +50,7 @@ class InstallAlphaApkTests(unittest.TestCase):
         install_run = Mock(
             return_value=subprocess.CompletedProcess([], 0, stdout="Success\n", stderr="")
         )
+        preflight = Mock()
 
         result = install_alpha_apk.install_verified_apk(
             self.artifact_dir,
@@ -57,14 +58,37 @@ class InstallAlphaApkTests(unittest.TestCase):
             "http://192.168.1.20:8000/api/v1",
             check_output=self._check_output,
             run=install_run,
+            preflight=preflight,
         )
 
         self.assertEqual("pass", result["status"])
+        self.assertTrue(result["backend_revalidated_before_install"])
         self.assertTrue(result["installation_confirmed"])
         self.assertEqual(install_alpha_apk.ANDROID_PACKAGE, result["android_package"])
         self.assertNotIn("SERIAL", str(result))
         self.assertIn("install", install_run.call_args.args[0])
         self.assertIn("-r", install_run.call_args.args[0])
+        preflight.assert_called_once_with("http://192.168.1.20:8000/api/v1")
+
+    @patch("install_alpha_apk.inspect_device")
+    @patch("install_alpha_apk.verify_artifact")
+    def test_blocks_before_device_install_when_backend_is_no_longer_ready(self, verify, inspect):
+        verify.return_value = self.verification
+        install_run = Mock()
+        preflight = Mock(side_effect=RuntimeError("Health check failed"))
+
+        with self.assertRaisesRegex(RuntimeError, "Health check failed"):
+            install_alpha_apk.install_verified_apk(
+                self.artifact_dir,
+                "abc123",
+                "http://192.168.1.20:8000/api/v1",
+                check_output=self._check_output,
+                run=install_run,
+                preflight=preflight,
+            )
+
+        inspect.assert_not_called()
+        install_run.assert_not_called()
 
     @patch("install_alpha_apk.inspect_device")
     @patch("install_alpha_apk.verify_artifact")
@@ -82,6 +106,7 @@ class InstallAlphaApkTests(unittest.TestCase):
                 "http://192.168.1.20:8000/api/v1",
                 check_output=self._check_output,
                 run=install_run,
+                preflight=Mock(),
             )
 
     @patch("install_alpha_apk.inspect_device")
@@ -107,6 +132,7 @@ class InstallAlphaApkTests(unittest.TestCase):
                 "http://192.168.1.20:8000/api/v1",
                 check_output=missing_package,
                 run=install_run,
+                preflight=Mock(),
             )
 
 
