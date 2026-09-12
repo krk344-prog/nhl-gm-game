@@ -69,11 +69,13 @@ def _read_build_manifest(path: Path) -> dict[str, str]:
         if key in values:
             raise VerificationError(f"duplicate build manifest key: {key}")
         values[key] = value
-    required = {"commit", "api_base_url", "build_type"}
+    required = {"commit", "api_base_url", "build_type", "qualified_at_utc"}
     if set(values) != required:
         raise VerificationError(
             f"build manifest keys must be exactly {sorted(required)}; found {sorted(values)}"
         )
+    if not values["qualified_at_utc"].strip():
+        raise VerificationError("build manifest qualified_at_utc must not be empty")
     return values
 
 
@@ -182,6 +184,7 @@ def verify_artifact(directory: Path, expected_commit: str, expected_api_base_url
         "commit": expected_commit,
         "api_base_url": expected_api_base_url,
         "build_type": manifest["build_type"],
+        "qualified_at_utc": manifest["qualified_at_utc"],
         "embedded_bundle_bytes": bundle_size,
         "embedded_endpoint_verified": True,
         "forbidden_bundle_endpoints_absent": True,
