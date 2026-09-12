@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from scripts.verify_alpha_artifact import VerificationError, _read_build_manifest
@@ -46,6 +47,14 @@ class AlphaArtifactManifestTimestampTests(unittest.TestCase):
             path = self._write_manifest(Path(temp_dir), "2026-09-12T03:00:00-04:00")
 
             with self.assertRaisesRegex(VerificationError, "must use UTC"):
+                _read_build_manifest(path)
+
+    def test_rejects_qualification_timestamp_materially_in_future(self):
+        future = datetime.now(timezone.utc) + timedelta(hours=1)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = self._write_manifest(Path(temp_dir), future.isoformat())
+
+            with self.assertRaisesRegex(VerificationError, "must not be in the future"):
                 _read_build_manifest(path)
 
 
