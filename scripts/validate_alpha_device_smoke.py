@@ -4,8 +4,8 @@
 The validator is dependency-free and intentionally conservative. It accepts a JSON
 record created by the facilitator after installing the checksum-verified APK and
 running the approved pilot route. Any missing, failed, loopback-bound, stale,
-future-dated, weakly timestamped, wrong-package, or non-release-build evidence
-blocks the record from being treated as pilot-ready.
+materially future-dated, weakly timestamped, wrong-package, or non-release-build
+evidence blocks the record from being treated as pilot-ready.
 """
 
 from __future__ import annotations
@@ -189,7 +189,7 @@ def validate_record(record: dict[str, Any]) -> list[str]:
             errors.append("invalid:tested_at")
         else:
             tested_at_utc = parsed_tested_at.astimezone(timezone.utc)
-            if tested_at_utc > now_utc:
+            if tested_at_utc > now_utc + MAX_CLOCK_SKEW:
                 errors.append("future:tested_at")
             elif now_utc - tested_at_utc > MAX_EVIDENCE_AGE:
                 errors.append("stale:tested_at")
