@@ -5,7 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
@@ -14,6 +14,7 @@ SCRIPT = ROOT / "scripts" / "summarize_alpha_device_smoke.py"
 
 
 def valid_record() -> dict[str, object]:
+    now = datetime.now(timezone.utc)
     return {
         "commit_sha": "a" * 40,
         "api_base_url": "http://192.168.1.77:8000/api/v1",
@@ -22,7 +23,8 @@ def valid_record() -> dict[str, object]:
         "device_model": "PRIVATE DEVICE MODEL",
         "android_version": "PRIVATE ANDROID VERSION",
         "apk_sha256": "b" * 64,
-        "tested_at": datetime.now(timezone.utc).isoformat(),
+        "qualified_at_utc": (now - timedelta(minutes=10)).isoformat(),
+        "tested_at": now.isoformat(),
         "artifact_verifier_passed": True,
         "apk_installed": True,
         "launch_confirmed": True,
