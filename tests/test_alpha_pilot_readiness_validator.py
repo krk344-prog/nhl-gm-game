@@ -1,6 +1,6 @@
 import json
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from scripts.validate_alpha_pilot_readiness import DEVICE_PASSES, validate
@@ -11,6 +11,7 @@ STAGE3_TEMPLATE_PATH = Path("docs/technical_alpha_stage3_capture_record.template
 
 class AlphaPilotReadinessValidatorTests(unittest.TestCase):
     def _device(self):
+        now = datetime.now(timezone.utc)
         record = {
             "commit_sha": "a" * 40,
             "apk_sha256": "b" * 64,
@@ -19,7 +20,8 @@ class AlphaPilotReadinessValidatorTests(unittest.TestCase):
             "build_type": "standalone-release-apk",
             "device_model": "Pixel Test Device",
             "android_version": "16",
-            "tested_at": datetime.now(timezone.utc).isoformat(),
+            "qualified_at_utc": (now - timedelta(minutes=10)).isoformat(),
+            "tested_at": now.isoformat(),
             "blockers": [],
         }
         record.update({field: True for field in DEVICE_PASSES})
