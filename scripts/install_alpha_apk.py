@@ -70,6 +70,7 @@ def install_verified_apk(
         "status": "pass",
         "commit": verification["commit"],
         "api_base_url": verification["api_base_url"],
+        "qualified_at_utc": verification["qualified_at_utc"],
         "apk_sha256": verification["checksums"][APK_NAME],
         "android_package": ANDROID_PACKAGE,
         "device": device_summary["selected_device"],
