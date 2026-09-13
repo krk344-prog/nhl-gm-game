@@ -22,6 +22,7 @@ class InstallAlphaApkTests(unittest.TestCase):
         self.verification = {
             "commit": "abc123",
             "api_base_url": "http://192.168.1.20:8000/api/v1",
+            "qualified_at_utc": "2026-09-12T22:00:00+00:00",
             "checksums": {install_alpha_apk.APK_NAME: "a" * 64},
         }
         self.device_summary = {
@@ -62,6 +63,7 @@ class InstallAlphaApkTests(unittest.TestCase):
         )
 
         self.assertEqual("pass", result["status"])
+        self.assertEqual(self.verification["qualified_at_utc"], result["qualified_at_utc"])
         self.assertTrue(result["backend_revalidated_before_install"])
         self.assertTrue(result["installation_confirmed"])
         self.assertEqual(install_alpha_apk.ANDROID_PACKAGE, result["android_package"])
