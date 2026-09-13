@@ -47,10 +47,12 @@ REQUIRED_TEXT_FIELDS = (
     "device_model",
     "android_version",
     "apk_sha256",
+    "qualified_at_utc",
     "tested_at",
 )
 
 MAX_EVIDENCE_AGE = timedelta(days=7)
+MAX_CLOCK_SKEW = timedelta(minutes=5)
 
 DOCUMENTATION_NETWORKS = tuple(
     ipaddress.ip_network(network)
@@ -178,6 +180,8 @@ def validate_record(record: dict[str, Any]) -> list[str]:
         if len(normalized_digest) != 64 or any(ch not in "0123456789abcdef" for ch in normalized_digest):
             errors.append("invalid:apk_sha256")
 
+    now_utc = datetime.now(timezone.utc)
+    parsed_tested_at: datetime | None = None
     tested_at = record.get("tested_at")
     if isinstance(tested_at, str) and tested_at.strip():
         parsed_tested_at = _parse_timezone_aware_iso_timestamp(tested_at)
@@ -185,11 +189,26 @@ def validate_record(record: dict[str, Any]) -> list[str]:
             errors.append("invalid:tested_at")
         else:
             tested_at_utc = parsed_tested_at.astimezone(timezone.utc)
-            now_utc = datetime.now(timezone.utc)
             if tested_at_utc > now_utc:
                 errors.append("future:tested_at")
             elif now_utc - tested_at_utc > MAX_EVIDENCE_AGE:
                 errors.append("stale:tested_at")
+
+    qualified_at = record.get("qualified_at_utc")
+    if isinstance(qualified_at, str) and qualified_at.strip():
+        parsed_qualified_at = _parse_timezone_aware_iso_timestamp(qualified_at)
+        if parsed_qualified_at is None:
+            errors.append("invalid:qualified_at_utc")
+        elif parsed_qualified_at.utcoffset() != timedelta(0):
+            errors.append("non_utc:qualified_at_utc")
+        else:
+            qualified_at_utc = parsed_qualified_at.astimezone(timezone.utc)
+            if qualified_at_utc > now_utc + MAX_CLOCK_SKEW:
+                errors.append("future:qualified_at_utc")
+            if parsed_tested_at is not None:
+                tested_at_utc = parsed_tested_at.astimezone(timezone.utc)
+                if qualified_at_utc > tested_at_utc + MAX_CLOCK_SKEW:
+                    errors.append("after_test:qualified_at_utc")
 
     api_base_url = record.get("api_base_url")
     if isinstance(api_base_url, str) and api_base_url.strip():
@@ -259,6 +278,7 @@ def main() -> int:
         "application_package": payload.get("application_package"),
         "build_type": payload.get("build_type"),
         "device_model": payload.get("device_model"),
+        "qualified_at_utc": payload.get("qualified_at_utc"),
     }
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0 if not errors else 1
