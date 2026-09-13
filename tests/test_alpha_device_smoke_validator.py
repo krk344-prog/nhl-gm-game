@@ -12,6 +12,7 @@ SPEC.loader.exec_module(MODULE)
 
 class AlphaDeviceSmokeValidatorTests(unittest.TestCase):
     def valid_record(self):
+        now = datetime.now(timezone.utc)
         record = {
             "commit_sha": "1709302f98d1ae8113ed643ee97b1566ad387fba",
             "api_base_url": "http://192.168.1.25:8000/api/v1",
@@ -20,7 +21,8 @@ class AlphaDeviceSmokeValidatorTests(unittest.TestCase):
             "device_model": "Pixel 9",
             "android_version": "16",
             "apk_sha256": "a" * 64,
-            "tested_at": datetime.now(timezone.utc).isoformat(),
+            "qualified_at_utc": (now - timedelta(minutes=10)).isoformat(),
+            "tested_at": now.isoformat(),
             "blockers": [],
         }
         for field in MODULE.REQUIRED_TRUE_FIELDS:
@@ -181,6 +183,22 @@ class AlphaDeviceSmokeValidatorTests(unittest.TestCase):
         record = self.valid_record()
         record["tested_at"] = (datetime.now(timezone.utc) - timedelta(days=8)).isoformat()
         self.assertIn("stale:tested_at", MODULE.validate_record(record))
+
+    def test_missing_qualification_timestamp_is_blocked(self):
+        record = self.valid_record()
+        record.pop("qualified_at_utc")
+        self.assertIn("missing_or_blank:qualified_at_utc", MODULE.validate_record(record))
+
+    def test_non_utc_qualification_timestamp_is_blocked(self):
+        record = self.valid_record()
+        record["qualified_at_utc"] = datetime.now(timezone(timedelta(hours=-4))).isoformat()
+        self.assertIn("non_utc:qualified_at_utc", MODULE.validate_record(record))
+
+    def test_qualification_after_device_test_is_blocked(self):
+        record = self.valid_record()
+        tested_at = datetime.fromisoformat(record["tested_at"])
+        record["qualified_at_utc"] = (tested_at + timedelta(minutes=10)).isoformat()
+        self.assertIn("after_test:qualified_at_utc", MODULE.validate_record(record))
 
     def test_declared_blocker_blocks_record(self):
         record = self.valid_record()
