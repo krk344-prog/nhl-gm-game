@@ -174,6 +174,16 @@ class AlphaDeviceSmokeValidatorTests(unittest.TestCase):
         record["tested_at"] = "last Friday evening"
         self.assertIn("invalid:tested_at", MODULE.validate_record(record))
 
+    def test_small_future_timestamp_within_clock_skew_passes(self):
+        record = self.valid_record()
+        record["tested_at"] = (datetime.now(timezone.utc) + timedelta(minutes=2)).isoformat()
+        self.assertNotIn("future:tested_at", MODULE.validate_record(record))
+
+    def test_future_timestamp_beyond_clock_skew_is_blocked(self):
+        record = self.valid_record()
+        record["tested_at"] = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
+        self.assertIn("future:tested_at", MODULE.validate_record(record))
+
     def test_future_timestamp_is_blocked(self):
         record = self.valid_record()
         record["tested_at"] = "2099-01-01T00:00:00+00:00"
