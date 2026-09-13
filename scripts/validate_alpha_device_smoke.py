@@ -187,6 +187,8 @@ def validate_record(record: dict[str, Any]) -> list[str]:
         parsed_tested_at = _parse_timezone_aware_iso_timestamp(tested_at)
         if parsed_tested_at is None:
             errors.append("invalid:tested_at")
+        elif parsed_tested_at.utcoffset() != timedelta(0):
+            errors.append("non_utc:tested_at")
         else:
             tested_at_utc = parsed_tested_at.astimezone(timezone.utc)
             if tested_at_utc > now_utc + MAX_CLOCK_SKEW:
