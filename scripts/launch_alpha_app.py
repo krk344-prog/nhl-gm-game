@@ -66,10 +66,14 @@ def launch_installed_app(
         return process_id
 
     sleep(1.0)
-    confirmed_process_id()
-    # Catch immediate post-launch crashes before the facilitator begins gameplay smoke.
+    initial_process_id = confirmed_process_id()
+    # Catch immediate post-launch crashes or crash/restart loops before gameplay smoke.
     sleep(3.0)
-    confirmed_process_id()
+    stable_process_id = confirmed_process_id()
+    if stable_process_id != initial_process_id:
+        raise RuntimeError(
+            f"Android process for {ANDROID_PACKAGE} restarted during launch stability check"
+        )
 
     return {
         "status": "pass",
