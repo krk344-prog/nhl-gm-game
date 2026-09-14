@@ -12,6 +12,8 @@ import time
 from check_alpha_android_device import inspect_device, parse_adb_devices, select_device
 from install_alpha_apk import ANDROID_PACKAGE
 
+LAUNCH_STABILITY_SECONDS = 3.0
+
 
 def launch_installed_app(
     requested_serial: str | None = None,
@@ -68,7 +70,7 @@ def launch_installed_app(
     sleep(1.0)
     initial_process_id = confirmed_process_id()
     # Catch immediate post-launch crashes or crash/restart loops before gameplay smoke.
-    sleep(3.0)
+    sleep(LAUNCH_STABILITY_SECONDS)
     stable_process_id = confirmed_process_id()
     if stable_process_id != initial_process_id:
         raise RuntimeError(
@@ -82,6 +84,7 @@ def launch_installed_app(
         "installation_confirmed": True,
         "launch_confirmed": True,
         "launch_stability_confirmed": True,
+        "launch_stability_seconds": LAUNCH_STABILITY_SECONDS,
         "next_action": "complete the guided Technical Alpha gameplay and persistence route",
     }
 
