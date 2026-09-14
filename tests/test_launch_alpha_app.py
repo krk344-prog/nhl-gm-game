@@ -128,6 +128,34 @@ class LaunchAlphaAppTests(unittest.TestCase):
                 sleep=lambda _: None,
             )
 
+    @patch("launch_alpha_app.inspect_device")
+    def test_blocks_when_process_restarts_during_stability_window(self, inspect):
+        inspect.return_value = self.device_summary
+        pid_checks = iter(["12345\n", "67890\n"])
+
+        def check_output(command, *, text):
+            if command[-2:] == ["devices", "-l"]:
+                return "List of devices attached\nSERIAL device model:Pixel_Test\n"
+            if command[-3:] == ["pm", "path", launch_alpha_app.ANDROID_PACKAGE]:
+                return "package:/data/app/base.apk\n"
+            if command[-2:] == ["pidof", launch_alpha_app.ANDROID_PACKAGE]:
+                return next(pid_checks)
+            raise AssertionError(f"unexpected command: {command}")
+
+        def run(command, **kwargs):
+            if "force-stop" in command:
+                return subprocess.CompletedProcess(command, 0)
+            return subprocess.CompletedProcess(
+                command, 0, stdout="Events injected: 1\n", stderr=""
+            )
+
+        with self.assertRaisesRegex(RuntimeError, "restarted"):
+            launch_alpha_app.launch_installed_app(
+                check_output=check_output,
+                run=run,
+                sleep=lambda _: None,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
