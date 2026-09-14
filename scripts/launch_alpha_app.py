@@ -20,7 +20,7 @@ def launch_installed_app(
     run=subprocess.run,
     sleep=time.sleep,
 ) -> dict[str, object]:
-    """Launch the verified package on one authorized device and confirm a live process."""
+    """Launch the verified package on one authorized device and confirm a stable live process."""
 
     device_summary = inspect_device(requested_serial, check_output=check_output)
     devices = parse_adb_devices(check_output(["adb", "devices", "-l"], text=True))
@@ -56,13 +56,20 @@ def launch_installed_app(
     if launch.returncode != 0 or "events injected: 1" not in combined_output.lower():
         raise RuntimeError(f"app launch failed: {combined_output or 'no diagnostic output'}")
 
+    def confirmed_process_id() -> str:
+        process_id = check_output(
+            prefix + ["shell", "pidof", ANDROID_PACKAGE],
+            text=True,
+        ).strip()
+        if not process_id or not all(part.isdigit() for part in process_id.split()):
+            raise RuntimeError(f"Android process for {ANDROID_PACKAGE} could not be confirmed")
+        return process_id
+
     sleep(1.0)
-    process_id = check_output(
-        prefix + ["shell", "pidof", ANDROID_PACKAGE],
-        text=True,
-    ).strip()
-    if not process_id or not all(part.isdigit() for part in process_id.split()):
-        raise RuntimeError(f"Android process for {ANDROID_PACKAGE} could not be confirmed")
+    confirmed_process_id()
+    # Catch immediate post-launch crashes before the facilitator begins gameplay smoke.
+    sleep(3.0)
+    confirmed_process_id()
 
     return {
         "status": "pass",
@@ -70,6 +77,7 @@ def launch_installed_app(
         "device": device_summary["selected_device"],
         "installation_confirmed": True,
         "launch_confirmed": True,
+        "launch_stability_confirmed": True,
         "next_action": "complete the guided Technical Alpha gameplay and persistence route",
     }
 
