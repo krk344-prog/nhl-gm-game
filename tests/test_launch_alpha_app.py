@@ -35,6 +35,7 @@ class LaunchAlphaAppTests(unittest.TestCase):
     @patch("launch_alpha_app.inspect_device")
     def test_launches_installed_package_and_confirms_stable_process(self, inspect):
         inspect.return_value = self.device_summary
+        sleeps = []
 
         def run(command, **kwargs):
             if "force-stop" in command:
@@ -48,12 +49,17 @@ class LaunchAlphaAppTests(unittest.TestCase):
         result = launch_alpha_app.launch_installed_app(
             check_output=self._check_output,
             run=run,
-            sleep=lambda _: None,
+            sleep=sleeps.append,
         )
 
         self.assertEqual("pass", result["status"])
         self.assertTrue(result["launch_confirmed"])
         self.assertTrue(result["launch_stability_confirmed"])
+        self.assertEqual(
+            launch_alpha_app.LAUNCH_STABILITY_SECONDS,
+            result["launch_stability_seconds"],
+        )
+        self.assertEqual([1.0, launch_alpha_app.LAUNCH_STABILITY_SECONDS], sleeps)
         self.assertNotIn("SERIAL", str(result))
 
     @patch("launch_alpha_app.inspect_device")
