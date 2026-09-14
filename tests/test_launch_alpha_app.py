@@ -33,7 +33,7 @@ class LaunchAlphaAppTests(unittest.TestCase):
         raise AssertionError(f"unexpected command: {command}")
 
     @patch("launch_alpha_app.inspect_device")
-    def test_launches_installed_package_and_confirms_process(self, inspect):
+    def test_launches_installed_package_and_confirms_stable_process(self, inspect):
         inspect.return_value = self.device_summary
 
         def run(command, **kwargs):
@@ -53,6 +53,7 @@ class LaunchAlphaAppTests(unittest.TestCase):
 
         self.assertEqual("pass", result["status"])
         self.assertTrue(result["launch_confirmed"])
+        self.assertTrue(result["launch_stability_confirmed"])
         self.assertNotIn("SERIAL", str(result))
 
     @patch("launch_alpha_app.inspect_device")
@@ -83,6 +84,34 @@ class LaunchAlphaAppTests(unittest.TestCase):
                 return "package:/data/app/base.apk\n"
             if command[-2:] == ["pidof", launch_alpha_app.ANDROID_PACKAGE]:
                 return ""
+            raise AssertionError(f"unexpected command: {command}")
+
+        def run(command, **kwargs):
+            if "force-stop" in command:
+                return subprocess.CompletedProcess(command, 0)
+            return subprocess.CompletedProcess(
+                command, 0, stdout="Events injected: 1\n", stderr=""
+            )
+
+        with self.assertRaisesRegex(RuntimeError, "process"):
+            launch_alpha_app.launch_installed_app(
+                check_output=check_output,
+                run=run,
+                sleep=lambda _: None,
+            )
+
+    @patch("launch_alpha_app.inspect_device")
+    def test_blocks_when_process_dies_immediately_after_launch(self, inspect):
+        inspect.return_value = self.device_summary
+        pid_checks = iter(["12345\n", ""])
+
+        def check_output(command, *, text):
+            if command[-2:] == ["devices", "-l"]:
+                return "List of devices attached\nSERIAL device model:Pixel_Test\n"
+            if command[-3:] == ["pm", "path", launch_alpha_app.ANDROID_PACKAGE]:
+                return "package:/data/app/base.apk\n"
+            if command[-2:] == ["pidof", launch_alpha_app.ANDROID_PACKAGE]:
+                return next(pid_checks)
             raise AssertionError(f"unexpected command: {command}")
 
         def run(command, **kwargs):
