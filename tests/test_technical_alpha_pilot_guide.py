@@ -22,7 +22,7 @@ class TechnicalAlphaPilotGuideTests(unittest.TestCase):
 
     def test_guide_discloses_fictional_alpha_scope(self) -> None:
         self.assertIn("eight original fictional franchises", self.guide)
-        self.assertIn("82-game test schedule", self.guide)
+        self.assertIn("84-game test schedule", self.guide)
         self.assertIn("official 2026–27 NHL schedule uses 32 teams and 84 games", self.guide)
 
     def test_launch_handoff_card_contains_pilot_critical_information(self) -> None:
