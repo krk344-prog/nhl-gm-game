@@ -7,7 +7,7 @@ This is a controlled technical-alpha test for 3–5 invited participants. The go
 ## Required disclosure
 
 - The pilot uses eight original fictional franchises and one fictional AHL affiliate.
-- The pilot uses an 82-game test schedule. The official 2026–27 NHL schedule uses 32 teams and 84 games per club, so testers must not interpret the Alpha league structure as a current NHL rules representation.
+- The pilot uses an 84-game test schedule. The official 2026–27 NHL schedule also uses 84 games per club, but the Alpha's fictional eight-team opponent matrix is not a representation of the official NHL's 32-team scheduling matrix.
 - Some front-office, scouting, contract, waiver, draft, free-agency, staffing, business-operations, and multi-season systems are incomplete or unavailable.
 - Ratings, contracts, team marks, player identities, and outcomes in the fictional pack are simulation data, not official NHL data.
 - The build may reset or invalidate test saves before a later release.
@@ -20,7 +20,7 @@ Before a tester starts, the facilitator must provide one compact launch handoff 
 - backend status as `Ready`, `Unavailable`, or `Maintenance`, using text as well as any color;
 - the supported network requirement and a stop instruction when the backend is unavailable;
 - the required guided route: New Game, franchise selection, advance day, roster, standings, trade, Trade History, save, reload, debug report, and reset;
-- the eight-team/82-game fictional-league disclosure and the most important known limitation;
+- the eight-team/84-game fictional-league disclosure and the most important known limitation;
 - the private bug-report destination and the information testers must not post publicly.
 
 The card must fit without horizontal scrolling at a 360-pixel mobile viewport, keep the primary `Start Test` action visible, and expose build identity before franchise selection. `Start Test` must be enabled only when backend status is `Ready`; for `Unavailable` or `Maintenance`, keep the action visibly disabled and show the stop/retry instruction beside it so a tester cannot enter a known-broken session. Implemented launch screens remain `UI Review Pending` until Kyle approves Stage 3 evidence.
