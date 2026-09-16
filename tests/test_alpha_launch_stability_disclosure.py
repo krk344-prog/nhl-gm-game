@@ -20,6 +20,9 @@ class AlphaLaunchStabilityDisclosureTests(unittest.TestCase):
         self.assertIn('"launch_stability_seconds": 3.0', pilot_guide)
         self.assertIn("same Android process survived the required three-second stability window", pilot_guide)
         self.assertIn("do not begin gameplay smoke", pilot_guide)
+        self.assertIn("tester launch handoff card reports backend status `Ready`", pilot_guide)
+        self.assertIn("`Start Test` is enabled", pilot_guide)
+        self.assertIn("Do not record gameplay smoke against a launch card that was not in the `Ready` state", pilot_guide)
 
 
 if __name__ == "__main__":
