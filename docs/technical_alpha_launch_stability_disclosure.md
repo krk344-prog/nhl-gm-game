@@ -1,6 +1,6 @@
 # Technical Alpha launch-stability disclosure
 
-This note is authoritative for the physical-device launch step until the pilot guide is consolidated.
+This note is authoritative for the physical-device launch step until the pilot guide is consolidated. In particular, it supersedes pilot-guide step 15 wherever that step lists only `status: pass`, `installation_confirmed: true`, and `launch_confirmed: true`; those fields alone are not sufficient launch evidence.
 
 A successful Android launch is not established by a single process observation. `scripts/launch_alpha_app.py` must report `status: pass`, `installation_confirmed: true`, `launch_confirmed: true`, and `launch_stability_confirmed: true` for the same application process after the configured three-second stability window before the guided gameplay smoke may begin.
 
