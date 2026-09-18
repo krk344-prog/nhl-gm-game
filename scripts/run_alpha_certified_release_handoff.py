@@ -54,7 +54,7 @@ def run_certified_handoff(
     api_base_url: str | None,
     season_id: str,
     timeout: float,
-    serial: str | None,
+    serial: str,
     evidence_directory: str,
     expected_source_commit: str,
     readiness_checked_at: str,
@@ -65,14 +65,17 @@ def run_certified_handoff(
     expected_device_identity: str,
     runner=subprocess.run,
 ) -> dict[str, object]:
+    if not _normalize(serial):
+        raise RuntimeError("certified device verification failed: exact device serial is required")
+
     device_argv = [
         sys.executable,
         DEVICE_PREFLIGHT_SCRIPT,
         "--identity-key",
         device_identity_key,
+        "--serial",
+        serial,
     ]
-    if serial:
-        device_argv.extend(["--serial", serial])
     result = runner(device_argv, check=False, capture_output=True, text=True)
     detail = (result.stdout or result.stderr or "").strip()
     try:
@@ -106,7 +109,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--api-base-url")
     parser.add_argument("--season-id", default="2026-27")
     parser.add_argument("--timeout", type=float, default=5.0)
-    parser.add_argument("--serial")
+    parser.add_argument("--serial", required=True)
     parser.add_argument("--evidence-directory", default=".alpha-private")
     parser.add_argument("--expected-source-commit", required=True)
     parser.add_argument("--readiness-checked-at", required=True)
