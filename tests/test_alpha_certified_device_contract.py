@@ -25,3 +25,14 @@ def test_certified_handoff_requires_normalizes_and_forwards_selected_serial_to_g
     assert "return run_release_handoff(" in handoff
     release_call = handoff[handoff.index("return run_release_handoff("):]
     assert "serial=serial," in release_call
+
+
+def test_certified_handoff_uses_privacy_safe_identity_key_for_exact_device_preflight():
+    script = Path("scripts/run_alpha_certified_release_handoff.py").read_text(encoding="utf-8")
+    handoff = script[script.index("def run_certified_handoff"):script.index("def main")]
+    cli = script[script.index("def main"):]
+
+    assert 'parser.add_argument("--device-identity-key", required=True)' in cli
+    assert '"--identity-key",\n        device_identity_key,' in handoff
+    assert handoff.index('"--identity-key"') < handoff.index('"--serial"')
+    assert "device_identity=expected_device_identity," in handoff
