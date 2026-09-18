@@ -65,7 +65,8 @@ def run_certified_handoff(
     expected_device_identity: str,
     runner=subprocess.run,
 ) -> dict[str, object]:
-    if not _normalize(serial):
+    serial = _normalize(serial)
+    if not serial:
         raise RuntimeError("certified device verification failed: exact device serial is required")
 
     device_argv = [
