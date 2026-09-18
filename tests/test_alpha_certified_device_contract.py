@@ -13,11 +13,14 @@ def test_certified_handoff_rechecks_device_identity_before_release_handoff():
     assert "certified device identity changed after execution readiness" in script
 
 
-def test_certified_handoff_forwards_selected_serial_to_guarded_release():
+def test_certified_handoff_requires_and_forwards_selected_serial_to_guarded_release():
     script = Path("scripts/run_alpha_certified_release_handoff.py").read_text(encoding="utf-8")
     handoff = script[script.index("def run_certified_handoff"):script.index("def main")]
+    cli = script[script.index("def main"):]
 
-    assert 'device_argv.extend(["--serial", serial])' in handoff
+    assert 'parser.add_argument("--serial", required=True)' in cli
+    assert "exact device serial is required" in handoff
+    assert '"--serial",\n        serial,' in handoff
     assert "return run_release_handoff(" in handoff
     release_call = handoff[handoff.index("return run_release_handoff("):]
     assert "serial=serial," in release_call
