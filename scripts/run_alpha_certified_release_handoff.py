@@ -68,6 +68,12 @@ def run_certified_handoff(
     serial = _normalize(serial)
     if not serial:
         raise RuntimeError("certified device verification failed: exact device serial is required")
+    device_identity_key = _normalize(device_identity_key)
+    expected_device_identity = _normalize(expected_device_identity)
+    if not device_identity_key or not expected_device_identity:
+        raise RuntimeError(
+            "certified device verification failed: privacy-safe device identity inputs are required"
+        )
 
     device_argv = [
         sys.executable,
