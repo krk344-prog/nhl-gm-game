@@ -28,9 +28,11 @@ python scripts/start_dev.py --lan-ip 192.168.1.10
 
 ## Longer simulation pass
 
-- Advance through a full season and confirm every team finishes with 82 games.
-- Confirm no team finishes with more than 164 standings points.
-- Confirm the calendar stops cleanly at Day 186.
+- Advance through a full season and confirm every team finishes with 84 games.
+- Confirm the schedule and standings remain internally consistent through the final game.
+- Confirm the calendar stops cleanly at the configured season end.
+
+The Technical Alpha uses a fictional eight-team simulation. Its 84-game schedule contract is a test fixture and must not be presented as the official NHL schedule, clubs, branding, or licensed data.
 
 ## Bug report format
 
