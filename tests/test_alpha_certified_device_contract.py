@@ -33,6 +33,10 @@ def test_certified_handoff_uses_privacy_safe_identity_key_for_exact_device_prefl
     cli = script[script.index("def main"):]
 
     assert 'parser.add_argument("--device-identity-key", required=True)' in cli
+    assert 'parser.add_argument("--expected-device-identity", required=True)' in cli
+    assert "device_identity_key = _normalize(device_identity_key)" in handoff
+    assert "expected_device_identity = _normalize(expected_device_identity)" in handoff
+    assert "privacy-safe device identity inputs are required" in handoff
     assert '"--identity-key",\n        device_identity_key,' in handoff
     assert handoff.index('"--identity-key"') < handoff.index('"--serial"')
     assert "device_identity=expected_device_identity," in handoff
