@@ -40,3 +40,14 @@ def test_certified_handoff_uses_privacy_safe_identity_key_for_exact_device_prefl
     assert '"--identity-key",\n        device_identity_key,' in handoff
     assert handoff.index('"--identity-key"') < handoff.index('"--serial"')
     assert "device_identity=expected_device_identity," in handoff
+
+
+def test_certified_handoff_fails_closed_on_missing_expected_device_metadata():
+    script = Path("scripts/run_alpha_certified_release_handoff.py").read_text(encoding="utf-8")
+    handoff = script[script.index("def run_certified_handoff"):script.index("def main")]
+
+    assert "expected_device_model = _normalize(expected_device_model)" in handoff
+    assert "expected_android_version = _normalize(expected_android_version)" in handoff
+    assert "expected_sdk_level = _normalize(expected_sdk_level)" in handoff
+    assert "expected device metadata is required" in handoff
+    assert handoff.index("expected device metadata is required") < handoff.index("device_argv = [")
