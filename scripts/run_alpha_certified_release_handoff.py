@@ -74,6 +74,13 @@ def run_certified_handoff(
         raise RuntimeError(
             "certified device verification failed: privacy-safe device identity inputs are required"
         )
+    expected_device_model = _normalize(expected_device_model)
+    expected_android_version = _normalize(expected_android_version)
+    expected_sdk_level = _normalize(expected_sdk_level)
+    if not expected_device_model or not expected_android_version or not expected_sdk_level:
+        raise RuntimeError(
+            "certified device verification failed: expected device metadata is required"
+        )
 
     device_argv = [
         sys.executable,
