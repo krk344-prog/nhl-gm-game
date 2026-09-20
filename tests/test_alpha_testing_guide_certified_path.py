@@ -1,0 +1,19 @@
+from pathlib import Path
+import unittest
+
+
+class AlphaTestingGuideCertifiedPathTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.guide = Path("docs/alpha_testing_guide.md").read_text(encoding="utf-8")
+
+    def test_bug_reporting_does_not_send_testers_to_localhost(self) -> None:
+        bug_report = self.guide.split("## Bug report format", 1)[1]
+        self.assertNotIn("http://localhost", bug_report)
+        self.assertIn("facilitator-provided privacy-safe debug report", bug_report)
+        self.assertIn("should not switch to a localhost/development endpoint", bug_report)
+        self.assertIn("certified backend/session", bug_report)
+
+
+if __name__ == "__main__":
+    unittest.main()
