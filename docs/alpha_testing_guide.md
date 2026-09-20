@@ -42,6 +42,8 @@ Include:
 - Phone model and Android version.
 - Current game day and controlled franchise.
 - Screenshot or screen recording when possible.
-- The JSON shown at `http://localhost:8000/api/v1/debug-report` from the development computer.
+- The facilitator-provided privacy-safe debug report or session evidence reference, when available.
+
+Testers should not switch to a localhost/development endpoint or run repository tooling to collect evidence. If deeper diagnostics are needed, stop at the observed failure and let the facilitator collect them from the certified backend/session so the tested package and endpoint remain unchanged.
 
 Do not include the SQLite database in a public issue. Share it privately when save-level reproduction is required.
