@@ -2,16 +2,14 @@
 
 ## Start the game
 
-1. Install Python 3.11+ and Node.js 20+ on the development computer.
-2. Install Expo Go on the Android test phone.
-3. From the repository root, run `python scripts/start_dev.py`.
-4. Scan the Expo QR code while the phone and computer are on the same network.
+For the controlled 3–5 person Technical Alpha, use only the facilitator-provided certified Android APK and backend endpoint. Do not substitute Expo Go, a local development checkout, or a different APK during the certified smoke pass.
 
-If the phone cannot connect, rerun with the computer's LAN address:
+1. Confirm the facilitator identifies the certified test device and current backend as Ready.
+2. Install the exact facilitator-provided APK on the assigned Android test phone.
+3. Launch that installed app and wait for the facilitator to confirm the current backend remains Ready.
+4. Begin the core test pass only after that readiness confirmation.
 
-```bash
-python scripts/start_dev.py --lan-ip 192.168.1.10
-```
+Development launch instructions are intentionally excluded from tester onboarding. Repository maintainers should use the authoritative development launcher (`python scripts/start_dev.py`) only for development/debug work, not as a substitute for the certified pilot package.
 
 ## Core test pass
 
