@@ -21,6 +21,14 @@ class AlphaTestingGuideCertifiedPathTests(unittest.TestCase):
         self.assertIn("Do not retry against another endpoint", start)
         self.assertIn("re-establishes the certified Ready state", start)
 
+    def test_major_failure_preserves_reproducible_state_for_facilitator(self) -> None:
+        bug_report = self.guide.split("## Bug report format", 1)[1]
+        self.assertIn("preserve the current app state", bug_report)
+        self.assertIn("Do not clear app data", bug_report)
+        self.assertIn("reset the save", bug_report)
+        self.assertIn("reinstall the APK", bug_report)
+        self.assertIn("failing state reproducible", bug_report)
+
 
 if __name__ == "__main__":
     unittest.main()
