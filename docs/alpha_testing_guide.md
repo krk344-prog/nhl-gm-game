@@ -9,6 +9,8 @@ For the controlled 3–5 person Technical Alpha, use only the facilitator-provid
 3. Launch that installed app and wait for the facilitator to confirm the current backend remains Ready.
 4. Begin the core test pass only after that readiness confirmation.
 
+If the facilitator reports the device or backend as Not Ready at any point, stop the certified smoke pass at the current step. Do not retry against another endpoint, reinstall a different APK, or continue collecting pass evidence until the facilitator re-establishes the certified Ready state.
+
 Development launch instructions are intentionally excluded from tester onboarding. Repository maintainers should use the authoritative development launcher (`python scripts/start_dev.py`) only for development/debug work, not as a substitute for the certified pilot package.
 
 ## Core test pass
