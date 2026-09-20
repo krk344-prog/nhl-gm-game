@@ -14,6 +14,13 @@ class AlphaTestingGuideCertifiedPathTests(unittest.TestCase):
         self.assertIn("should not switch to a localhost/development endpoint", bug_report)
         self.assertIn("certified backend/session", bug_report)
 
+    def test_certified_smoke_stops_when_readiness_is_lost(self) -> None:
+        start = self.guide.split("## Start the game", 1)[1].split("## Core test pass", 1)[0]
+        self.assertIn("device or backend as Not Ready", start)
+        self.assertIn("stop the certified smoke pass", start)
+        self.assertIn("Do not retry against another endpoint", start)
+        self.assertIn("re-establishes the certified Ready state", start)
+
 
 if __name__ == "__main__":
     unittest.main()
