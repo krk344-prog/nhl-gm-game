@@ -7,7 +7,8 @@ For the controlled 3–5 person Technical Alpha, use only the facilitator-provid
 1. Confirm the facilitator identifies the certified test device and current backend as Ready.
 2. Install the exact facilitator-provided APK on the assigned Android test phone.
 3. Launch that installed app and wait for the facilitator to confirm the current backend remains Ready.
-4. Begin the core test pass only after that readiness confirmation.
+4. Record the facilitator-provided privacy-safe build/session reference before starting gameplay. This reference must identify the certified test session without exposing the backend address, raw device serial, credentials, or other private infrastructure details.
+5. Begin the core test pass only after that readiness confirmation and session reference are available.
 
 If the facilitator reports the device or backend as Not Ready at any point, stop the certified smoke pass at the current step. Do not retry against another endpoint, reinstall a different APK, or continue collecting pass evidence until the facilitator re-establishes the certified Ready state.
 
@@ -44,8 +45,9 @@ Include:
 - Phone model and Android version.
 - Current game day and controlled franchise.
 - Screenshot or screen recording when possible.
-- The facilitator-provided privacy-safe debug report or session evidence reference, when available.
+- The privacy-safe build/session reference recorded before the test pass.
+- The facilitator-provided privacy-safe debug report or additional session evidence reference, when available.
 
 Testers should not switch to a localhost/development endpoint or run repository tooling to collect evidence. If deeper diagnostics are needed, stop at the observed failure and let the facilitator collect them from the certified backend/session so the tested package and endpoint remain unchanged.
 
-Do not include the SQLite database in a public issue. Share it privately when save-level reproduction is required.
+Do not include the SQLite database, backend address, raw device serial, credentials, or other private infrastructure details in a public issue. Share save-level or infrastructure evidence privately when reproduction requires it.
