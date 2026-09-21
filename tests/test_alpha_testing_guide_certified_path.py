@@ -29,6 +29,14 @@ class AlphaTestingGuideCertifiedPathTests(unittest.TestCase):
         self.assertIn("reinstall the APK", bug_report)
         self.assertIn("failing state reproducible", bug_report)
 
+    def test_core_smoke_requires_step_level_outcomes(self) -> None:
+        core = self.guide.split("## Core test pass", 1)[1].split("## Longer simulation pass", 1)[0]
+        self.assertIn("pass, fail, or blocked", core)
+        self.assertIn("failing step number", core)
+        self.assertIn("privacy-safe session reference", core)
+        self.assertIn("later dependent steps", core)
+        self.assertIn("facilitator explicitly releases", core)
+
 
 if __name__ == "__main__":
     unittest.main()
