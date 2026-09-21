@@ -50,6 +50,8 @@ Include:
 
 After a blocker or major failure, stop at the observed failure and preserve the current app state until the facilitator has collected the needed evidence. Do not clear app data, reset the save, reinstall the APK, or continue the smoke route unless the facilitator explicitly releases the session for recovery. This keeps the failing state reproducible and prevents a recovery action from being mistaken for a passing retest.
 
+When the facilitator releases a failed session for recovery, any retest must start from an explicitly identified clean recovery state. Record a new privacy-safe build/session reference before collecting retest evidence. Do not append recovery results to the failed session as though it were uninterrupted; report the original failure and the retest result separately so a reset or reinstall cannot erase the defect history.
+
 Testers should not switch to a localhost/development endpoint or run repository tooling to collect evidence. If deeper diagnostics are needed, stop at the observed failure and let the facilitator collect them from the certified backend/session so the tested package and endpoint remain unchanged.
 
 Do not include the SQLite database, backend address, raw device serial, credentials, or other private infrastructure details in a public issue. Share save-level or infrastructure evidence privately when reproduction requires it.
