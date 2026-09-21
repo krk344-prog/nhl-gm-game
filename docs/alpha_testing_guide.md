@@ -17,6 +17,8 @@ Development launch instructions are intentionally excluded from tester onboardin
 
 ## Core test pass
 
+Record each numbered step as pass, fail, or blocked before moving to the next step. If a step fails, record the failing step number with the current privacy-safe session reference; do not mark later dependent steps as passed unless the facilitator explicitly releases the session to continue.
+
 1. Confirm eight franchises appear on the Dashboard.
 2. Select a different franchise and restart the mobile client; the selection should persist.
 3. Advance through at least ten calendar days.
