@@ -19,6 +19,8 @@ Development launch instructions are intentionally excluded from tester onboardin
 
 Record each numbered step as pass, fail, or blocked before moving to the next step. If a step fails, record the failing step number with the current privacy-safe session reference; do not mark later dependent steps as passed unless the facilitator explicitly releases the session to continue.
 
+If the named screen, control, or expected state for a checkpoint is unavailable, record that checkpoint as **Blocked**. Do not substitute a different route, infer a pass from another screen, or improvise around the missing checkpoint. Add one short observation describing what prevented the step so all testers are evaluated against the same route.
+
 1. Confirm eight franchises appear on the Dashboard.
 2. Select a different franchise and restart the mobile client; the selection should persist.
 3. Advance through at least ten calendar days.
