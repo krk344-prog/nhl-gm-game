@@ -29,7 +29,7 @@ If the named screen, control, or expected state for a checkpoint is unavailable,
 6. Filter the roster by forwards, defense, and goalies.
 7. Open Trade Center, change the trade partner, cycle both player cards, and submit one likely accepted and one likely rejected offer.
 8. Confirm both proposals appear in Trade History.
-9. Restart the API and mobile client; the season day, results, team selection, and trade history should persist.
+9. **Save/reload checkpoint:** restart the API and mobile client; the season day, results, team selection, and trade history should persist. Record this checkpoint as passed only after all four persisted values are visibly restored after restart.
 10. Use Front Office → New Game / Reset Save and confirm the season returns to Day 1.
 
 ## Longer simulation pass
