@@ -16,12 +16,20 @@ class AlphaCoreRouteContractTests(unittest.TestCase):
             "Filter the roster by forwards, defense, and goalies.",
             "Open Trade Center",
             "Confirm both proposals appear in Trade History.",
-            "Restart the API and mobile client",
+            "Save/reload checkpoint:",
             "Use Front Office → New Game / Reset Save",
         ]
 
         positions = [core.index(marker) for marker in required_markers]
         self.assertEqual(positions, sorted(positions))
+
+    def test_save_reload_checkpoint_requires_visible_persistence_evidence(self) -> None:
+        guide = Path("docs/alpha_testing_guide.md").read_text(encoding="utf-8")
+        core = guide.split("## Core test pass", 1)[1].split("## Longer simulation pass", 1)[0]
+
+        self.assertIn("restart the API and mobile client", core)
+        self.assertIn("season day, results, team selection, and trade history should persist", core)
+        self.assertIn("all four persisted values are visibly restored after restart", core)
 
 
 if __name__ == "__main__":
