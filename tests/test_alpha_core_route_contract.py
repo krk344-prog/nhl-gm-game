@@ -17,7 +17,7 @@ class AlphaCoreRouteContractTests(unittest.TestCase):
             "Open Trade Center",
             "Confirm both proposals appear in Trade History.",
             "Save/reload checkpoint:",
-            "Use Front Office → New Game / Reset Save",
+            "Reset checkpoint:",
         ]
 
         positions = [core.index(marker) for marker in required_markers]
@@ -30,6 +30,14 @@ class AlphaCoreRouteContractTests(unittest.TestCase):
         self.assertIn("restart the API and mobile client", core)
         self.assertIn("season day, results, team selection, and trade history should persist", core)
         self.assertIn("all four persisted values are visibly restored after restart", core)
+
+    def test_reset_checkpoint_requires_visible_clean_state_evidence(self) -> None:
+        guide = Path("docs/alpha_testing_guide.md").read_text(encoding="utf-8")
+        core = guide.split("## Core test pass", 1)[1].split("## Longer simulation pass", 1)[0]
+
+        self.assertIn("season returns to Day 1", core)
+        self.assertIn("prior session's trade history is no longer present", core)
+        self.assertIn("both clean-state conditions are visibly confirmed", core)
 
 
 if __name__ == "__main__":
