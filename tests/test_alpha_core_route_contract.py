@@ -11,6 +11,7 @@ class AlphaCoreRouteContractTests(unittest.TestCase):
             "Confirm eight franchises appear on the Dashboard.",
             "Select a different franchise and restart the mobile client; the selection should persist.",
             "Advance through at least ten calendar days.",
+            "Confirm scheduled games produce final scores without ties.",
             "Open Game Center and verify the latest result, recent results, and standings agree.",
             "Filter the roster by forwards, defense, and goalies.",
             "Open Trade Center",
