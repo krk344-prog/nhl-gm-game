@@ -30,7 +30,7 @@ If the named screen, control, or expected state for a checkpoint is unavailable,
 7. Open Trade Center, change the trade partner, cycle both player cards, and submit one likely accepted and one likely rejected offer.
 8. Confirm both proposals appear in Trade History.
 9. **Save/reload checkpoint:** restart the API and mobile client; the season day, results, team selection, and trade history should persist. Record this checkpoint as passed only after all four persisted values are visibly restored after restart.
-10. Use Front Office → New Game / Reset Save and confirm the season returns to Day 1.
+10. **Reset checkpoint:** use Front Office → New Game / Reset Save, then confirm the season returns to Day 1 and the prior session's trade history is no longer present. Record Reset as passed only after both clean-state conditions are visibly confirmed.
 
 ## Longer simulation pass
 
