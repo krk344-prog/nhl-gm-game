@@ -9,7 +9,8 @@ For the controlled 3–5 person Technical Alpha, use only the facilitator-provid
 3. Launch that installed app and wait for the facilitator to confirm the current backend remains Ready.
 4. Record the facilitator-provided privacy-safe build/session reference before starting gameplay. This reference must identify the certified test session without exposing the backend address, raw device serial, credentials, or other private infrastructure details.
 5. Confirm the session reference is assigned to your current test pass; do not reuse another tester's reference or a reference from an earlier pass.
-6. Begin the core test pass only after that readiness confirmation and session reference are available.
+6. Confirm the facilitator identifies the session as starting from the certified clean baseline: Day 1 with no trade history from an earlier test pass. If either condition is not visibly true, record the first core checkpoint as Blocked and stop rather than resetting or repairing the state yourself.
+7. Begin the core test pass only after that readiness confirmation, clean baseline, and session reference are available.
 
 If the facilitator reports the device or backend as Not Ready at any point, stop the certified smoke pass at the current step. Do not retry against another endpoint, reinstall a different APK, or continue collecting pass evidence until the facilitator re-establishes the certified Ready state.
 
