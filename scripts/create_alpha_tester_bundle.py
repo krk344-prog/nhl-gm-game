@@ -66,7 +66,7 @@ STATUS: UI REVIEW PENDING
 PACKAGE: com.krk344.nhlgmgame
 
 WHAT THIS IS
-This is an early test version with eight fictional franchises and an 82-game test schedule. It is not an official NHL roster or schedule product.
+This is an early test version with eight fictional franchises and an 84-game test schedule. It is not an official NHL roster or schedule product.
 
 BEFORE YOU START
 1. Stay on the network provided by the test organizer.
@@ -118,7 +118,7 @@ REQUIRED ROUTE
 New Game -> Select Franchise -> Advance Day -> Roster -> Standings -> Trade -> Trade History -> Save -> Reload -> Generate Debug Report -> Reset
 
 DISCLOSURE
-This Technical Alpha uses eight original fictional franchises and an 82-game test schedule. It is not official NHL data or a representation of the current NHL league structure or schedule. Major front-office systems remain incomplete, and test saves may be reset or invalidated by later builds.
+This Technical Alpha uses eight original fictional franchises and an 84-game test schedule. It is not official NHL data or a representation of the current NHL league structure or schedule. Major front-office systems remain incomplete, and test saves may be reset or invalidated by later builds.
 
 PRIVACY
 Do not post a device identifier, local-network address, SQLite database, authentication data, personal information, or unreviewed save/debug files publicly.
