@@ -24,7 +24,7 @@ class AlphaTesterBundleStartHereTests(unittest.TestCase):
         positions = [text.index(step) for step in ordered_steps]
         self.assertEqual(positions, sorted(positions))
 
-        self.assertIn("eight fictional franchises and an 82-game test schedule", text)
+        self.assertIn("eight fictional franchises and an 84-game test schedule", text)
         self.assertIn("not an official NHL roster or schedule product", text)
         self.assertIn("Do not share this package, network details, screenshots, or save files publicly.", text)
         self.assertIn("Do not include your name, device serial number, network address, save file, or password.", text)
