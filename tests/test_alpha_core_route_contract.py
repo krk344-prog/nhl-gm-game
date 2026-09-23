@@ -36,7 +36,8 @@ class AlphaCoreRouteContractTests(unittest.TestCase):
         guide = Path("docs/alpha_testing_guide.md").read_text(encoding="utf-8")
         core = guide.split("## Core test pass", 1)[1].split("## Longer simulation pass", 1)[0]
 
-        self.assertIn("restart the API and mobile client", core)
+        self.assertIn("facilitator restarts the certified API while the tester relaunches the mobile client", core)
+        self.assertIn("tester must not run backend or repository commands", core)
         self.assertIn("season day, results, team selection, and trade history should persist", core)
         self.assertIn("all four persisted values are visibly restored after restart", core)
 
