@@ -23,6 +23,15 @@ class AlphaCoreRouteContractTests(unittest.TestCase):
         positions = [core.index(marker) for marker in required_markers]
         self.assertEqual(positions, sorted(positions))
 
+    def test_start_requires_certified_clean_baseline(self) -> None:
+        guide = Path("docs/alpha_testing_guide.md").read_text(encoding="utf-8")
+        start = guide.split("## Start the game", 1)[1].split("## Core test pass", 1)[0]
+
+        self.assertIn("certified clean baseline", start)
+        self.assertIn("Day 1 with no trade history from an earlier test pass", start)
+        self.assertIn("record the first core checkpoint as Blocked and stop", start)
+        self.assertIn("rather than resetting or repairing the state yourself", start)
+
     def test_save_reload_checkpoint_requires_visible_persistence_evidence(self) -> None:
         guide = Path("docs/alpha_testing_guide.md").read_text(encoding="utf-8")
         core = guide.split("## Core test pass", 1)[1].split("## Longer simulation pass", 1)[0]
