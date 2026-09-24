@@ -16,10 +16,11 @@ class AlphaTesterBundleStartHereTests(unittest.TestCase):
             "Attempt one trade.",
             "Open Trade History and confirm the trade result is recorded.",
             "Save the game.",
+            "Ask the organizer to restart the API; do not operate repository or backend tools yourself.",
             "Close and reopen the game.",
             "Reload the saved game and confirm your franchise, day, results, standings, and Trade History persist.",
             "Generate the debug report and provide only the privacy-reviewed output to the organizer.",
-            "Reset the game and confirm it returns to Day 1.",
+            "Reset the game and confirm it returns to Day 1 with the previous Trade History cleared.",
         ]
         positions = [text.index(step) for step in ordered_steps]
         self.assertEqual(positions, sorted(positions))
