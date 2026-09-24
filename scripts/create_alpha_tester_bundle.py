@@ -84,10 +84,11 @@ TEST ROUTE
 6. Attempt one trade.
 7. Open Trade History and confirm the trade result is recorded.
 8. Save the game.
-9. Close and reopen the game.
-10. Reload the saved game and confirm your franchise, day, results, standings, and Trade History persist.
-11. Generate the debug report and provide only the privacy-reviewed output to the organizer.
-12. Reset the game and confirm it returns to Day 1.
+9. Ask the organizer to restart the API; do not operate repository or backend tools yourself.
+10. Close and reopen the game.
+11. Reload the saved game and confirm your franchise, day, results, standings, and Trade History persist.
+12. Generate the debug report and provide only the privacy-reviewed output to the organizer.
+13. Reset the game and confirm it returns to Day 1 with the previous Trade History cleared.
 
 REPORTING A PROBLEM
 Use BUG-REPORT.txt. Record the first route step that failed, what you expected, what happened, and the result of one controlled retry. Do not include your name, device serial number, network address, save file, or password.
