@@ -35,7 +35,7 @@ class EndpointQualification:
 def qualify_endpoint(
     api_base_url: str,
     *,
-    duration_seconds: float = 900.0,
+    duration_seconds: float = MIN_FACILITATOR_QUALIFICATION_SECONDS,
     interval_seconds: float = 30.0,
     timeout: float = 5.0,
     season_id: str = "2026-27",
@@ -111,7 +111,7 @@ def write_qualification_record(result: EndpointQualification, output: str | Path
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("api_base_url")
-    parser.add_argument("--duration-seconds", type=float, default=900.0)
+    parser.add_argument("--duration-seconds", type=float, default=MIN_FACILITATOR_QUALIFICATION_SECONDS)
     parser.add_argument("--interval-seconds", type=float, default=30.0)
     parser.add_argument("--timeout", type=float, default=5.0)
     parser.add_argument("--season-id", default="2026-27")
