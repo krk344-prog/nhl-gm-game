@@ -1,0 +1,77 @@
+{
+  "schema_version": 5,
+  "status": "incomplete",
+  "pilot_authorization": {
+    "kyle_approval_recorded": false,
+    "approval_reference": "",
+    "merge_authorized": false
+  },
+  "source_validation": {
+    "pr_number": 13,
+    "head_commit_sha": "",
+    "alpha_validation_run_id": "",
+    "alpha_validation_conclusion": "pending",
+    "working_tree_clean_at_build": false
+  },
+  "build_identity": {
+    "commit_sha": "",
+    "apk_sha256": "",
+    "android_package": "com.krk344.nhlgmgame",
+    "build_type": "release",
+    "api_base_url": "",
+    "endpoint_class": "private-lan",
+    "artifact_verification": "pending",
+    "installed_package_reconciled": false,
+    "launch_confirmation": "pending"
+  },
+  "session_scope": {
+    "tester_count": 0,
+    "minimum_testers": 3,
+    "maximum_testers": 5,
+    "fictional_alpha_disclosure_acknowledged": false,
+    "known_limitations_acknowledged": false
+  },
+  "required_route": {
+    "new_game": "pending",
+    "franchise_selection": "pending",
+    "advance_day": "pending",
+    "roster": "pending",
+    "standings": "pending",
+    "trade": "pending",
+    "save": "pending",
+    "reload": "pending",
+    "reset": "pending"
+  },
+  "evidence": {
+    "endpoint_qualification": "pending",
+    "endpoint_qualification_minutes": 0,
+    "endpoint_qualification_reference": "",
+    "physical_or_equivalent_device_smoke": "pending",
+    "device_smoke_reference": "",
+    "save_reload_reconciliation": "pending",
+    "save_reload_reference": "",
+    "stage3_capture_validation": "pending",
+    "stage3_capture_reference": "",
+    "privacy_review": "pending",
+    "privacy_review_reference": "",
+    "public_summary_reference": ""
+  },
+  "defects": {
+    "open_blockers": 0,
+    "open_majors": 0,
+    "go_no_go": "no-go"
+  },
+  "ui_review": {
+    "stage2_direction_preserved": true,
+    "implemented_screens_status": "UI Review Pending",
+    "kyle_stage3_or_stage4_approval_recorded": false
+  },
+  "notes": [
+    "This manifest is a facilitator control record, not pilot authorization.",
+    "Every pass state must identify the reviewed evidence artifact; status flags alone are not sufficient for readiness.",
+    "The CI commit, built commit, APK checksum, Android package, exact API endpoint, confirmed launch, route evidence, and Stage 3 captures must reconcile to one exact pilot environment.",
+    "Endpoint qualification must cover at least 15 uninterrupted minutes before packaging.",
+    "Do not begin the pilot or merge PR #13 without Kyle's explicit approval.",
+    "The Technical Alpha uses eight fictional franchises and an 82-game test schedule; it is not official NHL data."
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "commit_sha": "",
+  "apk_sha256": "",
+  "application_package": "com.krk344.nhlgmgame",
+  "api_base_url": "",
+  "build_type": "standalone-release-apk",
+  "endpoint_class": "",
+  "anonymous_tester_id": "",
+  "route_result_reference": "",
+  "captured_at": "",
+  "preconditions": {
+    "artifact_identity_passed": false,
+    "backend_qualification_passed": false,
+    "guided_route_passed": false,
+    "save_reload_passed": false,
+    "reset_to_day_one_passed": false,
+    "device_smoke_passed": false,
+    "privacy_review_passed": false
+  },
+  "captures": {
+    "S3-01": {"state": "launch_or_connection", "result": "NOT_RUN", "private_reference": ""},
+    "S3-02": {"state": "new_game_franchise_selection", "result": "NOT_RUN", "private_reference": ""},
+    "S3-03": {"state": "dashboard_after_advance_day", "result": "NOT_RUN", "private_reference": ""},
+    "S3-04": {"state": "roster", "result": "NOT_RUN", "private_reference": ""},
+    "S3-05": {"state": "standings", "result": "NOT_RUN", "private_reference": ""},
+    "S3-06": {"state": "trade", "result": "NOT_RUN", "private_reference": ""},
+    "S3-07": {"state": "reloaded_save", "result": "NOT_RUN", "private_reference": ""},
+    "S3-08": {"state": "reset_confirmation_and_result", "result": "NOT_RUN", "private_reference": ""},
+    "S3-09": {"state": "non_ideal_recovery", "result": "NOT_RUN", "private_reference": ""}
+  },
+  "ui_checks": {
+    "primary_action_clear": false,
+    "non_color_status": false,
+    "text_readable_without_clipping": false,
+    "touch_targets_distinct": false,
+    "recovery_states_explicit": false,
+    "franchise_and_day_context_visible": false,
+    "dense_information_scannable": false,
+    "fictional_alpha_disclosure_clear": false,
+    "privacy_boundary_passed": false
+  },
+  "stage3_decision": "INCOMPLETE_RECAPTURE_REQUIRED",
+  "blockers": [],
+  "open_major_defects": [],
+  "sign_off": {
+    "capture_owner": "",
+    "ui_ux_reviewer": "",
+    "testing_reviewer": "",
+    "privacy_reviewer": "",
+    "release_reviewer": ""
+  }
+}

@@ -1,0 +1,113 @@
+from __future__ import annotations
+
+import importlib.util
+import json
+import subprocess
+import sys
+import unittest
+from pathlib import Path
+from types import SimpleNamespace
+
+ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS = ROOT / "scripts"
+sys.path.insert(0, str(SCRIPTS))
+
+spec = importlib.util.spec_from_file_location(
+    "check_alpha_execution_readiness_public",
+    SCRIPTS / "check_alpha_execution_readiness_public.py",
+)
+assert spec and spec.loader
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+
+
+class PublicExecutionReadinessTests(unittest.TestCase):
+    def test_ready_result_emits_only_wrapper_allowlisted_public_fields(self):
+        private_payload = {
+            "ready": True,
+            "output_sensitivity": "private",
+            "api_base_url": "http://192.168.1.20:8000/api/v1",
+            "selected_device": {"model": "Pixel 10 XL"},
+            "next_command_argv": ["python", "handoff.py", "--device-identity-key", "secret-key"],
+            "public_summary": {
+                "ready": True,
+                "checked_at_utc": "2026-09-04T09:00:00Z",
+                "source_ready": True,
+                "source_branch": "agent/alpha-rules-integration-v1",
+                "source_commit": "a" * 40,
+                "device_ready": True,
+                "endpoint_ready": True,
+                "season_id": "2026-27",
+                # Simulate an accidental future addition to the private checker's public_summary.
+                "api_base_url": "http://192.168.1.20:8000/api/v1",
+                "device_selector": "private-device-selector",
+                "device_identity_key": "secret-key",
+            },
+        }
+
+        def runner(argv, *, check, capture_output, text, timeout):
+            self.assertGreaterEqual(timeout, 20.0)
+            return SimpleNamespace(returncode=0, stdout=json.dumps(private_payload), stderr="")
+
+        returncode, result = module.public_readiness_status(runner=runner)
+        self.assertEqual(returncode, 0)
+        self.assertEqual(set(result), set(module.PUBLIC_SUMMARY_FIELDS))
+        self.assertTrue(result["ready"])
+        self.assertEqual(result["season_id"], "2026-27")
+        rendered = json.dumps(result)
+        self.assertNotIn("192.168.1.20", rendered)
+        self.assertNotIn("Pixel 10 XL", rendered)
+        self.assertNotIn("private-device-selector", rendered)
+        self.assertNotIn("secret-key", rendered)
+
+    def test_failure_does_not_echo_private_diagnostic(self):
+        private_error = {
+            "ready": False,
+            "blocker_scope": "endpoint",
+            "error": "endpoint_preflight blocked: http://192.168.1.20:8000/api/v1 did not respond",
+        }
+
+        def runner(argv, *, check, capture_output, text, timeout):
+            return SimpleNamespace(returncode=1, stdout=json.dumps(private_error), stderr="")
+
+        returncode, result = module.public_readiness_status(
+            api_base_url="http://192.168.1.20:8000/api/v1",
+            serial="private-device-selector",
+            runner=runner,
+        )
+        self.assertEqual(returncode, 1)
+        self.assertEqual(result["blocker_scope"], "endpoint")
+        rendered = json.dumps(result)
+        self.assertNotIn("192.168.1.20", rendered)
+        self.assertNotIn("private-device-selector", rendered)
+        self.assertNotIn("did not respond", rendered)
+        self.assertIn("rerun readiness", result["next_action"])
+
+    def test_invalid_private_output_fails_closed_without_echoing_it(self):
+        def runner(argv, *, check, capture_output, text, timeout):
+            return SimpleNamespace(returncode=2, stdout="not-json private detail", stderr="")
+
+        returncode, result = module.public_readiness_status(runner=runner)
+        self.assertEqual(returncode, 1)
+        self.assertEqual(result["blocker_scope"], "unknown")
+        self.assertNotIn("not-json", json.dumps(result))
+
+    def test_private_checker_timeout_fails_closed_without_private_detail(self):
+        def runner(argv, *, check, capture_output, text, timeout):
+            raise subprocess.TimeoutExpired(argv, timeout, output="private endpoint detail")
+
+        returncode, result = module.public_readiness_status(
+            api_base_url="http://192.168.1.20:8000/api/v1",
+            serial="private-device-selector",
+            runner=runner,
+        )
+        self.assertEqual(returncode, 1)
+        self.assertEqual(result["blocker_scope"], "unknown")
+        rendered = json.dumps(result)
+        self.assertNotIn("192.168.1.20", rendered)
+        self.assertNotIn("private-device-selector", rendered)
+        self.assertNotIn("private endpoint detail", rendered)
+
+
+if __name__ == "__main__":
+    unittest.main()
