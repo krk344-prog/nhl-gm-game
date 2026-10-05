@@ -91,7 +91,7 @@ TEST ROUTE
 13. Reset the game and confirm it returns to Day 1 with the previous Trade History cleared.
 
 REPORTING A PROBLEM
-Use BUG-REPORT.txt. Record the first route step that failed, what you expected, what happened, and the result of one controlled retry. Do not include your name, device serial number, network address, save file, or password.
+Use BUG-REPORT.txt. Record the first route step that failed, what you expected, and what happened. For a major or blocking failure, stop the route and preserve the current state/evidence until the facilitator releases a retest. Do not include your name, device serial number, network address, save file, or password.
 """
 
 
@@ -141,7 +141,7 @@ Screen or step:
 What I was trying to do:
 What I expected:
 What happened instead:
-Controlled retry result (Pass / Same failure / Different failure / Not safe to retry):
+Failure handling (Stopped and preserved evidence / Minor issue continued safely / Facilitator released retest):
 Did the game close or freeze?
 Did progress disappear after reopening?
 Screenshot available? Yes / No
