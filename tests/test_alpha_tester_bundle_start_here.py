@@ -30,6 +30,8 @@ class AlphaTesterBundleStartHereTests(unittest.TestCase):
         self.assertIn("Do not share this package, network details, screenshots, or save files publicly.", text)
         self.assertIn("Do not include your name, device serial number, network address, save file, or password.", text)
         self.assertIn("STATUS: UI REVIEW PENDING", text)
+        self.assertIn("For a major or blocking failure, stop the route and preserve the current state/evidence until the facilitator releases a retest.", text)
+        self.assertNotIn("one controlled retry", text)
 
 
 if __name__ == "__main__":
